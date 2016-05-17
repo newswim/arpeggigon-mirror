@@ -2,6 +2,8 @@ module MIDI ( SampleRate
             , Pitch
             , toPitch
             , fromPitch
+            , fromVelocity
+            , toVelocity
             , Velocity
             , Voice ( fromVoice
                     , toVoice
@@ -14,6 +16,8 @@ module MIDI ( SampleRate
 
 import Sound.MIDI.Message.Channel.Voice ( fromPitch
                                         , toPitch
+                                        , fromVelocity
+                                        , toVelocity
                                         )
 import qualified Sound.MIDI.Message.Channel.Voice as Voice
 
