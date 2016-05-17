@@ -7,6 +7,9 @@ module MIDI ( SampleRate
                     , toVoice
                     )
             , Note(..)
+            , ControllerIdx
+            , ControllerValue
+            , Control
             ) where
 
 import Sound.MIDI.Message.Channel.Voice ( fromPitch
@@ -33,3 +36,13 @@ instance Voice Note where
   fromVoice _ = Nothing
   toVoice (NoteOn  p v) = Voice.NoteOn  p v
   toVoice (NoteOff p v) = Voice.NoteOff p v
+
+type ControllerIdx = Voice.Controller
+type ControllerValue = Int
+
+data Control = Control ControllerIdx ControllerValue
+
+instance Voice Control where
+  fromVoice (Voice.Control i v) = Just $ Control i v
+  fromVoice _ = Nothing
+  toVoice (Control i v) = Voice.Control i v
