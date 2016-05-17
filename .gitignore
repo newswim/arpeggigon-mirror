@@ -1,0 +1,13 @@
+*.o
+*.hi
+FluidSynth/
+FluidSynthAPI/
+FluidSynthCAPI/
+alsaInterface/
+article/
+hsfluidsynth/
+jackAPI/
+javaReactogon/
+little_things/
+manuals/
+midi_linux.md
