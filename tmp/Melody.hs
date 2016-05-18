@@ -24,6 +24,7 @@ import qualified Foreign.C.Error as E
 
 import System.Environment (getProgName)
 
+import Debug.Trace
 
 scale :: [Channel.Pitch]
 scale = map Channel.toPitch [60, 62, 64, 65, 67, 69, 71, 72]
@@ -60,7 +61,7 @@ main = do
         Jack.withPort client "output" $ \output -> do
         Jack.withProcess client (process client stateRef output) $
             Jack.withActivation client $ do
-                --Jack.connect client "basic:output" "Midimon:input"
+                Jack.connect client "Melody:output" "fluidsynth:midi"
                 Trans.lift $ putStrLn $ "started " ++ name ++ "..."
                 Trans.lift $ Jack.waitForBreak
 
