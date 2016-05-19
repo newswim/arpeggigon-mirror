@@ -2,32 +2,48 @@
 
 module Reactimation where
 
-import Data.Map (Map)
+import Data.Map ( Map
+                , empty
+                )
 import qualified Data.Map as M
 import FRP.Yampa
 import Control.Concurrent.MVar
+import Sound.JACK ( NFrames(NFrames)
+                  )
 
 import MIDI
-import Arpeggiated
+import ClientState
+--import Arpeggiated
 
-mainReact :: IO ()
-mainReact = reactimate (initialize inRef) (sensing synthRef) actuation mainSF
+mainReact :: MVar EventQueue
+          -> MVar EventQueue
+          -> MVar ClientState
+          -> IO ()
+mainReact inRef outRef clientRef =
+  reactimate (initialize inRef) (sensing clientRef inRef) (actuation outRef) mainSF
 
 initialize :: MVar EventQueue -> IO EventQueue
-initialize = readMVar
+initialize inRef = readMVar inRef
 
-sensing :: MVar (SynthState)
-        -> MVar (Map Time a)
+sensing :: MVar ClientState
+        -> MVar EventQueue
         -> Bool
-        -> IO (DTime, Maybe (Map Time a))
-sensing synthRef inRef _ = do
-  input <- readMVar inref
-  synth <- readMVar synthRef
-  let dt = (fromIntegral $ rate synth)/(fromIntegral $ outBuffSize synth)
+        -> IO (DTime, Maybe EventQueue)
+sensing clientRef inRef _ = do
+  client <- readMVar clientRef
+  input <- takeMVar inRef
+  let (NFrames buff) = buffSize client
+      dt = (fromIntegral $ rate client)/(fromIntegral buff)
   return (dt, Just input)
 
+actuation :: MVar EventQueue
+          -> Bool
+          -> EventQueue
+          -> IO Bool
+actuation outRef _ output = do
+  out <- takeMVar outRef
+  putMVar outRef $ M.union output out
+  return True
 
-actuation = undefined
-
-mainSF :: (Message a) => SF (Map Time a) (Map Time a)
+mainSF :: SF EventQueue EventQueue
 mainSF = identity

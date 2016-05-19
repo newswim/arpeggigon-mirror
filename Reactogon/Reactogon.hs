@@ -3,7 +3,7 @@ module Main where
 import Auxiliary
 import MIDI
 import ClientState
---import Reactimation
+import Reactimation
 
 import qualified Sound.JACK as Jack
 import qualified Sound.JACK.MIDI as JMIDI
@@ -61,56 +61,60 @@ main = do
     Jack.withPort client inPortName $ \input -> do
     clientState <- Trans.lift $ newEmptyMVar
     Jack.withProcess client
-      (jackLoop client clientState outState input output) $
+      (jackLoop client clientState inState outState input output) $
       Jack.withActivation client $ do
-      --frpid <- Trans.lift $ forkIO mainReact
+      frpid <- Trans.lift $ forkIO $ mainReact inState outState clientState
       Jack.connect client (reactogonName ++ ":" ++ outPortName) fsPortName
       Trans.lift $ putStrLn $ "Started " ++ reactogonName
       Trans.lift $ Jack.waitForBreak
 
 jackLoop :: Jack.Client
          -> MVar ClientState -- ^ MVar containing the client state (rate and buff size)
+         -> MVar EventQueue -- ^ MVar containing incoming events
          -> MVar EventQueue -- ^ MVar containing exiting events
          -> JMIDI.Port Jack.Input -- ^ Jack input port
          -> JMIDI.Port Jack.Output -- ^ Jack output port
          -> Jack.NFrames -- ^ Buffer size for the ports
          -> Sync.ExceptionalT E.Errno IO ()
-jackLoop client clientState outRef input output nframes@(Jack.NFrames nframesInt) = do
-    rate <- Trans.lift $ Jack.getSampleRate client
-    isEmptyState <- Trans.lift $ isEmptyMVar clientState
-    let updateClient c v = if isEmptyState then putMVar c v else void $ swapMVar c v
-    Trans.lift $ updateClient clientState $ ClientState { rate = rate
-                                             , buffSize = nframes
-                                             }
-    outEvents <- Trans.lift $ takeMVar outRef
-    lframe <- Trans.lift $ Jack.lastFrameTime client
-    inEventsT <- JMIDI.readEventsFromPort input nframes
-    let rateD = fromIntegral rate
-        (Jack.NFrames lframeInt) = lframe
-        currentTime = fromIntegral lframeInt / rateD
-        inEvents :: EventQueue
-        inEvents = M.mapMaybe fromRawMessage $
-          M.fromList $ map (\(Jack.NFrames n,e) -> (currentTime + fromIntegral n/rateD, e)) $
-          EventListAbs.toPairList inEventsT
-        playableEvents = M.filterWithKey
-          (\t _ -> t - currentTime > - fromIntegral nframesInt / rateD) $
-          M.union inEvents outEvents
-        (processableEvents, futureEvents) = breakMap currentTime playableEvents
-        processableEvents' = M.toList processableEvents
-    Trans.lift $ print currentTime
-    Trans.lift $ putMVar outRef futureEvents
-    {-if null processableEvents
-      then Trans.lift $ putStrLn "No events in queue."
-      else Trans.lift $ putStrLn "Event!"-}
-    let smartSub x y = if x < y then y - x else x - y
-        (firstTime,_) = head processableEvents'
-    Trans.lift $ print $
-      map ((* rateD) . smartSub firstTime . fst) processableEvents'
-    JMIDI.writeEventsToPort output nframes $
-      EventListAbs.fromPairList $
-      map (\(t,e) -> (Jack.NFrames $ floor $ rateD * smartSub t currentTime
-                     , toRawMessage e)) $
-      M.toList processableEvents
+jackLoop client clientState inRef outRef
+         input output nframes@(Jack.NFrames nframesInt) = do
+  rate <- Trans.lift $ Jack.getSampleRate client
+  lframe <- Trans.lift $ Jack.lastFrameTime client
+  isEmptyState <- Trans.lift $ isEmptyMVar clientState
+  let updateClient = if isEmptyState
+                     then putMVar
+                     else \c v -> void $ swapMVar c v
+      rateD = fromIntegral rate
+      (Jack.NFrames lframeInt) = lframe
+      currentTime = fromIntegral lframeInt / rateD
+  Trans.lift $ updateClient clientState $ ClientState { rate = rate
+                                                      , buffSize = nframes
+                                                      , clientClock = currentTime
+                                                      }
+  outEvents <- Trans.lift $ takeMVar outRef
+  inEventsT <- JMIDI.readEventsFromPort input nframes
+  let inEvents :: EventQueue
+      inEvents = M.mapMaybe fromRawMessage $
+        M.fromList $
+        map (\(Jack.NFrames n,e) -> (currentTime + fromIntegral n/rateD, e)) $
+        EventListAbs.toPairList inEventsT
+  Trans.lift $ swapMVar inRef inEvents
+  let playableEvents = M.filterWithKey
+        (\t _ -> t - currentTime > - fromIntegral nframesInt / rateD) $
+        M.union inEvents outEvents
+      (processableEvents, futureEvents) = breakMap currentTime playableEvents
+      processableEvents' = M.toList processableEvents
+  Trans.lift $ print currentTime
+  Trans.lift $ putMVar outRef futureEvents
+  let smartSub x y = if x < y then y - x else x - y
+      (firstTime,_) = head processableEvents'
+  Trans.lift $ print $
+    map ((* rateD) . smartSub firstTime . fst) processableEvents'
+  JMIDI.writeEventsToPort output nframes $
+    EventListAbs.fromPairList $
+    map (\(t,e) -> (Jack.NFrames $ floor $ rateD * smartSub t currentTime
+                   , toRawMessage e)) $
+    M.toList processableEvents
 
 {-
     else JMIDI.writeEventsToPort output nframes $

@@ -2,30 +2,31 @@ module Note where
 
 import MIDI
 
-isOn :: Note -> Bool
-isOn (NoteOn _ _ _) = True
-isOn _ = False
+isNoteOn :: Message -> Bool
+isNoteOn (NoteOn _ _ _) = True
+isNoteOn _ = False
 
-isOff :: Note -> Bool
-isOff = not . isOn
+isNoteOff :: Message -> Bool
+isNoteOff (NoteOff _ _ _) = True
+isNoteOff _ = False
 
-changePitch :: (Pitch -> Pitch) -> Note -> Note
+changePitch :: (Pitch -> Pitch) -> Message-> Message
 changePitch f (NoteOn  c p v) = NoteOn  c (f p) v
 changePitch f (NoteOff c p v) = NoteOff c (f p) v
 
-changeVelocity :: (Velocity -> Velocity) -> Note -> Note
+changeVelocity :: (Velocity -> Velocity) -> Message-> Message
 changeVelocity f (NoteOn  c p v) = NoteOn  c p (f v)
 changeVelocity f (NoteOff c p v) = NoteOff c p (f v)
 
-switchOnOff :: Note -> Note
+switchOnOff :: Message-> Message
 switchOnOff (NoteOn  c p v) = NoteOff c p v
 switchOnOff (NoteOff c p v) = NoteOn  c p v
 
-perfectFifth :: Note -> Note
+perfectFifth :: Message-> Message
 perfectFifth = changePitch (toPitch . (+7) . fromPitch)
 
-majorThird :: Note -> Note
+majorThird :: Message-> Message
 majorThird = changePitch (toPitch . (+4) . fromPitch)
 
-minorThird :: Note -> Note
+minorThird :: Message-> Message
 minorThird = changePitch (toPitch . (+3) . fromPitch)
