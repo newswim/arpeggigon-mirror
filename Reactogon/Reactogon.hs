@@ -78,6 +78,7 @@ jackLoop :: Jack.Client
          -> Sync.ExceptionalT E.Errno IO ()
 jackLoop client clientState inRef outRef
          input output nframes@(Jack.NFrames nframesInt) = do
+  Trans.lift $ print "Entering Jack."
   rate <- Trans.lift $ Jack.getSampleRate client
   lframe <- Trans.lift $ Jack.lastFrameTime client
   isEmptyState <- Trans.lift $ isEmptyMVar clientState
@@ -98,7 +99,9 @@ jackLoop client clientState inRef outRef
         M.fromList $
         map (\(Jack.NFrames n,e) -> (currentTime + fromIntegral n/rateD, e)) $
         EventListAbs.toPairList inEventsT
-  Trans.lift $ swapMVar inRef inEvents
+  Trans.lift $ print "In the middle."
+  Trans.lift $ putMVar inRef inEvents
+  Trans.lift $ print "In the middle."
   let playableEvents = M.filterWithKey
         (\t _ -> t - currentTime > - fromIntegral nframesInt / rateD) $
         M.union inEvents outEvents
@@ -115,7 +118,7 @@ jackLoop client clientState inRef outRef
     map (\(t,e) -> (Jack.NFrames $ floor $ rateD * smartSub t currentTime
                    , toRawMessage e)) $
     M.toList processableEvents
-
+  Trans.lift $ print "Exiting Jack."
 {-
     else JMIDI.writeEventsToPort output nframes $
          EventListAbs.mapTime Jack.NFrames $

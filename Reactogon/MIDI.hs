@@ -46,12 +46,6 @@ type Channel = Channel.Channel
 type Pitch = Voice.Pitch
 type Velocity = Voice.Velocity
 
-{-
-class (Message a) => Voice a where
-  fromVoice :: MidiVoice -> Maybe a
-  toVoice :: a -> MidiVoice
--}
-
 type ControllerIdx = Voice.Controller
 type ControllerValue = Int
 
@@ -65,6 +59,8 @@ fromRawMessage (Message.Channel (Channel.Cons c
                                  (Channel.Voice (Voice.NoteOn  p v)))) = Just $ NoteOn  c p v
 fromRawMessage (Message.Channel (Channel.Cons c
                                  (Channel.Voice (Voice.NoteOff p v)))) = Just $ NoteOff c p v
+fromRawMessage (Message.Channel (Channel.Cons c
+                                 (Channel.Voice (Voice.Control n v)))) = Just $ Control c n v
 fromRawMessage _ = Nothing
 
 toRawMessage :: Message -> RawMessage
@@ -72,6 +68,8 @@ toRawMessage (NoteOn  c p v) = (Message.Channel $ Channel.Cons c
                                (Channel.Voice $ Voice.NoteOn  p v))
 toRawMessage (NoteOff c p v) = (Message.Channel $ Channel.Cons c
                                (Channel.Voice $ Voice.NoteOff p v))
+toRawMessage (Control c n v) = (Message.Channel (Channel.Cons c
+                                                   (Channel.Voice (Voice.Control n v))))
 
 {-
 instance Message Note where
