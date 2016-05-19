@@ -1,33 +1,31 @@
 module Main where
 
-import qualified MIDI as React
+import Auxiliary
+import MIDI
+import ClientState
+--import Reactimation
 
 import qualified Sound.JACK as Jack
-import qualified Sound.MIDI.Message as MIDI
 import qualified Sound.JACK.MIDI as JMIDI
-{-
-import Data.IORef ( IORef
-                  , newIORef
-                  , readIORef
-                  , writeIORef
-                  )
--}
-import Control.Concurrent
-import qualified Foreign.C.Error as E
-import qualified Data.EventList.Relative.TimeBody as EventList
-import qualified Data.EventList.Absolute.TimeBody as EventListAbs
-import qualified Data.EventList.Relative.TimeMixed as EventListTM
-import qualified Control.Monad.Exception.Synchronous as Sync
-import qualified Control.Monad.Trans.Class as Trans
-
+import qualified Sound.MIDI.Message as MIDI
 import qualified Sound.MIDI.Message.Channel as Channel
 import qualified Sound.MIDI.Message.Channel.Voice as Voice
 import qualified Sound.MIDI.Message.Class.Construct as MidiCons
 
+import Control.Concurrent
+import Control.Monad
+import qualified Control.Monad.Exception.Synchronous as Sync
+import qualified Control.Monad.Trans.Class as Trans
+import qualified Data.EventList.Absolute.TimeBody as EventListAbs
+import qualified Data.EventList.Relative.TimeBody as EventList
+import qualified Data.EventList.Relative.TimeMixed as EventListTM
+import qualified Foreign.C.Error as E
+
+import qualified Data.Map as M
 import FRP.Yampa
 
 import Debug.Trace
-
+{-
 -- | List of absolute times (at which events should occur) and events.
 --   We assume that the list is sorted.
 outLoop :: [(Time,MIDI.T)]
@@ -40,6 +38,7 @@ outLoop = concat [[(t,MIDI.Channel $ Channel.Cons
     , Channel.messageBody =
         Channel.Voice $ Voice.NoteOff (Voice.toPitch 60) (Voice.toVelocity 100)
     })] | t <- [0,2..]]
+-}
 
 reactogonName :: String
 reactogonName = "Reactogon"
@@ -54,48 +53,64 @@ fsPortName :: String
 fsPortName = "fluidsynth:midi"
 
 main = do
-  stateRef <- newMVar outLoop
+  inState <- newMVar M.empty
+  outState <- newMVar M.empty
   Jack.handleExceptions $
     Jack.withClientDefault reactogonName $ \client ->
-    Jack.withPort client outPortName $ \output -> do
-    Jack.withProcess client (process client stateRef output) $
+    Jack.withPort client outPortName $ \output ->
+    Jack.withPort client inPortName $ \input -> do
+    clientState <- Trans.lift $ newEmptyMVar
+    Jack.withProcess client
+      (jackLoop client clientState outState input output) $
       Jack.withActivation client $ do
+      --frpid <- Trans.lift $ forkIO mainReact
       Jack.connect client (reactogonName ++ ":" ++ outPortName) fsPortName
       Trans.lift $ putStrLn $ "Started " ++ reactogonName
       Trans.lift $ Jack.waitForBreak
 
-process ::
-    Jack.Client ->
-    MVar [(Time,MIDI.T)] ->
-    JMIDI.Port Jack.Output ->
-    Jack.NFrames ->
-    Sync.ExceptionalT E.Errno IO ()
-process client stateRef output nframes@(Jack.NFrames nframesInt) =
-  do
+jackLoop :: Jack.Client
+         -> MVar ClientState -- ^ MVar containing the client state (rate and buff size)
+         -> MVar EventQueue -- ^ MVar containing exiting events
+         -> JMIDI.Port Jack.Input -- ^ Jack input port
+         -> JMIDI.Port Jack.Output -- ^ Jack output port
+         -> Jack.NFrames -- ^ Buffer size for the ports
+         -> Sync.ExceptionalT E.Errno IO ()
+jackLoop client clientState outRef input output nframes@(Jack.NFrames nframesInt) = do
     rate <- Trans.lift $ Jack.getSampleRate client
-    events <- Trans.lift $ takeMVar stateRef
+    isEmptyState <- Trans.lift $ isEmptyMVar clientState
+    let updateClient c v = if isEmptyState then putMVar c v else void $ swapMVar c v
+    Trans.lift $ updateClient clientState $ ClientState { rate = rate
+                                             , buffSize = nframes
+                                             }
+    outEvents <- Trans.lift $ takeMVar outRef
     lframe <- Trans.lift $ Jack.lastFrameTime client
+    inEventsT <- JMIDI.readEventsFromPort input nframes
     let rateD = fromIntegral rate
         (Jack.NFrames lframeInt) = lframe
         currentTime = fromIntegral lframeInt / rateD
-        playableEvents = filter
-          (\(t,_) -> t - currentTime > - fromIntegral nframesInt / rateD) events
-        (processableEvents, futureEvents) = break ((> currentTime) . fst) $
-                                            playableEvents
+        inEvents :: EventQueue
+        inEvents = M.mapMaybe fromRawMessage $
+          M.fromList $ map (\(Jack.NFrames n,e) -> (currentTime + fromIntegral n/rateD, e)) $
+          EventListAbs.toPairList inEventsT
+        playableEvents = M.filterWithKey
+          (\t _ -> t - currentTime > - fromIntegral nframesInt / rateD) $
+          M.union inEvents outEvents
+        (processableEvents, futureEvents) = breakMap currentTime playableEvents
+        processableEvents' = M.toList processableEvents
     Trans.lift $ print currentTime
-    Trans.lift $ putMVar stateRef futureEvents
-    if null processableEvents
+    Trans.lift $ putMVar outRef futureEvents
+    {-if null processableEvents
       then Trans.lift $ putStrLn "No events in queue."
-      else Trans.lift $ putStrLn "Event!"
-    let firstEventTime = fst $ head processableEvents
-    Trans.lift $ print $ map ((* rateD) . smartSub currentTime . fst) processableEvents
+      else Trans.lift $ putStrLn "Event!"-}
+    let smartSub x y = if x < y then y - x else x - y
+        (firstTime,_) = head processableEvents'
+    Trans.lift $ print $
+      map ((* rateD) . smartSub firstTime . fst) processableEvents'
     JMIDI.writeEventsToPort output nframes $
       EventListAbs.fromPairList $
-      map (\(t,e) -> (Jack.NFrames $ floor $ rateD * smartSub t currentTime, e))
-      processableEvents
-
-
-smartSub x y = if x < y then y - x else x - y
+      map (\(t,e) -> (Jack.NFrames $ floor $ rateD * smartSub t currentTime
+                     , toRawMessage e)) $
+      M.toList processableEvents
 
 {-
     else JMIDI.writeEventsToPort output nframes $
