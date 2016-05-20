@@ -16,3 +16,5 @@ manuals/
 midi_linux.md
 *.eventlog
 tmp/
+div/
+dump/
