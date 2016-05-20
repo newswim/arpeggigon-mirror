@@ -39,7 +39,15 @@ type BCtrl = Double
 -- the beat clock would be defined externally, synchronized with other
 -- layers and possibly external MIDI, and account for tempo, any swing, etc.
 
+-- Tempo
+
+-- The tempo is the number of beats per minute.
+type Tempo = Int
+
 -- Beats and Bars
+
+-- A beat in itself is not important.
+type Beat = ()
 
 -- Beats per Bar: number of beats per bar in the time signature of a layer.
 -- Non-negative.
@@ -164,12 +172,12 @@ articStrength st bn art
 
 -- Duration
 
--- Duration in terms of a whole note at the *system* tempo. (Each layer
--- is clocked at a layer beat that is a fraction/multiple of the system
--- tempo). Note that notes are played a little shorter than their nominal
--- duration. This is taken care of by the translation into low-level
--- MIDI events. (One might consider adding indications of staccato or
--- tenuto.)
+-- Duration in terms of a whole note at the *system* tempo. (Each
+-- layer is clocked at a layer beat that is a fraction/multiple of the
+-- system tempo). Note that notes are played a little shorter than
+-- their nominal duration. This is taken care of by the translation
+-- into low-level MIDI events. (One might consider adding indications
+-- of staccato or tenuto.)
 type Duration = Rational
 
 
@@ -205,7 +213,7 @@ data NoteAttr = NoteAttr {
 } deriving Show
 
 
--- High level note representation emitted form a layer
+-- High level note representation emitted from a layer
 data Note = Note {
     notePch :: Pitch,
     noteStr :: Strength,
@@ -260,7 +268,7 @@ posToPitch (x,y) tr =
 
 
 -- Actions
--- Maybe this coul dbe refined: some of the actions might be useful
+-- Maybe this could be refined: some of the actions might be useful
 -- both in note playing and silent versions: e.g. changing direction without
 -- playing a note; playing a note without changing direction.
 
