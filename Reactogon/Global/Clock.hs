@@ -1,4 +1,7 @@
-module Reactogon.Global.Clock where
+module Reactogon.Global.Clock ( tempo
+                              , metronome
+                              , tempoToDTime
+                              ) where
 
 import Reactogon.Auxiliary.Auxiliary
 import Reactogon.Semantics
@@ -11,15 +14,14 @@ tempo = constant
 
 -- The initial value is arbitrary but never appears because the switch
 -- is immediate.
-metronome :: SF () Tempo -> SF () (Event Beat)
-metronome tempo = switch ((repeatedly (tempoToDTime 60) ())
-                          &&&
-                          (discard ^>> tempo >>> onChange')) (metronome' tempo)
-  where metronome' :: SF () Tempo -> Tempo -> SF () (Event Beat)
-        metronome' tempo t = (switch ((repeatedly (tempoToDTime t) ())
-                                        &&&
-                                       (discard ^>> tempo >>> onChange))
-                             (metronome' tempo))
+metronome :: SF Tempo (Event Beat)
+metronome = switch ((repeatedly (tempoToDTime 60) ())
+                     &&&
+                    (onChange')) (metronome')
+  where metronome' :: Tempo -> SF Tempo (Event Beat)
+        metronome' t = (switch ((repeatedly (tempoToDTime t) ())
+                                 &&&
+                                 onChange) (metronome'))
 
 tempoToDTime :: Tempo -> DTime
 tempoToDTime = (60/) . fromIntegral

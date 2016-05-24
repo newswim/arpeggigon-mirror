@@ -469,7 +469,7 @@ advanceHeads bd bn tr st phs =
 --     note received for the layer (derived from its MIDI velocity).
 
 runRMCA :: Board -> BeatsPerBar -> RelPitch -> Strength -> [PlayHead]
-           -> [[Note]]
+        -> [[Note]]
 runRMCA _  _  _  _  []  = []
 runRMCA bd bpb tr st phs = runAux 1 phs
     where

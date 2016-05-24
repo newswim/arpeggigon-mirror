@@ -1,24 +1,28 @@
-{-# LANGUAGE Arrows #-}
+{-# LANGUAGE Arrows, TupleSections #-}
 
 module Reactogon.Layer.Layer where
 
-import Reactogon.Beat
 import Reactogon.Semantics
 import Reactogon.Global.Clock
 import FRP.Yampa
 
 -- Data representing the state of a layer. It is updated continuously.
-data Layer = Layer { relTempo :: Double
-                   , strength :: Strength
+data Layer = Layer { relTempo    :: Double
+                   , relPitch    :: RelPitch
+                   , strength    :: Strength
+                   , beatsPerBar :: BeatsPerBar
+                   , beatCounter :: BeatNo
                    }
 
-layerTempo :: SF () Tempo -> SF Layer Tempo
-layerTempo globalTempo = proc Layer { relTempo = r } -> do
-  t <- tempo -< ()
+layerTempo :: SF (Tempo, Layer) Tempo
+layerTempo = proc (t, Layer { relTempo = r }) -> do
   returnA -< floor $ r * fromIntegral t
 
-layerMetronome :: SF () Tempo -> SF () (Event Beat)
-layerMetronome tempo = layerTempo tempo >>> metronome
+-- The layer is modified after the beat as been
+layerMetronome :: SF (Tempo, Layer) (Event (BeatNo, Layer))
+layerMetronome = proc (t, l@Layer { beatCounter = b , beatsPerBar = bpb}) -> do
+  eb <- metronome <<< layerTempo -< (t, l)
+  returnA -< eb `tag` let nb = nextBeatNo b bpb in (nb, l { beatCounter = nb })
 
 -- A layer is a producer of events triggered by the system beat clock.
 layer :: SF () (Event Beat) ->  SF Layer (Event Note)
