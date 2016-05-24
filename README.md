@@ -6,12 +6,12 @@ as see fit.
 
 Target levels
 -------------
-1. Baseline: text interface only, not necessarily (very) interactive,
-   but at the very least able to record a performance as a MIDI file.
-2. Basic system with a GUI running on a Linux desktop. At least able
-   to generate sound 
-3. Full-featured system with GUI running on a Linux desktop.
-4. Mobile version, subject to cooperation with Ivan/Keera Studios
+- [ ] Baseline: text interface only, not necessarily (very) interactive, 
+      but at the very least able to record a performance as a MIDI file.
+- [ ] Basic system with a GUI running on a Linux desktop. At least able 
+      to generate sound 
+- [ ] Full-featured system with GUI running on a Linux desktop.
+- [ ] Mobile version, subject to cooperation with Ivan/Keera Studios
  
 Feature Summary
 ---------------
