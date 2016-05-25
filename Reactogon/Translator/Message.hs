@@ -1,6 +1,4 @@
-module Reactogon.Translator.Message ( SampleRate
-                                    , RawMessage
-                                    ) where
+module Reactogon.Translator.Message where
 
 import           Reactogon.Semantics
 import qualified Sound.MIDI.Message               as Message
