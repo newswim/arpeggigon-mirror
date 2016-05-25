@@ -26,6 +26,20 @@ import Data.Ratio
 -- Unipolar control value; [0, 1]
 type UCtrl = Double
 
+-- Unipolar control values are usually between 0 and 127.
+toUCtrl :: Int -> UCtrl
+toUCtrl x = fromIntegral x / 127
+
+fromUCtrl :: UCtrl -> Int
+fromUCtrl x = floor $ x * 127
+
+-- Bipolar control values are usually between -127 and 127.
+toBCtrl :: Int -> BCtrl
+toBCtrl = toUCtrl
+
+fromBCtrl :: BCtrl -> Int
+fromBCtrl = fromUCtrl
+
 -- Bipolar control value; [-1, 1]
 type BCtrl = Double
 
@@ -130,9 +144,9 @@ type RelPitch = Int
 -- Articulation
 
 -- Each layer has a setting that indicate how strongly the notes
--- should normally be played as a percentage of full strength.
--- (In the real application, this settig can be set to a fixed value
--- or set to be derived from teh last input note, "as played").
+-- should normally be played as a percentage of full strength.  (In
+-- the real application, this setting can be set to a fixed value or
+-- set to be derived from the last input note, "as played").
 -- Individual notes can tehn be accented (played more strongly),
 -- either unconditionally or as a function of the beat count.
 

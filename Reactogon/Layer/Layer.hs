@@ -3,6 +3,7 @@
 module Reactogon.Layer.Layer where
 
 import Reactogon.Semantics
+import Reactogon.Layer.Board
 import Reactogon.Global.Clock
 import FRP.Yampa
 
