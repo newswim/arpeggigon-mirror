@@ -23,7 +23,13 @@ sortRawMessages = sortRawMessages' ([],[])
           where nm = fromRawMessage x
 
 sortNotes :: [Message] -> ([Note], [Control])
-sortNotes = undefined
+sortNotes = sortNotes' ([],[])
+  where sortNotes' r [] = r
+        sortNotes' (n, c) (x:xs)
+          | isNoteOn x = sortNotes' (x:n, c) xs
+          | isNoteOff x = sortNotes' (n,c) xs
+          | isControl x = sortNotes' (n,x:c) xs
+          | otherwise = sortNotes' (n,c) xs
 
 sortMessages :: [RawMessage] -> ([Note], [Control], [RawMessage])
 sortMessages = (\((a,b),c) -> (a,b,c)) . BF.first sortNotes . sortRawMessages
