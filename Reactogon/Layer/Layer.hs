@@ -1,4 +1,4 @@
-{-# LANGUAGE Arrows, TupleSections #-}
+{-# LANGUAGE Arrows #-}
 
 module Reactogon.Layer.Layer where
 
