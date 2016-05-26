@@ -5,6 +5,7 @@ import qualified Sound.MIDI.Message               as Message
 import qualified Sound.MIDI.Message.Channel       as Channel
 import qualified Sound.MIDI.Message.Channel.Voice as Voice
 
+-- We might want to move that to Semantics.
 type SampleRate = Int
 
 type RawMessage = Message.T

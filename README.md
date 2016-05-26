@@ -6,17 +6,17 @@ as see fit.
 
 Target levels
 -------------
-- [ ] Baseline: text interface only, not necessarily (very) interactive, 
+- [ ] Baseline: text interface only, not necessarily (very) interactive,
       but at the very least able to record a performance as a MIDI file.
-- [ ] Basic system with a GUI running on a Linux desktop. At least able 
-      to generate sound 
+- [ ] Basic system with a GUI running on a Linux desktop. At least able
+      to generate sound
 - [ ] Full-featured system with GUI running on a Linux desktop.
 - [ ] Mobile version, subject to cooperation with Ivan/Keera Studios
- 
+
 Feature Summary
 ---------------
 
-* Modelled after the origial Reactogon
+* Modelled after the original Reactogon
 * Up to 16 layers. Each layer an extended version of the original Reactogon.
   Extensions include:
   - Each tile has an associated "repeat count" n. The play head stays
@@ -39,7 +39,7 @@ Feature Summary
   - Pan pot
   - Layer transposition
   - A layer can be set to be unpitched: the pitch of all output notes
-    are set to a specific pitch (useful for e.g. rythm layers). 
+    are set to a specific pitch (useful for e.g. rythm layers).
   - Muting and Soloing of layers
 * MIDI integration
   - synchronization to external MIDI clock if selected and available
@@ -60,7 +60,7 @@ Feature Summary
   - Mute (inhibits all MIDI out messages, but layer continues to run)
   - Solo (messages from all other layers inhibited, but mute status
     preserved; only one layer at a time can be soloed)
-  These controls duplicated on each layer  
+  These controls duplicated on each layer
 * Saving & loading of configurations
 * Loading of individual layers from stored configurations.
 * Directly recolrding to/generating a MIDI file. Record button?
@@ -68,7 +68,7 @@ Feature Summary
 Clocking
 --------
 The system beat, relative to which the overall tempo is given (in BPM)
-is defined to be one quarter note. 
+is defined to be one quarter note.
 
 The layer beats is specified separately but defaults to one quarter note.
 
@@ -86,7 +86,7 @@ beat would thus be given by 50, 0 50.
 Only beat numbers as defined by the layer's beats per bar would be used,
 and beat numbers beyond 4 would be played straight.
 
-Or one might want to allow the number of numbers to be beats per bar minus 1.  
+Or one might want to allow the number of numbers to be beats per bar minus 1.
 
 Overall Structure
 -----------------
@@ -123,14 +123,14 @@ Gloal, Layers, and MIDI translator are all FRP (Yampa) moduled.
     limited capacity of a standard MIDI connection into account
     (more corse grained translation of continous control signals
     if too busy? dropping notes in case of excessive polyphony per
-    channel and/or overall?) 
+    channel and/or overall?)
 
   * The GUI manipulates a model of the system tailored to the needs of the
     GUI. Control signals are derived from this for Global and each
     layer (e.g. the configuration of a board, the board transposition).
 
     The GUI also needs to observe the output from Global and Layers
-    to animate layers as the play heads move around and to display 
+    to animate layers as the play heads move around and to display
     the system tempo in case this is derived from external MIDI clock.
 
     The GUI also needs to talk to the MIDI translator to send e.g.

@@ -1,7 +1,9 @@
+{-# LANGUAGE Arrows #-}
+
 module Reactogon.Translator.Translator where
 
-import Reactogon.Translator.Message
 import Reactogon.Semantics
+import Reactogon.Translator.Message
 
 -- Takes a stream of raw messages and translates them by type.
 fromRaw :: SF RawMessage (Note, SystemMessage, RawMessage)
