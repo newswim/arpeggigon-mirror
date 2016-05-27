@@ -8,6 +8,8 @@
 module Reactogon.Translator.SortMessage where
 
 import qualified Data.Bifunctor               as BF
+import           Data.Function                (on)
+import           Data.List                    (groupBy)
 import           Data.Maybe
 import           FRP.Yampa
 import           Reactogon.Semantics
@@ -24,6 +26,13 @@ sortRawMessages = sortRawMessages' ([],[])
           | isNothing nm = sortRawMessages' (m, x:rm) xs
           | otherwise = sortRawMessages' ((fromJust nm) :m, rm) xs
           where nm = fromRawMessage x
+
+-- Direct each message to a specific channel.
+sortChannel :: [Message] -> [(Int,[Message])]
+sortChannel = map ((,) <$> (fst . head) <*> (map snd))
+              . groupBy ((==) `on` fst) . map sortChannel'
+  where sortChannel' :: Message -> (Int, Message)
+        sortChannel' m = let c = getChannel m in (c,m)
 
 -- NoteOn messages are on the right, other Control messages are on the
 -- left. For now we throw away NoteOff messages.

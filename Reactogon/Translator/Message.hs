@@ -22,11 +22,17 @@ type Frames = Jack.NFrames
 -- Each channel is linked to a particular translation signal function
 -- itself linked to a particular layer. Therefore we will dispose of
 -- the channel number as soon as possible.
--- !!! This is dangerous as it only treats unipolar control values.
+---
+-- /!\ This is dangerous as it only treats unipolar control values.
 data Message = NoteOn  Channel Pitch Strength
              | NoteOff Channel Pitch Strength
              | Control Channel ControllerIdx UCtrl
   deriving(Show)
+
+getChannel :: Message -> Int
+getChannel (NoteOn c _ _) = Channel.fromChannel c
+getChannel (NoteOff c _ _) = Channel.fromChannel c
+getChannel (Control c _ _) = Channel.fromChannel c
 
 -- Function to go back and forth with the representations of pitches,
 -- as they are different in our model and in the Jack API model.
