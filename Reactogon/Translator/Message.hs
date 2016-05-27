@@ -1,6 +1,7 @@
 module Reactogon.Translator.Message where
 
 import           Reactogon.Semantics
+import qualified Sound.JACK                       as Jack
 import qualified Sound.MIDI.Message               as Message
 import qualified Sound.MIDI.Message.Channel       as Channel
 import qualified Sound.MIDI.Message.Channel.Voice as Voice
@@ -15,6 +16,8 @@ type MidiVoice = Voice.T
 type Channel = Channel.Channel
 
 type ControllerIdx = Voice.Controller
+
+type Frames = Jack.NFrames
 
 -- Each channel is linked to a particular translation signal function
 -- itself linked to a particular layer. Therefore we will dispose of

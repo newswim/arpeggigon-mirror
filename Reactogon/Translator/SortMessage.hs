@@ -9,11 +9,12 @@ module Reactogon.Translator.SortMessage where
 
 import qualified Data.Bifunctor               as BF
 import           Data.Maybe
+import           FRP.Yampa
 import           Reactogon.Semantics
 import           Reactogon.Translator.Message
 
 -- TEMPORARY
-data Control
+data Controller = Lol
 --
 
 sortRawMessages :: [RawMessage] -> ([Message], [RawMessage])
@@ -40,15 +41,23 @@ sortMessages = (\((a,b),c) -> (a,b,c)) . BF.first sortNotes . sortRawMessages
 -}
 
 -- Note messages are converted to PlayHeads
-sortMessages :: SF ([Message], [Message]) ([Note], [Control])
+sortMessages :: SF ([Message], [Message]) ([Note], [Controller])
 sortMessages = proc (notes, ctrl) -> do
-  notes' <- convertNotes -< notes
-  ctrl'  <- convertControl -< ctrl
+  notes' <- arr $ map convertNotes   -< notes
+  ctrl'  <- arr $ map convertControl -< ctrl
   returnA -< (notes', ctrl')
 
-gatherMessages :: ([Note], [Control], [RawMessage]) -> [Message]
+-- /!\ Unsafe function that shouldn't be exported.
+convertNotes :: Message -> Note
+convertNotes = undefined
+
+-- /!\ Unsafe function that shouldn't be exported.
+convertControl :: Message -> Controller
+convertControl _ = Lol
+
+gatherMessages :: ([Note], [Controller], [RawMessage]) -> [Message]
 gatherMessages ([], [], []) = []
 gatherMessages _ = undefined
 
-readMessages :: SF ([RawMessage]) ([Note], [Control], [RawMessages])
+readMessages :: SF ([RawMessage]) ([Note], [Controller], [RawMessage])
 readMessages = undefined

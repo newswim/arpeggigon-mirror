@@ -19,7 +19,7 @@ import Sound.JACK                   (NFrames (NFrames))
 -- list are sorted.
 --
 -- /!\ The time is relative. A preprocessing operation removing all
--- events to soon to be happening and shifting them is necessary.
+-- events too soon to be happening and shifting them is necessary.
 schedule :: (Eq a) =>
             SampleRate
          -> NFrames
