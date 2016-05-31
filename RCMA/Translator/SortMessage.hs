@@ -7,10 +7,11 @@
 
 module RCMA.Translator.SortMessage where
 
-import qualified Data.Bifunctor               as BF
-import           Data.Function                (on)
-import           Data.List                    (groupBy)
+import qualified Data.Bifunctor          as BF
+import           Data.Function           (on)
+import           Data.List               (groupBy)
 import           Data.Maybe
+import           Data.Ratio
 import           FRP.Yampa
 import           RCMA.Semantics
 import           RCMA.Translator.Message
@@ -19,15 +20,17 @@ import           RCMA.Translator.Message
 data Controller = Lol
 --
 
-sortRawMessages :: [RawMessage] -> ([Message], [RawMessage])
+sortRawMessages :: [(Frames, RawMessage)]
+                -> ([(Frames,Message)], [(Frames,RawMessage)])
 sortRawMessages = sortRawMessages' ([],[])
   where sortRawMessages' r [] = r
-        sortRawMessages' (m, rm) (x:xs)
+        sortRawMessages' (m, rm) (x@(n,xm):xs)
           | isNothing nm = sortRawMessages' (m, x:rm) xs
-          | otherwise = sortRawMessages' ((fromJust nm) :m, rm) xs
-          where nm = fromRawMessage x
+          | otherwise = sortRawMessages' ((n,fromJust nm) :m, rm) xs
+          where nm = fromRawMessage xm
 
 -- Direct each message to a specific channel.
+-- /!\ To be modified.
 sortChannel :: [Message] -> [(Int,[Message])]
 sortChannel = map ((,) <$> (fst . head) <*> (map snd))
               . groupBy ((==) `on` fst) . map sortChannel'
@@ -36,29 +39,31 @@ sortChannel = map ((,) <$> (fst . head) <*> (map snd))
 
 -- NoteOn messages are on the right, other Control messages are on the
 -- left. For now we throw away NoteOff messages.
-sortNotes :: [Message] -> ([Message], [Message])
+sortNotes :: [(Frames, Message)]
+          -> ([(Frames,Message)], [(Frames,Message)])
 sortNotes = sortNotes' ([],[])
   where sortNotes' r [] = r
-        sortNotes' (n, c) (x:xs)
-          | isNoteOn x = sortNotes' (x:n, c) xs
-          | isNoteOff x = sortNotes' (n,c) xs
-          | isControl x = sortNotes' (n,x:c) xs
+        sortNotes' (n, c) (x@(_,m):xs)
+          | isNoteOn m = sortNotes' (x:n, c) xs
+          | isNoteOff m = sortNotes' (n,c) xs
+          | isControl m = sortNotes' (n,x:c) xs
           | otherwise = sortNotes' (n,c) xs
-{-
-sortMessages :: [RawMessage] -> ([Note], [Control], [RawMessage])
-sortMessages = (\((a,b),c) -> (a,b,c)) . BF.first sortNotes . sortRawMessages
--}
 
 -- Note messages are converted to PlayHeads
-sortMessages :: SF ([Message], [Message]) ([Note], [Controller])
-sortMessages = proc (notes, ctrl) -> do
-  notes' <- arr $ map convertNotes   -< notes
-  ctrl'  <- arr $ map convertControl -< ctrl
+convertMessages :: SF ([(Frames,Message)], [(Frames,Message)])
+                      ([(Frames,Note)], [(Frames,Controller)])
+convertMessages = proc (notes, ctrl) -> do
+  notes' <- arr $ map (BF.second convertNotes)   -< notes
+  ctrl'  <- arr $ map (BF.second convertControl) -< ctrl
   returnA -< (notes', ctrl')
 
 -- /!\ Unsafe function that shouldn't be exported.
 convertNotes :: Message -> Note
-convertNotes = undefined
+convertNotes (NoteOn _ p s) = Note { notePch = p
+                                   , noteStr = s
+                                   , noteDur = 1 % 4
+                                   , noteOrn = noOrn
+                                   }
 
 -- /!\ Unsafe function that shouldn't be exported.
 convertControl :: Message -> Controller
@@ -68,5 +73,9 @@ gatherMessages :: ([Note], [Controller], [RawMessage]) -> [Message]
 gatherMessages ([], [], []) = []
 gatherMessages _ = undefined
 
-readMessages :: SF ([RawMessage]) ([Note], [Controller], [RawMessage])
-readMessages = undefined
+readMessages :: SF [(Frames,RawMessage)]
+                   ([(Frames,Note)], [(Frames,Controller)], [(Frames,RawMessage)])
+readMessages = proc r -> do
+  (mes, raw) <- arr sortRawMessages -< r
+  (notes, ctrl) <- convertMessages <<^ sortNotes -< mes
+  returnA -< (notes, ctrl, raw)

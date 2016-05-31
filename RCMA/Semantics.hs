@@ -48,6 +48,19 @@ type UCtrl = Double
 -- Bipolar control value; [-1, 1]
 type BCtrl = Double
 
+-- Unipolar control values are usually between 0 and 127.
+toUCtrl :: Int -> UCtrl
+toUCtrl x = fromIntegral x / 127
+
+fromUCtrl :: UCtrl -> Int
+fromUCtrl x = floor $ x * 127
+
+-- Bipolar control values are usually between -127 and 127.
+toBCtrl :: Int -> BCtrl
+toBCtrl = toUCtrl
+
+fromBCtrl :: BCtrl -> Int
+fromBCtrl = fromUCtrl
 
 ------------------------------------------------------------------------------
 -- Time and Beats
@@ -59,6 +72,9 @@ type BCtrl = Double
 -- layers and possibly external MIDI, and account for tempo, any swing, etc.
 
 -- Beats and Bars
+
+-- A beat as such is nothing.
+type Beat = ()
 
 -- Beats per Bar: number of beats per bar in the time signature of a layer.
 -- Non-negative.
@@ -212,6 +228,11 @@ data Ornaments = Ornaments {
 
 data SlideType = NoSlide | SlideUp | SlideDn deriving (Eq, Show)
 
+noOrn :: Ornaments
+noOrn = Ornaments { ornPC = Nothing
+                  , ornCC = []
+                  , ornSlide = NoSlide
+                  }
 
 -- Notes
 
@@ -443,11 +464,11 @@ moveHead bd (ph@PlayHead {phPos = p, phBTM = btm, phDir = d})
                   in
                       moveHead bd (ph {phPos = p', phBTM = btm'})
     | btm > 0   = ph {phBTM = btm - 1}
-    | otherwise = ph		-- Repeat indefinitely
+    | otherwise = ph        -- Repeat indefinitely
 
 mkNote :: Pos -> BeatNo -> RelPitch -> Strength -> NoteAttr -> Maybe Note
 mkNote p bn tr st na@(NoteAttr {naDur = d})
-    | d <= 0    = Nothing	-- Notes of non-positive length are silent.
+    | d <= 0    = Nothing    -- Notes of non-positive length are silent.
     | otherwise = Just $
         Note {
             notePch = posToPitch p tr,

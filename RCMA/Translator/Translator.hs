@@ -8,8 +8,10 @@ import RCMA.Translator.Message
 import RCMA.Translator.SortMessage
 
 -- Takes a stream of raw messages and translates them by type.
-fromRaw :: SF RawMessage (Note, Controller, RawMessage)
-fromRaw = undefined
+fromRaw :: SF [(Frames, RawMessage)]
+              ([(Frames, Note)], [(Frames, Controller)], [(Frames, RawMessage)])
+fromRaw = proc input -> do
+  returnA -< undefined
 
 -- Takes a stream of high level messages and translates them by type.
 toRaw :: SF (Note, Controller, RawMessage) RawMessage
