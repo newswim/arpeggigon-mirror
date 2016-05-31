@@ -1,6 +1,6 @@
--- Basic Semantics for a Reactive Music Cellular Automaton.
+-- Basic Semantics V2 for a Reactive Music Cellular Automaton.
 -- Inspired by the reacTogon.
--- Written by Henrik Nilsson, 2016-05-03
+-- Written by Henrik Nilsson, 2016-05-27
 -- Based on an earlier version.
 --
 -- This gives the semantics of a single Reactogon layer. The output is
@@ -11,11 +11,30 @@
 -- emitted after the appropriate time, rendering any embellismnets
 -- such as slides (while not generating too much MIDI data), etc.
 
-module Reactogon.Semantics where
+-- ToDo:
+-- * Add boolean flag to change direction to indicate start tile
+--   DONE!
+-- * Change main routine to generate start play heads from board
+--   DONE!
+-- * Add an optional restart facility: Maybe Int, restart every n
+--   bars.
+--   DONE!
+-- * Interpret a negative repeat as repeat indefinitely.
+--   DONE!
+-- * Interpret a non-positve duration as mute: don't emit any note.
+--   DONE!
+-- * Eliminate Ignore as now almost the same as Absorb with duration 0?
+--   The only difference is that Absorb mostly overrides the repeat count.
+--   Absorb = Stop {duration 0, repeat 1}
+--   And as absorb might be a common case, it might be useful to have
+--   a distinct graphical representation?
+--   DECIDED AGAINST FOR NOW
+
+module RCMA.Semantics where
 
 import Data.Array
+import Data.List  (intersperse, nub)
 import Data.Maybe (catMaybes)
-import Data.List (nub, intersperse)
 import Data.Ratio
 
 
@@ -25,20 +44,6 @@ import Data.Ratio
 
 -- Unipolar control value; [0, 1]
 type UCtrl = Double
-
--- Unipolar control values are usually between 0 and 127.
-toUCtrl :: Int -> UCtrl
-toUCtrl x = fromIntegral x / 127
-
-fromUCtrl :: UCtrl -> Int
-fromUCtrl x = floor $ x * 127
-
--- Bipolar control values are usually between -127 and 127.
-toBCtrl :: Int -> BCtrl
-toBCtrl = toUCtrl
-
-fromBCtrl :: BCtrl -> Int
-fromBCtrl = fromUCtrl
 
 -- Bipolar control value; [-1, 1]
 type BCtrl = Double
@@ -53,15 +58,7 @@ type BCtrl = Double
 -- the beat clock would be defined externally, synchronized with other
 -- layers and possibly external MIDI, and account for tempo, any swing, etc.
 
--- Tempo
-
--- The tempo is the number of beats per minute.
-type Tempo = Int
-
 -- Beats and Bars
-
--- A beat in itself is not important.
-type Beat = ()
 
 -- Beats per Bar: number of beats per bar in the time signature of a layer.
 -- Non-negative.
@@ -144,9 +141,9 @@ type RelPitch = Int
 -- Articulation
 
 -- Each layer has a setting that indicate how strongly the notes
--- should normally be played as a percentage of full strength.  (In
--- the real application, this setting can be set to a fixed value or
--- set to be derived from the last input note, "as played").
+-- should normally be played as a percentage of full strength.
+-- (In the real application, this settig can be set to a fixed value
+-- or set to be derived from teh last input note, "as played").
 -- Individual notes can tehn be accented (played more strongly),
 -- either unconditionally or as a function of the beat count.
 
@@ -186,12 +183,14 @@ articStrength st bn art
 
 -- Duration
 
--- Duration in terms of a whole note at the *system* tempo. (Each
--- layer is clocked at a layer beat that is a fraction/multiple of the
--- system tempo). Note that notes are played a little shorter than
--- their nominal duration. This is taken care of by the translation
--- into low-level MIDI events. (One might consider adding indications
--- of staccato or tenuto.)
+-- Duration in terms of a whole note at the *system* tempo. (Each layer
+-- is clocked at a layer beat that is a fraction/multiple of the system
+-- tempo). Note that notes are played a little shorter than their nominal
+-- duration. This is taken care of by the translation into low-level
+-- MIDI events. (One might consider adding indications of staccato or
+-- tenuto.)
+--
+-- A non-positive duration is interpreted as mute: no note emitted.
 type Duration = Rational
 
 
@@ -227,7 +226,7 @@ data NoteAttr = NoteAttr {
 } deriving Show
 
 
--- High level note representation emitted from a layer
+-- High level note representation emitted form a layer
 data Note = Note {
     notePch :: Pitch,
     noteStr :: Strength,
@@ -282,15 +281,16 @@ posToPitch (x,y) tr =
 
 
 -- Actions
--- Maybe this could be refined: some of the actions might be useful
--- both in note playing and silent versions: e.g. changing direction without
--- playing a note; playing a note without changing direction.
+-- A ChDir counter is optionally a start counter if the Boolean flag is
+-- set to true.
+-- Any counter can be made silent by setting the note duration to a
+-- non-positive number.
 
-data Action = Inert              -- No action, play heads just move through.
-            | Absorb             -- Remove play head silently.
-            | Stop  NoteAttr     -- Play note then remove play head.
-            | ChDir NoteAttr Dir -- Play note then change direction.
-            | Split NoteAttr     -- Play note then split head into five new.
+data Action = Inert                   -- No action, play heads move through.
+            | Absorb                  -- Remove play head silently.
+            | Stop  NoteAttr          -- Play note then remove play head.
+            | ChDir Bool NoteAttr Dir -- Play note then change direction.
+            | Split NoteAttr          -- Play note then split head into five.
             deriving Show
 
 
@@ -300,6 +300,7 @@ data Action = Inert              -- No action, play heads just move through.
 -- 1:     the action is carried out once (default)
 -- n > 1: any note output of the action is repeated (n-1) times before the
 --        action is carried out.
+-- n < 0: any note output of the action is repeated indefinitely (oo).
 
 type Cell = (Action, Int)
 
@@ -311,9 +312,7 @@ mkCell a = mkCellRpt a 1
 
 -- Make a cell with a non-default repeition number.
 mkCellRpt :: Action -> Int -> Cell
-mkCellRpt a n | n >= 0    = (a, n)
-              | otherwise = error "The repetition number of a cell must be \
-                                  \non-negative."
+mkCellRpt a n = (a, n)
 
 
 -- Board extent: south-west corner and north-east corner.
@@ -388,6 +387,20 @@ data PlayHead =
 
 
 ------------------------------------------------------------------------------
+-- Start Heads
+------------------------------------------------------------------------------
+
+startHeads :: Board -> [PlayHead]
+startHeads bd =
+    [ PlayHead {
+          phPos = p,
+          phBTM = n,
+          phDir = d
+      }
+    | (p, (ChDir True _ d, n)) <- assocs bd ]
+
+
+------------------------------------------------------------------------------
 -- State transition
 ------------------------------------------------------------------------------
 
@@ -402,44 +415,46 @@ advanceHead bd bn tr st ph = ahAux (moveHead bd ph)
     where
         ahAux ph@PlayHead {phPos = p, phBTM = btm, phDir = d} =
             case fst (lookupCell bd p) of
-                Inert       -> ([ph], Nothing)
-                Absorb      -> ([], Nothing)    -- No point waiting until BTM=0
-                Stop na     -> (newPHs [], Just (mkNote p bn tr st na))
-                ChDir na d' -> (newPHs [ph {phDir = d'}],
-                                Just (mkNote p bn tr st na))
-                Split na    -> (newPHs [ PlayHead {
-                                             phPos   = p,
-                                             phBTM   = 0,
-                                             phDir   = d'
-                                         }
-                                       | a <- [-2 .. 2],
-                                         let d' = turn d a
-                                       ],
-                                Just (mkNote p bn tr st na))
+                Inert         -> ([ph], Nothing)
+                Absorb        -> ([], Nothing)  -- No point waiting until BTM=0
+                Stop na       -> (newPHs [], mkNote p bn tr st na)
+                ChDir _ na d' -> (newPHs [ph {phDir = d'}],
+                                  mkNote p bn tr st na)
+                Split na      -> (newPHs [ PlayHead {
+                                               phPos   = p,
+                                               phBTM   = 0,
+                                               phDir   = d'
+                                           }
+                                         | a <- [-2 .. 2],
+                                           let d' = turn d a
+                                         ],
+                                  mkNote p bn tr st na)
             where
-                newPHs phs = if btm > 0 then [ph] else phs
+                newPHs phs = if btm == 0 then phs else [ph]
 
 
 -- Moves a play head if the BTM counter has reached 0, otherwise decrement BTM.
 -- Any encountered cells where the repeat count is < 1 are skipped.
 moveHead :: Board -> PlayHead -> PlayHead
 moveHead bd (ph@PlayHead {phPos = p, phBTM = btm, phDir = d})
-    | btm < 1   = let
+    | btm == 0  = let
                       p'   = neighbor d p
                       btm' = snd (lookupCell bd p')
                   in
                       moveHead bd (ph {phPos = p', phBTM = btm'})
-    | otherwise = ph {phBTM = btm - 1}
+    | btm > 0   = ph {phBTM = btm - 1}
+    | otherwise = ph		-- Repeat indefinitely
 
-
-mkNote :: Pos -> BeatNo -> RelPitch -> Strength -> NoteAttr -> Note
-mkNote p bn tr st na =
-    Note {
-        notePch = posToPitch p tr,
-        noteStr = articStrength st bn (naArt na),
-        noteDur = naDur na,
-        noteOrn = naOrn na
-    }
+mkNote :: Pos -> BeatNo -> RelPitch -> Strength -> NoteAttr -> Maybe Note
+mkNote p bn tr st na@(NoteAttr {naDur = d})
+    | d <= 0    = Nothing	-- Notes of non-positive length are silent.
+    | otherwise = Just $
+        Note {
+            notePch = posToPitch p tr,
+            noteStr = articStrength st bn (naArt na),
+            noteDur = naDur na,
+            noteOrn = naOrn na
+        }
 
 
 -- Advance a list of heads, collecting all resulting heads and notes.
@@ -456,37 +471,50 @@ advanceHeads bd bn tr st phs =
        (take 50 (nub (concat phss)), catMaybes mns)
 
 
--- Given an initial list of play heads, run a board until there are no
--- more heads (or "forever", if that does not happen). The result is
--- a list of all notes played for each pulse.
+-- Given a board with start counters, run a board indefinitely, optionally
+-- restarting every ri bars.
 --
--- Note: The original reactogon has special start counters. An "internal"
--- board as defined here along with a list of inital read heads could
--- be derived from an "external" board representation more closely aligned
--- with the GUI represenatation.
+-- Arguments:
+-- (1) Board (bd)
+-- (2) Beats Per Bar (bpb); > 0
+-- (3) Optioal repeat Interval (mri); In bars.
+-- (4) Transposition (tr)
+-- (5) Strength (st)
+--
+-- Returns:
+-- Stream of notes played at each beat.
 --
 -- In the real implementation:
 --   * A layer beat clock would be derived from the system beat (as a
 --     fraction/multiple, adding any swing) and each clock event be tagged
 --     with the beat number.
---   * The board would not necessarily be a constant input. (One might
+--   * The board (bd) would not necessarily be a constant input. (One might
 --     consider allowing editing a layer while the machine is running)
---   * The time signature and thus the beats per par would not necessarily
---     be a constant input (one might consider allowing changing it while
---     the machine is running, but perhaps not very useful).
---   * The transposition would be dynamic, the sum of a per layer
+--   * The time signature, and thus the beats per par (bpb), along with
+--     repeat interval (ri) would likely be static (only changeable while
+--     automaton is stopped).
+--   * The transposition (tr) would be dynamic, the sum of a per layer
 --     transposition that can be set through the user interface and the
 --     difference between the MIDI note number of the last external
 --     note received for the layer and middle C (say).
---   * The strength would be dynamic, configurable as either the strength
+--   * The strength (st) would be dynamic, configurable as either the strength
 --     set through the user interface or the strength of the last external
 --     note received for the layer (derived from its MIDI velocity).
 
-runRMCA :: Board -> BeatsPerBar -> RelPitch -> Strength -> [PlayHead]
-        -> [[Note]]
-runRMCA _  _  _  _  []  = []
-runRMCA bd bpb tr st phs = runAux 1 phs
+runRMCA :: Board -> BeatsPerBar -> Maybe Int -> RelPitch -> Strength
+           -> [[Note]]
+runRMCA bd bpb mri tr st
+    | bpb > 0 =
+        case mri of
+            Nothing -> nss
+            Just ri
+                | ri > 0    -> cycle (take (ri * bpb) nss)
+                | otherwise -> error "The repeat interval must be at \
+                                     \least 1 bar."
+    | otherwise = error "The number of beats per bar must be at least 1."
     where
+        nss = runAux 1 (startHeads bd)
+
         runAux bn phs = ns : runAux (nextBeatNo bpb bn) phs'
             where
                 (phs', ns) = advanceHeads bd bn tr st phs
@@ -508,21 +536,36 @@ ppNotes bpb nss = ppnAux (zip [(br,bn) | br <- [1..], bn <- [1..bpb]] nss)
 leftJustify :: Int -> String -> String
 leftJustify w s = take (w - length s) (repeat ' ') ++ s
 
-{-
+
 ------------------------------------------------------------------------------
--- Simple test
+-- Simple tests
 ------------------------------------------------------------------------------
 
--- testBoard = makeBoard [((0,0),  mkCell (ChDir na1 N)),
---                        ((0,1),  mkCell (ChDir na1 SE)),
---                        ((1,1),  mkCell (Split na1)),
---                        ((1,-1), mkCell (Split na1)),
---                        ((-1,0), mkCell (ChDir na2 NE))]
+testBoard1 =
+    makeBoard [((0,0),  mkCell (ChDir True na1 N)),
+               ((0,1),  mkCell (ChDir False na1 SE)),
+               ((1,1),  mkCell (Split na1)),
+               ((1,-1), mkCell (Split na1)),
+               ((-1,0), mkCell (ChDir False na2 NE))]
 
-testBoard = makeBoard [((0,0), mkCell (ChDir na1 N)),
-                       ((0,2), mkCellRpt (ChDir na2 SE) 3),
-                       ((2,1), mkCell (ChDir na1 SW)),
-                       ((1,1), mkCellRpt (ChDir na1 N) 0) {- Skipped! -}]
+testBoard1a =
+    makeBoard [((0,0),  mkCell (ChDir False na1 N)),
+               ((0,1),  mkCell (ChDir False na1 SE)),
+               ((1,1),  mkCell (Split na1)),
+               ((1,-1), mkCell (Split na1)),
+               ((-1,0), mkCell (ChDir False na2 NE))]
+
+testBoard2 =
+    makeBoard [((0,0), mkCell (ChDir True na1 N)),
+               ((0,2), mkCellRpt (ChDir False na2 SE) 3),
+               ((2,1), mkCell (ChDir False na1 SW)),
+               ((1,1), mkCellRpt (ChDir False na1 N) 0) {- Skipped! -},
+               ((0,4), mkCellRpt (ChDir True na1 N) (-1)) {- Rpt indef. -},
+               ((0, -6), mkCell (ChDir True na1 N)),
+               ((0, -2), mkCell (ChDir False na3 S) {- Silent -})]
+
+testBoard3 =
+    makeBoard [((0,0),  mkCell (ChDir True na1 N))]
 
 na1 = NoteAttr {
           naArt = Accent13,
@@ -536,12 +579,14 @@ na2 = NoteAttr {
           naOrn = Ornaments Nothing [(10, MIDICVRnd)] SlideUp
       }
 
+na3 = NoteAttr {
+          naArt = Accent13,
+          naDur = 0,
+          naOrn = Ornaments Nothing [] NoSlide
+      }
+
+
 bpb :: Int
 bpb = 4
 
-main = ppNotes bpb (take 50 (runRMCA testBoard
-                                     bpb
-                                     0
-                                     0.8
-                                     [PlayHead (0,0) 1 N]))
--}
+main = ppNotes bpb (take 50 (runRMCA testBoard3 bpb (Just 2) 0 0.8))
