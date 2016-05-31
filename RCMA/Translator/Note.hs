@@ -1,32 +1,41 @@
-module Note where
+{-# LANGUAGE Arrows #-}
 
-import MIDI
+module RCMA.Translator.Note where
 
-isNoteOn :: Message -> Bool
-isNoteOn (NoteOn _ _ _) = True
-isNoteOn _ = False
+import Data.Ratio
+import FRP.Yampa
+import RCMA.Global.Clock
+import RCMA.Layer.Layer
+import RCMA.Semantics
+import RCMA.Translator.Message
 
-isNoteOff :: Message -> Bool
-isNoteOff (NoteOff _ _ _) = True
-isNoteOff _ = False
+messageToNote :: Message -> Note
+messageToNote (NoteOn _ p s) = Note { notePch = p
+                                    , noteStr = s
+                                    , noteDur = 1 % 4
+                                    , noteOrn = noOrn
+                                    }
 
-changePitch :: (Pitch -> Pitch) -> Message-> Message
-changePitch f (NoteOn  c p v) = NoteOn  c (f p) v
-changePitch f (NoteOff c p v) = NoteOff c (f p) v
+-- noteToMessage gives a pair of two time-stamped messages. The one on
+-- the left is a note message, the other a note off.
+--
+-- For now this is only a tuple but a list will probably be necessary.
+noteToMessages :: Tempo -> Layer -> Int -> (Time,Note)
+              -> ((Time,Message),(Time,Message))
+noteToMessages tempo l@(Layer { relTempo = rt }) chan =
+  proc m@(t,n@Note { notePch = p
+                   , noteStr = s
+                   , noteDur = d
+                   , noteOrn = noOrn
+                   }) -> do
+    nm <- noteOnToMessage l chan -< n
+    t' <- returnA -< t + fromRational $ d * tempoToDTime $ rt * fromIntegral tempo
+    returnA -< ((t,nm),(t',switchOnOff nm))
 
-changeVelocity :: (Velocity -> Velocity) -> Message-> Message
-changeVelocity f (NoteOn  c p v) = NoteOn  c p (f v)
-changeVelocity f (NoteOff c p v) = NoteOff c p (f v)
+noteOnToMessage :: Int -> Note -> Message
+noteOnToMessage c (Note { notePch = p
+                        , noteStr = s
+                        }) = NoteOn (makeChannel c) p s
 
-switchOnOff :: Message-> Message
-switchOnOff (NoteOn  c p v) = NoteOff c p v
-switchOnOff (NoteOff c p v) = NoteOn  c p v
-
-perfectFifth :: Message-> Message
-perfectFifth = changePitch (toPitch . (+7) . fromPitch)
-
-majorThird :: Message-> Message
-majorThird = changePitch (toPitch . (+4) . fromPitch)
-
-minorThird :: Message-> Message
-minorThird = changePitch (toPitch . (+3) . fromPitch)
+convertControl :: Message -> Controller
+convertControl _ = Lol

@@ -15,10 +15,7 @@ import           Data.Ratio
 import           FRP.Yampa
 import           RCMA.Semantics
 import           RCMA.Translator.Message
-
--- TEMPORARY
-data Controller = Lol
---
+import           RCMA.Translator.Note
 
 sortRawMessages :: [(Frames, RawMessage)]
                 -> ([(Frames,Message)], [(Frames,RawMessage)])
@@ -53,29 +50,6 @@ sortNotes = sortNotes' ([],[])
 convertMessages :: ([(Frames,Message)], [(Frames,Message)])
                 -> ([(Frames,Note)], [(Frames,Controller)])
 convertMessages = proc (notes, ctrl) -> do
-  notes' <- arr $ map (BF.second convertNotes)   -< notes
-  ctrl'  <- arr $ map (BF.second convertControl) -< ctrl
+  notes' <- arr $ map (BF.second messageToNote)   -< notes
+  ctrl'  <- arr $ map (BF.second messageToControl) -< ctrl
   returnA -< (notes', ctrl')
-
--- /!\ Unsafe function that shouldn't be exported.
-convertNotes :: Message -> Note
-convertNotes (NoteOn _ p s) = Note { notePch = p
-                                   , noteStr = s
-                                   , noteDur = 1 % 4
-                                   , noteOrn = noOrn
-                                   }
-
--- /!\ Unsafe function that shouldn't be exported.
-convertControl :: Message -> Controller
-convertControl _ = Lol
-
-gatherMessages :: ([Note], [Controller], [RawMessage]) -> [Message]
-gatherMessages ([], [], []) = []
-gatherMessages _ = undefined
-
-readMessages :: [(Frames,RawMessage)]
-             -> ([(Frames,Note)], [(Frames,Controller)], [(Frames,RawMessage)])
-readMessages = proc r -> do
-  (mes, raw) <- sortRawMessages -< r
-  (notes, ctrl) <- convertMessages <<< sortNotes -< mes
-  returnA -< (notes, ctrl, raw)

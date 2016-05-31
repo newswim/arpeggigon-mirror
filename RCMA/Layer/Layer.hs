@@ -2,10 +2,9 @@
 
 module RCMA.Layer.Layer where
 
-import RCMA.Semantics
-import RCMA.Layer.Board
-import RCMA.Global.Clock
 import FRP.Yampa
+import RCMA.Global.Clock
+import RCMA.Semantics
 
 -- Data representing the state of a layer. It is updated continuously.
 data Layer = Layer { relTempo    :: Double

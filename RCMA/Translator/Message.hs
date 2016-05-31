@@ -34,6 +34,9 @@ getChannel (NoteOn c _ _) = Channel.fromChannel c
 getChannel (NoteOff c _ _) = Channel.fromChannel c
 getChannel (Control c _ _) = Channel.fromChannel c
 
+makeChannel :: Int -> Channel
+makeChannel = Channel.toChannel
+
 -- Function to go back and forth with the representations of pitches,
 -- as they are different in our model and in the Jack API model.
 fromRawPitch :: Voice.Pitch -> Pitch
@@ -54,6 +57,10 @@ isNoteOff _ = False
 isControl :: Message -> Bool
 isControl (Control _ _ _) = True
 isControl _ = False
+
+switchOnOff :: Message -> Message
+switchOnOff (NoteOn  c p v) = NoteOff c p v
+switchOnOff (NoteOff c p v) = NoteOn  c p v
 
 fromRawMessage :: RawMessage -> Maybe Message
 fromRawMessage (Message.Channel (Channel.Cons c

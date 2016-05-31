@@ -2,17 +2,24 @@
 
 module RCMA.Translator.Translator where
 
-import FRP.Yampa
-import RCMA.Semantics
-import RCMA.Translator.Message
-import RCMA.Translator.SortMessage
+import qualified Data.Bifunctor              as BF
+import           FRP.Yampa
+import           RCMA.Semantics
+import           RCMA.Translator.Message
+import           RCMA.Translator.SortMessage
 
--- Takes a stream of raw messages and translates them by type.
-fromRaw :: SF [(Frames, RawMessage)]
-              ([(Frames, Note)], [(Frames, Controller)], [(Frames, RawMessage)])
-fromRaw = proc input -> do
-  returnA -< undefined
+-- Uses function defined in SortMessage. This is a pure function and
+-- it might not need to be a signal function.
+readMessages :: [(Frames,RawMessage)]
+             -> ([(Frames,Note)], [(Frames,Controller)], [(Frames,RawMessage)])
+readMessages = proc r -> do
+  (mes, raw) <- sortRawMessages -< r
+  (notes, ctrl) <- convertMessages <<< sortNotes -< mes
+  returnA -< (notes, ctrl, raw)
 
--- Takes a stream of high level messages and translates them by type.
-toRaw :: SF (Note, Controller, RawMessage) RawMessage
-toRaw = undefined
+gatherMessages :: ([(Frames,Note)], [(Frames,Controller)], [(Frames,RawMessage)])
+               -> [(Frames, RawMessage)]
+gatherMessages = proc (notes, ctrl, raw) -> do
+  rawNotes <- map (BF.second toRawMessage) -< notes
+  rawCtrl <- map (BF.second toRawMessage) -< ctrl
+  returnA -< rawNotes ++ rawCtrl ++ raw
