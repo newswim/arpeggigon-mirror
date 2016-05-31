@@ -3,7 +3,7 @@
 -- Written by Henrik Nilsson, 2016-05-27
 -- Based on an earlier version.
 --
--- This gives the semantics of a single Reactogon layer. The output is
+-- This gives the semantics of a single RCMA layer. The output is
 -- a high-level representation of notes for each beat. This is to be
 -- translated to low-level MIDI message by a subsequent translator
 -- responsible for merging notes from different layers, ensuring that

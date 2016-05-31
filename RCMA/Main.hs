@@ -1,15 +1,15 @@
 import FRP.Yampa
 import Hails.Yampa
-import Reactogon.Semantics
-import Reactogon.Translator.Message
-import Reactogon.Translator.Translator
+import RCMA.Semantics
+import RCMA.Translator.Message
+import RCMA.Translator.Translator
 
 -- The whole system is a single SF getting new messages, transforming
 -- them and adding some more.
-reactogon :: SF [(Frames, RawMessage)] [(Frames, RawMessage)]
-reactogon = undefined
+rcma :: SF [(Frames, RawMessage)] [(Frames, RawMessage)]
+rcma = undefined
 
 main :: IO ()
 main = do
-  (inp, out) <- yampaReactiveDual [] reactogon
+  (inp, out) <- yampaReactiveDual [] rcma
   return ()

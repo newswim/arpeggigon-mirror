@@ -1,11 +1,11 @@
 {-# LANGUAGE Arrows #-}
 
-module Reactogon.Translator.Translator where
+module RCMA.Translator.Translator where
 
 import FRP.Yampa
-import Reactogon.Semantics
-import Reactogon.Translator.Message
-import Reactogon.Translator.SortMessage
+import RCMA.Semantics
+import RCMA.Translator.Message
+import RCMA.Translator.SortMessage
 
 -- Takes a stream of raw messages and translates them by type.
 fromRaw :: SF RawMessage (Note, Controller, RawMessage)

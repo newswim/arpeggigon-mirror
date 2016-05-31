@@ -3,7 +3,7 @@
 -- Written by Henrik Nilsson, 2016-05-03
 -- Based on an earlier version.
 --
--- This gives the semantics of a single Reactogon layer. The output is
+-- This gives the semantics of a single RCMA layer. The output is
 -- a high-level representation of notes for each beat. This is to be
 -- translated to low-level MIDI message by a subsequent translator
 -- responsible for merging notes from different layers, ensuring that
@@ -438,7 +438,7 @@ advanceHeads bd bn tr st phs =
 -- more heads (or "forever", if that does not happen). The result is
 -- a list of all notes played for each pulse.
 --
--- Note: The original reactogon has special start counters. An "internal"
+-- Note: The original rcma has special start counters. An "internal"
 -- board as defined here along with a list of inital read heads could
 -- be derived from an "external" board representation more closely aligned
 -- with the GUI represenatation.

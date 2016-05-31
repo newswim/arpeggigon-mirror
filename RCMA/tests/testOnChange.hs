@@ -1,4 +1,4 @@
-import Reactogon.Auxiliary.Auxiliary
+import RCMA.Auxiliary.Auxiliary
 import FRP.Yampa
 
 main :: IO ()

@@ -1,6 +1,6 @@
-import Reactogon.Global.Clock
-import Reactogon.Auxiliary.Auxiliary
-import Reactogon.Semantics
+import RCMA.Global.Clock
+import RCMA.Auxiliary.Auxiliary
+import RCMA.Semantics
 import FRP.Yampa
 
 main :: IO ()

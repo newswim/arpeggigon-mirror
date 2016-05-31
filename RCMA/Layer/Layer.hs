@@ -1,10 +1,10 @@
 {-# LANGUAGE Arrows #-}
 
-module Reactogon.Layer.Layer where
+module RCMA.Layer.Layer where
 
-import Reactogon.Semantics
-import Reactogon.Layer.Board
-import Reactogon.Global.Clock
+import RCMA.Semantics
+import RCMA.Layer.Board
+import RCMA.Global.Clock
 import FRP.Yampa
 
 -- Data representing the state of a layer. It is updated continuously.

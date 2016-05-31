@@ -1,6 +1,6 @@
-module Reactogon.Layer.PlayHead where
+module RCMA.Layer.PlayHead where
 
-import Reactogon.Semantics
+import RCMA.Semantics
 import FRP.Yampa
 
 playHead :: SF () ()

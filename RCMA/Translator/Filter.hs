@@ -1,14 +1,14 @@
 -- Contains function for scheduling and filtering events given the
 -- correct informations.
 
-module Reactogon.Translator.Filter where
+module RCMA.Translator.Filter where
 
 import Data.Bifunctor               as BF
 import Data.List                    (group, sortBy)
 import Data.Ord
 import FRP.Yampa
-import Reactogon.Semantics
-import Reactogon.Translator.Message
+import RCMA.Semantics
+import RCMA.Translator.Message
 import Sound.JACK                   (NFrames (NFrames))
 
 -- Takes a list of time stamped "things", a sample rate and a buffer

@@ -1,10 +1,10 @@
-module Reactogon.Global.Clock ( tempo
+module RCMA.Global.Clock ( tempo
                               , metronome
                               , tempoToDTime
                               ) where
 
-import Reactogon.Auxiliary.Auxiliary
-import Reactogon.Semantics
+import RCMA.Auxiliary.Auxiliary
+import RCMA.Semantics
 import FRP.Yampa
 
 import Debug.Trace

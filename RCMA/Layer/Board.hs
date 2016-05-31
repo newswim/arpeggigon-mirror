@@ -1,10 +1,10 @@
 {-# LANGUAGE Arrows #-}
 
-module Reactogon.Layer.Board where
+module RCMA.Layer.Board where
 
 import FRP.Yampa
-import Reactogon.Layer.Layer
-import Reactogon.Semantics
+import RCMA.Layer.Layer
+import RCMA.Semantics
 
 -- The state of the board is described by the list of the playheads
 -- and the different actions onto the board.

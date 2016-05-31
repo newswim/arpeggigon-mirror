@@ -1,6 +1,6 @@
-module Reactogon.Translator.Message where
+module RCMA.Translator.Message where
 
-import           Reactogon.Semantics
+import           RCMA.Semantics
 import qualified Sound.JACK                       as Jack
 import qualified Sound.MIDI.Message               as Message
 import qualified Sound.MIDI.Message.Channel       as Channel

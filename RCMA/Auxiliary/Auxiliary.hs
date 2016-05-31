@@ -1,6 +1,6 @@
 {-# LANGUAGE Arrows #-}
 
-module Reactogon.Auxiliary.Auxiliary where
+module RCMA.Auxiliary.Auxiliary where
 
 import Data.Maybe
 import FRP.Yampa

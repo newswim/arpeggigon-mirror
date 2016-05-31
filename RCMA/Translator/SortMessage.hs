@@ -5,15 +5,15 @@
 -- events and other events. The latter will be transmitted as is
 -- through the whole systems.
 
-module Reactogon.Translator.SortMessage where
+module RCMA.Translator.SortMessage where
 
 import qualified Data.Bifunctor               as BF
 import           Data.Function                (on)
 import           Data.List                    (groupBy)
 import           Data.Maybe
 import           FRP.Yampa
-import           Reactogon.Semantics
-import           Reactogon.Translator.Message
+import           RCMA.Semantics
+import           RCMA.Translator.Message
 
 -- TEMPORARY
 data Controller = Lol
