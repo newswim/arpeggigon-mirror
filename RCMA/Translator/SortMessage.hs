@@ -50,8 +50,8 @@ sortNotes = sortNotes' ([],[])
           | otherwise = sortNotes' (n,c) xs
 
 -- Note messages are converted to PlayHeads
-convertMessages :: SF ([(Frames,Message)], [(Frames,Message)])
-                      ([(Frames,Note)], [(Frames,Controller)])
+convertMessages :: ([(Frames,Message)], [(Frames,Message)])
+                -> ([(Frames,Note)], [(Frames,Controller)])
 convertMessages = proc (notes, ctrl) -> do
   notes' <- arr $ map (BF.second convertNotes)   -< notes
   ctrl'  <- arr $ map (BF.second convertControl) -< ctrl
@@ -73,9 +73,9 @@ gatherMessages :: ([Note], [Controller], [RawMessage]) -> [Message]
 gatherMessages ([], [], []) = []
 gatherMessages _ = undefined
 
-readMessages :: SF [(Frames,RawMessage)]
-                   ([(Frames,Note)], [(Frames,Controller)], [(Frames,RawMessage)])
+readMessages :: [(Frames,RawMessage)]
+             -> ([(Frames,Note)], [(Frames,Controller)], [(Frames,RawMessage)])
 readMessages = proc r -> do
-  (mes, raw) <- arr sortRawMessages -< r
-  (notes, ctrl) <- convertMessages <<^ sortNotes -< mes
+  (mes, raw) <- sortRawMessages -< r
+  (notes, ctrl) <- convertMessages <<< sortNotes -< mes
   returnA -< (notes, ctrl, raw)
