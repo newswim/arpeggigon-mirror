@@ -17,7 +17,7 @@ type Channel = Channel.Channel
 
 type ControllerIdx = Voice.Controller
 
-type Frames = Jack.NFrames
+type Frames = Int
 
 -- Each channel is linked to a particular translation signal function
 -- itself linked to a particular layer. Therefore we will dispose of

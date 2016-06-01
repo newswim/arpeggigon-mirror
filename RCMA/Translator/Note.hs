@@ -18,25 +18,22 @@ messageToNote (NoteOn _ p s) = Note { notePch = p
 
 -- noteToMessage gives a pair of two time-stamped messages. The one on
 -- the left is a note message, the other a note off.
---
--- For now this is only a tuple but a list will probably be necessary
--- for ornaments, etc..
-noteToMessages :: Tempo -> Layer -> Int -> (Time,Note)
-              -> ((Time,Message),(Time,Message))
-noteToMessages tempo l@(Layer { relTempo = rt }) chan =
-  proc m@(t,n@Note { notePch = p
-                   , noteStr = s
-                   , noteDur = d
-                   }) -> do
+noteToMessages :: LTempo
+               -> SampleRate
+               -> Int -- Channel number
+               -> (Frames,Note) -- Note to convert
+               -> [(Frames,Message)]
+noteToMessages layTempo sr chan =
+  proc (t,n@Note { notePch = p
+                 , noteStr = s
+                 , noteDur = d
+                 }) -> do
     nm <- noteOnToMessage chan -< n
-    let tl = floor (rt * fromIntegral tempo)
-        dt = fromRational (d * (toRational $ tempoToDTime tl))
-    returnA -< ((t,nm),(dt,switchOnOff nm))
+    let dt = fromRational (d * (toRational $ tempoToDTime layTempo))
+        dn = floor $ dt * fromIntegral sr
+    returnA -< [(t,nm),(t + dn,switchOnOff nm)]
 
 noteOnToMessage :: Int -> Note -> Message
 noteOnToMessage c (Note { notePch = p
                         , noteStr = s
                         }) = NoteOn (makeChannel c) p s
-
-convertControl :: Message -> Controller
-convertControl _ = Lol

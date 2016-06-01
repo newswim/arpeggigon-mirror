@@ -7,13 +7,14 @@
 
 module RCMA.Translator.SortMessage where
 
-import qualified Data.Bifunctor          as BF
-import           Data.Function           (on)
-import           Data.List               (groupBy)
+import qualified Data.Bifunctor             as BF
+import           Data.Function              (on)
+import           Data.List                  (groupBy)
 import           Data.Maybe
 import           Data.Ratio
 import           FRP.Yampa
 import           RCMA.Semantics
+import           RCMA.Translator.Controller
 import           RCMA.Translator.Message
 import           RCMA.Translator.Note
 
@@ -51,5 +52,5 @@ convertMessages :: ([(Frames,Message)], [(Frames,Message)])
                 -> ([(Frames,Note)], [(Frames,Controller)])
 convertMessages = proc (notes, ctrl) -> do
   notes' <- arr $ map (BF.second messageToNote)   -< notes
-  ctrl'  <- arr $ map (BF.second messageToControl) -< ctrl
+  ctrl'  <- arr $ map (BF.second messageToController) -< ctrl
   returnA -< (notes', ctrl')
