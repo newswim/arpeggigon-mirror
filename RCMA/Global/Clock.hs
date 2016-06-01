@@ -3,9 +3,9 @@ module RCMA.Global.Clock ( tempo
                               , tempoToDTime
                               ) where
 
+import FRP.Yampa
 import RCMA.Auxiliary.Auxiliary
 import RCMA.Semantics
-import FRP.Yampa
 
 import Debug.Trace
 
@@ -24,4 +24,4 @@ metronome = switch ((repeatedly (tempoToDTime 60) ())
                                  onChange) (metronome'))
 
 tempoToDTime :: Tempo -> DTime
-tempoToDTime = (60/) . fromIntegral
+tempoToDTime = (15/) . fromIntegral
