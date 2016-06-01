@@ -68,6 +68,10 @@ fromBCtrl = fromUCtrl
 
 type Tempo = Int
 
+-- LTempo designates a layer tempo. Useful for not transforming twice
+-- a tempo.
+type LTempo = Tempo
+
 ------------------------------------------------------------------------------
 -- Time and Beats
 ------------------------------------------------------------------------------

@@ -14,7 +14,7 @@ data Layer = Layer { relTempo    :: Double
                    , beatCounter :: BeatNo
                    }
 
-layerTempo :: SF (Tempo, Layer) Tempo
+layerTempo :: SF (Tempo, Layer) LTempo
 layerTempo = proc (t, Layer { relTempo = r }) -> do
   returnA -< floor $ r * fromIntegral t
 

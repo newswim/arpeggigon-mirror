@@ -1,7 +1,7 @@
 module RCMA.Global.Clock ( tempo
-                              , metronome
-                              , tempoToDTime
-                              ) where
+                         , metronome
+                         , tempoToDTime
+                         ) where
 
 import FRP.Yampa
 import RCMA.Auxiliary.Auxiliary
