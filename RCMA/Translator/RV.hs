@@ -31,9 +31,9 @@ inMIDIEvent input nframes = ReactiveFieldRead getter notifier
         notifier = id
 
 outMIDIEvent :: forall e. (ThrowsErrno e) =>
-                  JMIDI.Port Jack.Output
-               -> Jack.NFrames
-               -> ReactiveFieldWrite (ExceptionalT e IO) [(Frames, RawMessage)]
+                JMIDI.Port Jack.Output
+             -> Jack.NFrames
+             -> ReactiveFieldWrite (ExceptionalT e IO) [(Frames, RawMessage)]
 outMIDIEvent output nframes@(Jack.NFrames nframesInt') =
   ReactiveFieldWrite setter
   where setter :: [(Frames, RawMessage)] -> ExceptionalT e IO ()
@@ -52,8 +52,8 @@ toProcess :: MVar [(Frames, RawMessage)]
           -> ReactiveFieldReadWrite IO [(Frames, RawMessage)]
 toProcess mvar = ReactiveFieldReadWrite setter getter notifier
   where setter :: [(Frames, RawMessage)] -> IO ()
-        setter new = readMVar mvar >>= return . (++ new) >>= void . swapMVar mvar
+        setter = void . swapMVar mvar
         getter :: IO [(Frames, RawMessage)]
-        getter = swapMVar mvar []
+        getter = readMVar mvar
         notifier :: IO () -> IO ()
         notifier = id

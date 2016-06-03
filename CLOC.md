@@ -1,9 +1,9 @@
 
-cloc|https://github.com/AlDanial/cloc v 1.66  T=0.06 s (402.9 files/s, 23665.3 lines/s)
+cloc|https://github.com/AlDanial/cloc v 1.66  T=0.11 s (242.2 files/s, 15109.2 lines/s)
 --- | ---
 
-Language|files|blank %|comment %|code
+Language|files|blank|comment|code
 :-------|-------:|-------:|-------:|-------:
-Haskell|26|22.26|27.14|910
+Haskell|26|284|357|981
 --------|--------|--------|--------|--------
-SUM:|26|22.26|27.14|910
+SUM:|26|284|357|981

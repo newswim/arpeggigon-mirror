@@ -21,3 +21,4 @@ dump/
 *.sh
 QUESTIONS.md
 *.#*
+html/
