@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Reactogon.Translator.RV where
+module RCMA.Translator.RV where
 
 import           Control.Concurrent.MVar
 import           Control.Monad
