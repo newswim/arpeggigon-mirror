@@ -4,9 +4,9 @@
 -- port and exchange information through reactive values and Yampa.
 module RCMA.Translator.Jack where
 
-import           Control.Concurrent.MVar
 import qualified Control.Monad.Exception.Synchronous as Sync
 import qualified Control.Monad.Trans.Class           as Trans
+import           Data.CBMVar
 import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
@@ -31,7 +31,7 @@ outPortName = "output"
 -- do anything as such.
 --jackSetup :: _
 jackSetup boardInRV = Jack.handleExceptions $ do
-  toProcessQueue <- Trans.lift $ toProcess <$> newMVar []
+  toProcessQueue <- Trans.lift $ toProcess <$> newCBMVar []
   Jack.withClientDefault rcmaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->

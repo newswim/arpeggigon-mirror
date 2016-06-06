@@ -2,10 +2,10 @@
 
 module RCMA.Translator.RV where
 
-import           Control.Concurrent.MVar
 import           Control.Monad
 import           Control.Monad.Exception.Synchronous (ExceptionalT, resolveT)
 import qualified Data.Bifunctor                      as BF
+import           Data.CBMVar
 import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
 import qualified Data.List                           as L
 import           Data.Ord                            (comparing)
@@ -59,12 +59,12 @@ outMIDIEvent output nframes@(Jack.NFrames nframesInt') =
                     takeWhile ((< nframesInt) . fst) . L.sortBy (comparing fst)
         nframesInt = fromIntegral nframesInt'
 
-toProcess :: MVar [(Frames, RawMessage)]
+toProcess :: CBMVar [(Frames, RawMessage)]
           -> ReactiveFieldReadWrite IO [(Frames, RawMessage)]
 toProcess mvar = ReactiveFieldReadWrite setter getter notifier
   where setter :: [(Frames, RawMessage)] -> IO ()
-        setter = void . swapMVar mvar
+        setter = writeCBMVar mvar
         getter :: IO [(Frames, RawMessage)]
-        getter = readMVar mvar
+        getter = readCBMVar mvar
         notifier :: IO () -> IO ()
-        notifier = id
+        notifier = installCallbackCBMVar mvar
