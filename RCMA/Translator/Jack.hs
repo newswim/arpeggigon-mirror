@@ -4,14 +4,17 @@
 -- port and exchange information through reactive values and Yampa.
 module RCMA.Translator.Jack where
 
+import           Control.Applicative                 ((<**>))
 import qualified Control.Monad.Exception.Synchronous as Sync
 import qualified Control.Monad.Trans.Class           as Trans
+import qualified Data.Bifunctor                      as BF
 import           Data.CBMVar
 import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
 import           Hails.Yampa
 import           RCMA.Semantics
+import           RCMA.Translator.Filter
 import           RCMA.Translator.Message
 import           RCMA.Translator.RV
 import           RCMA.Translator.Translator
@@ -31,12 +34,12 @@ outPortName = "output"
 -- do anything as such.
 --jackSetup :: _
 jackSetup boardInRV = Jack.handleExceptions $ do
-  toProcessQueue <- Trans.lift $ toProcess <$> newCBMVar []
+  toProcessRV <- Trans.lift $ toProcess <$> newCBMVar []
   Jack.withClientDefault rcmaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
     jackRun client input output
-    (jackCallBack client input output toProcessQueue boardInRV)
+    (jackCallBack client input output toProcessRV boardInRV)
 
 -- Loop that does nothing except setting up a callback function
 -- (called when Jack is ready to take new inputs).
@@ -64,10 +67,11 @@ jackCallBack :: Jack.Client
              -> ReactiveFieldRead IO (LTempo, Int, [(Frames, RawMessage)])
              -> Jack.NFrames
              -> Sync.ExceptionalT E.Errno IO ()
-jackCallBack client input output toProcessQueue boardInRV
-  nframes@(Jack.NFrames nframesInt) = do
+jackCallBack client input output toProcessRV boardInRV
+  nframes@(Jack.NFrames nframesInt') = do
   let inMIDIRV = inMIDIEvent input nframes
       outMIDIRV = outMIDIEvent output nframes
+      nframesInt = fromIntegral nframesInt' :: Int
   -- This gets the sample rate of the client and the last frame number
   -- it processed. We then use it to calculate the current absolute time
   sr <- Trans.lift $ Jack.getSampleRate client
@@ -86,5 +90,12 @@ jackCallBack client input output toProcessQueue boardInRV
                       (defaultTempo, sr, chan, ([],[],[])) gatherMessages
   Trans.lift $ reactiveValueWrite inPure
                (tempo, sr, chan, (boardIn `mappend` outMIDI))
-  Trans.lift (outRaw =:> outMIDIRV)
+  Trans.lift (reactiveValueRead outRaw <**>
+              (mappend <$> reactiveValueRead toProcessRV) >>=
+              reactiveValueWrite toProcessRV)
+  Trans.lift $ do
+    (go, old') <- schedule nframesInt <$> reactiveValueRead toProcessRV
+    let old = map (BF.first (\x -> x - nframesInt)) old'
+    reactiveValueWrite outMIDIRV go
+    reactiveValueWrite toProcessRV old
   return ()

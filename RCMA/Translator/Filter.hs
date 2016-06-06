@@ -19,10 +19,10 @@ import Sound.JACK              (NFrames (NFrames))
 -- buffer, on the right are the events that will need to wait. Both
 -- list are sorted.
 --
--- /!\ The time is relative. A preprocessing operation removing all
--- events too soon to be happening and shifting them is necessary.
-schedule :: (Eq a) =>
-            Frames
+-- /!\ The frame number is relative. A preprocessing operation
+-- removing all events too soon to be happening and shifting them is
+-- necessary.
+schedule :: Frames
          -> [(Frames, a)]
          -> ([(Frames,a)], [(Frames,a)])
 schedule size = BF.first scatterEvents
