@@ -17,7 +17,7 @@ import           RCMA.Translator.SortMessage
 -- Uses function defined in SortMessage. This is a pure function and
 -- it might not need to be a signal function.
 readMessages' :: [(Frames,RawMessage)]
-             -> ([(Frames,Note)], [(Frames,Controller)], [(Frames,RawMessage)])
+              -> ([(Frames,Note)], [(Frames,Controller)], [(Frames,RawMessage)])
 readMessages' = proc r -> do
   (mes, raw) <- sortRawMessages -< r
   (notes, ctrl) <- convertMessages <<< sortNotes -< mes
@@ -28,10 +28,10 @@ readMessages :: SF [(Frames, RawMessage)]
 readMessages = arr readMessages'
 
 gatherMessages' :: LTempo
-               -> SampleRate
-               -> Int
-               -> ([(Frames,Note)],[(Frames,Controller)],[(Frames,RawMessage)])
-               -> [(Frames, RawMessage)]
+                -> SampleRate
+                -> Int
+                -> ([(Frames,Note)],[(Frames,Controller)],[(Frames,RawMessage)])
+                -> [(Frames, RawMessage)]
 gatherMessages' layTempo sr chan = proc (notes, ctrl, raw) -> do
   notes'   <- concat <<< map (noteToMessages layTempo sr chan) -< notes
   ctrl'    <- map (BF.second controllerToMessages)             -< ctrl

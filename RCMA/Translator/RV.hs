@@ -4,40 +4,51 @@ module RCMA.Translator.RV where
 
 import           Control.Concurrent.MVar
 import           Control.Monad
-import           Control.Monad.Exception.Synchronous (ExceptionalT)
+import           Control.Monad.Exception.Synchronous (ExceptionalT, resolveT)
 import qualified Data.Bifunctor                      as BF
 import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
 import qualified Data.List                           as L
 import           Data.Ord                            (comparing)
 import           Data.ReactiveValue
+import qualified Foreign.C.Error                     as E
 import           RCMA.Translator.Message
 import qualified Sound.JACK                          as Jack
-import           Sound.JACK.Exception                (ThrowsErrno)
+import           Sound.JACK.Exception
+    ( All
+    , ThrowsErrno
+    , toStringWithHead
+    )
 import qualified Sound.JACK.MIDI                     as JMIDI
+import qualified System.IO                           as IO
 
-inMIDIEvent :: forall e. (ThrowsErrno e) =>
-                 JMIDI.Port Jack.Input
-              -> Jack.NFrames
-              -> ReactiveFieldRead (ExceptionalT e IO) [(Frames,RawMessage)]
+handleError :: (Monoid a) => ExceptionalT All IO a -> IO a
+handleError = resolveT $ \e -> do
+  IO.hPutStrLn IO.stderr $ toStringWithHead e
+  return mempty
+
+inMIDIEvent :: JMIDI.Port Jack.Input
+            -> Jack.NFrames
+            -> ReactiveFieldRead IO [(Frames,RawMessage)]
 inMIDIEvent input nframes = ReactiveFieldRead getter notifier
-  where getter :: ExceptionalT e IO [(Frames, RawMessage)]
-        getter = transform <$> (JMIDI.readEventsFromPort input nframes)
+  where getter :: IO [(Frames, RawMessage)]
+        getter = handleError $ transform <$>
+                 JMIDI.readEventsFromPort input nframes
 
         transform :: EventListAbs.T Jack.NFrames t -> [(Frames, t)]
         transform = map (BF.first (\(Jack.NFrames n) -> fromIntegral n)) .
                     EventListAbs.toPairList
 
-        notifier :: ExceptionalT e IO () -> ExceptionalT e IO ()
+        notifier :: IO () -> IO ()
         notifier = id
 
-outMIDIEvent :: forall e. (ThrowsErrno e) =>
-                JMIDI.Port Jack.Output
+outMIDIEvent :: JMIDI.Port Jack.Output
              -> Jack.NFrames
-             -> ReactiveFieldWrite (ExceptionalT e IO) [(Frames, RawMessage)]
+             -> ReactiveFieldWrite IO [(Frames, RawMessage)]
 outMIDIEvent output nframes@(Jack.NFrames nframesInt') =
   ReactiveFieldWrite setter
-  where setter :: [(Frames, RawMessage)] -> ExceptionalT e IO ()
-        setter = JMIDI.writeEventsToPort output nframes . transform
+  where setter :: [(Frames, RawMessage)] -> IO ()
+        setter = handleError .
+                 JMIDI.writeEventsToPort output nframes . transform
         -- Doesn't assume the list is sorted or small enough. For
         -- large size buffer, this might cause performance issue. All
         -- the unprocessed events are lost, which is unfortunate…
