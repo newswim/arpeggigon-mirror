@@ -569,7 +569,7 @@ ppNotes bpb nss = ppnAux (zip [(br,bn) | br <- [1..], bn <- [1..bpb]] nss)
 leftJustify :: Int -> String -> String
 leftJustify w s = take (w - length s) (repeat ' ') ++ s
 
-
+{-
 ------------------------------------------------------------------------------
 -- Simple tests
 ------------------------------------------------------------------------------
@@ -623,3 +623,4 @@ bpb :: Int
 bpb = 4
 
 main = ppNotes bpb (take 50 (runRMCA testBoard3 bpb (Just 2) 0 0.8))
+-}

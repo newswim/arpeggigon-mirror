@@ -1,8 +1,9 @@
-{-# LANGUAGE Arrows, PartialTypeSignatures #-}
+{-# LANGUAGE Arrows #-}
 
 -- Contains all the information and functions necessary to run a Jack
 -- port and exchange information through reactive values and Yampa.
-module RCMA.Translator.Jack where
+module RCMA.Translator.Jack ( jackSetup
+                            ) where
 
 import           Control.Applicative                 ((<**>))
 import qualified Control.Monad.Exception.Synchronous as Sync
@@ -19,6 +20,7 @@ import           RCMA.Translator.Message
 import           RCMA.Translator.RV
 import           RCMA.Translator.Translator
 import qualified Sound.JACK                          as Jack
+import qualified Sound.JACK.Exception                as JExc
 import qualified Sound.JACK.MIDI                     as JMIDI
 
 rcmaName :: String
@@ -32,23 +34,22 @@ outPortName = "output"
 
 -- Starts a default client with an input and an output port. Doesn't
 -- do anything as such.
---jackSetup :: _
+jackSetup :: ReactiveFieldRead IO (LTempo, Int, [(Frames, RawMessage)])
+          -> IO ()
 jackSetup boardInRV = Jack.handleExceptions $ do
   toProcessRV <- Trans.lift $ toProcess <$> newCBMVar []
   Jack.withClientDefault rcmaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
-    jackRun client input output
-    (jackCallBack client input output toProcessRV boardInRV)
+    jackRun client (jackCallBack client input output toProcessRV boardInRV)
 
 -- Loop that does nothing except setting up a callback function
 -- (called when Jack is ready to take new inputs).
-{-jackRun :: Jack.Client
-        -> JMIDI.Port Jack.Input
-        -> JMIDI.Port Jack.Output
-        -> _
-        -> _-}
-jackRun client input output callback =
+jackRun :: (JExc.ThrowsErrno e) =>
+           Jack.Client
+        -> (Jack.NFrames -> Sync.ExceptionalT E.Errno IO ())
+        -> Sync.ExceptionalT e IO ()
+jackRun client callback =
   Jack.withProcess client callback $ do
   Trans.lift $ putStrLn $ "Started " ++ rcmaName
   Trans.lift $ Jack.waitForBreak
