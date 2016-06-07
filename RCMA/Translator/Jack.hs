@@ -88,6 +88,7 @@ jackCallBack client input output toProcessRV boardInRV
   -- write them to the output buffer.
   (inPure, outRaw) <- Trans.lift $ yampaReactiveDual
                       (defaultTempo, sr, chan, ([],[],[])) gatherMessages
+  -- This should all go in its own IO action
   Trans.lift $ reactiveValueWrite inPure
                (tempo, sr, chan, (boardIn `mappend` outMIDI))
   Trans.lift (reactiveValueRead outRaw <**>
@@ -95,7 +96,8 @@ jackCallBack client input output toProcessRV boardInRV
               reactiveValueWrite toProcessRV)
   Trans.lift $ do
     (go, old') <- schedule nframesInt <$> reactiveValueRead toProcessRV
-    let old = map (BF.first (\x -> x - nframesInt)) old'
+    let old = map (BF.first (+ (- nframesInt))) old'
     reactiveValueWrite outMIDIRV go
     reactiveValueWrite toProcessRV old
+  --------------
   return ()

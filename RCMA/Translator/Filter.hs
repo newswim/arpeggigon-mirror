@@ -39,17 +39,15 @@ nubDuplicate :: (Eq a) => ([a] -> a) -> [(Frames, a)] -> [(Frames, a)]
 nubDuplicate f = map (BF.second f) . scatterEvents
                  . map (\l@((n,_):_) -> (n,map snd l)) . group
 -}
--- /!\ May not terminate…
---
 -- When to events are at the same frame, shift them so that they are
--- all separated by one frame. Repeat until each event is on its own
--- frame.
+-- all separated by one frame. Then take every list and make sure that
+-- the first frame of the next list is at least one frame after the
+-- last frame of that list.
 scatterEvents :: [(Frames, a)] -> [(Frames, a)]
-scatterEvents u
-  | all ((== 1) . length) l = u
-  | otherwise = scatterEvents $ scat l
-  where l = groupBy ((==) `on` fst) u
-        scat = concat . map (zip <$> enumFrom . fst . head <*> map snd)
+scatterEvents (x@(n,a):(m,b):xs) = x:scatterEvents ((m',b):xs)
+  where m' = m + max 0 (1 + n - m)
+scatterEvents (x:[]) = x:[]
+scatterEvents _ = []
 
 chooseDuplicate :: [a] -> a
 chooseDuplicate = undefined
