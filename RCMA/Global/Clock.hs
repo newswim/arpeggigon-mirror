@@ -7,8 +7,6 @@ import FRP.Yampa
 import RCMA.Auxiliary.Auxiliary
 import RCMA.Semantics
 
-import Debug.Trace
-
 tempo :: Tempo -> SF () Tempo
 tempo = constant
 
@@ -19,9 +17,10 @@ metronome = switch ((repeatedly (tempoToDTime 60) ())
                      &&&
                     (onChange')) (metronome')
   where metronome' :: Tempo -> SF Tempo (Event Beat)
-        metronome' t = (switch ((repeatedly (tempoToDTime t) ())
+        metronome' t = (switch ((repeatedly (4 * tempoToDTime t) ())
                                  &&&
                                  onChange) (metronome'))
 
+-- Tempo is the number of whole notes per minute.
 tempoToDTime :: Tempo -> DTime
 tempoToDTime = (15/) . fromIntegral
