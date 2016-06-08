@@ -2,13 +2,14 @@
 
 module RCMA.Layer.Board where
 
+import Control.Concurrent
+import Data.ReactiveValue
+import Data.Tuple
 import FRP.Yampa
+import Hails.Yampa
+import RCMA.Auxiliary.Curry
 import RCMA.Layer.Layer
 import RCMA.Semantics
-import RCMA.Auxiliary.Curry
-import Data.ReactiveValue
-import Hails.Yampa
-import Data.Tuple
 
 -- The state of the board is described by the list of the playheads
 -- and the different actions onto the board.
@@ -30,37 +31,35 @@ boardAction board = proc (Layer { relPitch    = rp
                           then Event (fromEvent a,b,c,d)
                           else NoEvent
 
-boardSF :: Board -> SF (Layer, [PlayHead], Tempo) (Event ([PlayHead], [Note]))
-boardSF board = proc (l, ph, t) -> do
+boardSF' :: Board
+         -> [PlayHead]
+         -> SF (Layer, Tempo) (Event ([PlayHead], [Note]))
+boardSF' board ph = proc (l, t) -> do
   (ebno, el) <- splitE ^<< layerMetronome -< (t, l)
   boardAction board -< (l, ph, ebno)
 
-boardInit :: (ReactiveValueRead tempo Tempo IO,
-              ReactiveValueRead ph [PlayHead] IO) =>
-             Board
-          -> tempo
-          -> ph
-          -> ReactiveFieldReadWrite IO Layer
-          -> IO ()
-boardInit board tempoRV phRV layerRV = do
-  layer <- reactiveValueRead layerRV
-  tempo <- reactiveValueRead tempoRV
-  ph  <- reactiveValueRead phRV
-  (inBoard, outBoard) <- yampaReactiveDual (layer, ph, tempo) (boardSF board)
-  return ()
-{-
-boardRun :: (ReactiveValueRead tempo Tempo IO,
-             ReactiveValueRead ph [PlayHead] IO) =>
-            Board
-         -> tempo
-         -> ph
-         -> ReactiveFieldReadWrite IO Layer
-         -> IO ()
-boardRun board tempoRV phRV layerRV = do
-  layer <- reactiveValueRead layerRV
-  tempo <- reactiveValueRead tempoRV
-  ph  <- reactiveValueRead phRV
-  (inBoard, outBoard) <- yampaReactiveDual (layer, tempo, ph)  (boardAction board)
+boardSF :: Board -> SF (Layer, Tempo) (Event [Note])
+boardSF board = boardSF'' board []
+  where boardSF'' :: Board -> [PlayHead] -> SF (Layer, Tempo) (Event [Note])
+        boardSF'' board ph = switch (splitE ^<< fmap swap ^<< boardSF' board ph)
+                             (\nph -> boardSF'' board nph)
 
-  return ()
--}
+boardInit :: Board
+          -> ReactiveFieldReadWrite IO Tempo
+          -> ReactiveFieldReadWrite IO Layer
+          -> IO (ReactiveFieldRead IO [Note])
+boardInit board tempoRV layerRV = do
+  layer <- reactiveValueRead layerRV
+  tempo <- reactiveValueRead tempoRV
+  (inBoard, outBoard) <- yampaReactiveDual (layer, tempo) (boardSF board)
+  boardRun board tempoRV layerRV inBoard outBoard
+
+boardRun :: Board
+         -> ReactiveFieldReadWrite IO Tempo
+         -> ReactiveFieldReadWrite IO Layer
+         -> ReactiveFieldWrite IO (Layer, Tempo)
+         -> ReactiveFieldRead IO (Event [Note])
+         -> IO (ReactiveFieldRead IO [Note])
+boardRun board tempoRV layerRV inBoard outBoard = do
+  liftR2 (,) layerRV tempoRV =:> inBoard
+  return $ liftR (event [] id) outBoard
