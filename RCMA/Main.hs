@@ -6,6 +6,7 @@ import Control.Concurrent
 import Data.ReactiveValue
 import FRP.Yampa
 import Hails.Yampa
+import RCMA.Auxiliary.Concurrent
 import RCMA.Layer.Board
 import RCMA.Layer.Layer
 import RCMA.Semantics
@@ -48,27 +49,9 @@ bpb = 4
 tempoRV :: ReactiveFieldReadWrite IO Tempo
 tempoRV = ReactiveFieldReadWrite (\_ -> return ()) (return 96) (\_ -> return ())
 
-waitForChildren :: MVar [MVar ()] -> IO ()
-waitForChildren children = do
-  cs <- takeMVar children
-  case cs of
-    []   -> return ()
-    m:ms -> do
-      putMVar children ms
-      takeMVar m
-      waitForChildren children
-
 main :: IO ()
 main = do
-  (children :: MVar [MVar ()]) <- newMVar []
-  let forkChild :: IO () -> IO ThreadId
-      forkChild io = do
-        mvar <- newEmptyMVar
-        childs <- takeMVar children
-        putMVar children (mvar:childs)
-        forkFinally io (\_ -> putMVar mvar ())
-
   layerRV <- getDefaultLayerRV
   boardInRV <- boardSetup board tempoRV layerRV
   jackT <- forkChild $ jackSetup (liftR2 (\t n -> (t, 0, n)) tempoRV boardInRV)
-  waitForChildren children
+  return ()
