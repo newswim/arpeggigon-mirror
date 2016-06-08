@@ -48,6 +48,3 @@ scatterEvents (x@(n,a):(m,b):xs) = x:scatterEvents ((m',b):xs)
   where m' = m + max 0 (1 + n - m)
 scatterEvents (x:[]) = x:[]
 scatterEvents _ = []
-
-chooseDuplicate :: [a] -> a
-chooseDuplicate = undefined
