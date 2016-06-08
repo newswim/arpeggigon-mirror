@@ -11,6 +11,7 @@ import Hails.Yampa
 import RCMA.Auxiliary.Curry
 import RCMA.Layer.Layer
 import RCMA.Semantics
+import RCMA.Global.Clock
 
 -- The state of the board is described by the list of the playheads
 -- and the different actions onto the board.
@@ -55,6 +56,11 @@ boardSetup board tempoRV layerRV = do
   (inBoard, outBoard) <- yampaReactiveDual (layer, tempo) (boardSF board)
   boardRun board tempoRV layerRV inBoard outBoard
 
+(^:>) :: (ReactiveValueRead a b m, ReactiveValueReadWrite c d m) =>
+         a -> c -> m ()
+not ^:> rv = reactiveValueOnCanRead not resync
+  where resync = reactiveValueRead rv >>= reactiveValueWrite rv
+
 boardRun :: Board
          -> ReactiveFieldReadWrite IO Tempo
          -> ReactiveFieldReadWrite IO Layer
@@ -62,5 +68,8 @@ boardRun :: Board
          -> ReactiveFieldRead IO (Event [Note])
          -> IO (ReactiveFieldRead IO [Note])
 boardRun board tempoRV layerRV inBoard outBoard = do
-  liftR2 (,) layerRV tempoRV =:> inBoard
+  let inRV =  pairRW layerRV tempoRV
+  clock <- mkClockRV 10
+  inRV =:> inBoard
+  clock ^:> inRV
   return $ liftR (event [] id) outBoard

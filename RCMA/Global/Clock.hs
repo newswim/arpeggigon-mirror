@@ -1,8 +1,9 @@
-module RCMA.Global.Clock ( tempo
-                         , metronome
-                         , tempoToDTime
-                         ) where
+module RCMA.Global.Clock where
 
+import Control.Concurrent
+import Control.Monad
+import Data.CBMVar
+import Data.ReactiveValue
 import FRP.Yampa
 import RCMA.Auxiliary.Auxiliary
 import RCMA.Semantics
@@ -24,3 +25,25 @@ metronome = switch ((repeatedly (tempoToDTime 60) ())
 -- Tempo is the number of whole notes per minute.
 tempoToDTime :: Tempo -> DTime
 tempoToDTime = (15/) . fromIntegral
+
+type TickingClock = (CBMVar (), ThreadId)
+
+-- Ticking clock in the IO monad, sending callbacks every t milliseconds.
+mkClock :: DTime -> IO TickingClock
+mkClock d = do
+  n <- newCBMVar ()
+  tid <- forkIO $ forever $  do
+    threadDelay dInt
+    modifyCBMVar n return
+  return (n, tid)
+  where dInt = floor $ d * (10^3)
+
+clockRV :: TickingClock -> ReactiveFieldRead IO ThreadId
+clockRV (mvar, tid) = ReactiveFieldRead (return tid)
+                      (installCallbackCBMVar mvar)
+
+mkClockRV :: DTime -> IO (ReactiveFieldRead IO ThreadId)
+mkClockRV d = clockRV <$> mkClock d
+
+stopClock :: TickingClock -> IO ()
+stopClock (_,t) = killThread t

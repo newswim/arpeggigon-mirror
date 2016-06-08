@@ -23,6 +23,8 @@ import qualified Sound.JACK                          as Jack
 import qualified Sound.JACK.Exception                as JExc
 import qualified Sound.JACK.MIDI                     as JMIDI
 
+import           Debug.Trace
+
 rcmaName :: String
 rcmaName = "RCMA"
 
@@ -41,7 +43,11 @@ jackSetup boardInRV = Jack.handleExceptions $ do
   Jack.withClientDefault rcmaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
-    jackRun client (jackCallBack client input output toProcessRV boardInRV)
+    Jack.withProcess client (jackCallBack client input output
+                              toProcessRV boardInRV) $
+    Jack.withActivation client $ do
+    Trans.lift $ putStrLn $ "Started" ++ rcmaName
+    Trans.lift $ Jack.waitForBreak
 
 -- Loop that does nothing except setting up a callback function
 -- (called when Jack is ready to take new inputs).
@@ -100,4 +106,3 @@ jackCallBack client input output toProcessRV boardInRV
     reactiveValueWrite outMIDIRV go
     reactiveValueWrite toProcessRV old
   --------------
-  return ()
