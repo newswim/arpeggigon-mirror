@@ -34,7 +34,7 @@ outPortName = "output"
 
 -- Starts a default client with an input and an output port. Doesn't
 -- do anything as such.
-jackSetup :: ReactiveFieldRead IO (LTempo, Int, [(Frames, RawMessage)])
+jackSetup :: ReactiveFieldRead IO (LTempo, Int, [Note])
           -> IO ()
 jackSetup boardInRV = Jack.handleExceptions $ do
   toProcessRV <- Trans.lift $ toProcess <$> newCBMVar []
@@ -65,7 +65,7 @@ jackCallBack :: Jack.Client
              -> JMIDI.Port Jack.Input
              -> JMIDI.Port Jack.Output
              -> ReactiveFieldReadWrite IO [(Frames, RawMessage)]
-             -> ReactiveFieldRead IO (LTempo, Int, [(Frames, RawMessage)])
+             -> ReactiveFieldRead IO (LTempo, Int, [Note])
              -> Jack.NFrames
              -> Sync.ExceptionalT E.Errno IO ()
 jackCallBack client input output toProcessRV boardInRV
@@ -79,23 +79,22 @@ jackCallBack client input output toProcessRV boardInRV
   (Jack.NFrames lframeInt) <- Trans.lift $ Jack.lastFrameTime client
   -- We write the content of the input buffer to the input of a
   -- translation signal function.
-  -- /!\ Should be moved elsewhere
+  -- /!\ Should maybe be moved elsewhere
   (inRaw, outPure) <- Trans.lift $ yampaReactiveDual [] readMessages
   Trans.lift (inMIDIRV =:> inRaw)
   (tempo, chan, boardIn') <- Trans.lift $ reactiveValueRead boardInRV
-  let boardIn = ([],[],boardIn')
+  let boardIn = (zip (repeat 0) boardIn',[],[])
   outMIDI <- Trans.lift $ reactiveValueRead outPure
   -- We translate all signals to be sent into low level signals and
   -- write them to the output buffer.
   (inPure, outRaw) <- Trans.lift $ yampaReactiveDual
                       (defaultTempo, sr, chan, ([],[],[])) gatherMessages
   -- This should all go in its own IO action
-  Trans.lift $ reactiveValueWrite inPure
-               (tempo, sr, chan, (boardIn `mappend` outMIDI))
-  Trans.lift (reactiveValueRead outRaw <**>
-              (mappend <$> reactiveValueRead toProcessRV) >>=
-              reactiveValueWrite toProcessRV)
   Trans.lift $ do
+    reactiveValueWrite inPure (tempo, sr, chan, (boardIn `mappend` outMIDI))
+    reactiveValueRead outRaw <**>
+      (mappend <$> reactiveValueRead toProcessRV) >>=
+      reactiveValueWrite toProcessRV
     (go, old') <- schedule nframesInt <$> reactiveValueRead toProcessRV
     let old = map (BF.first (+ (- nframesInt))) old'
     reactiveValueWrite outMIDIRV go

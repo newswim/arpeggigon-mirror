@@ -1,6 +1,7 @@
 {-# LANGUAGE Arrows, FlexibleContexts #-}
 
-module RCMA.Layer.Board where
+module RCMA.Layer.Board ( boardSetup
+                        ) where
 
 import Control.Concurrent
 import Data.ReactiveValue
@@ -44,11 +45,11 @@ boardSF board = boardSF'' board []
         boardSF'' board ph = switch (splitE ^<< fmap swap ^<< boardSF' board ph)
                              (\nph -> boardSF'' board nph)
 
-boardInit :: Board
-          -> ReactiveFieldReadWrite IO Tempo
-          -> ReactiveFieldReadWrite IO Layer
-          -> IO (ReactiveFieldRead IO [Note])
-boardInit board tempoRV layerRV = do
+boardSetup :: Board
+           -> ReactiveFieldReadWrite IO Tempo
+           -> ReactiveFieldReadWrite IO Layer
+           -> IO (ReactiveFieldRead IO [Note])
+boardSetup board tempoRV layerRV = do
   layer <- reactiveValueRead layerRV
   tempo <- reactiveValueRead tempoRV
   (inBoard, outBoard) <- yampaReactiveDual (layer, tempo) (boardSF board)
