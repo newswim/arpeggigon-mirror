@@ -44,11 +44,11 @@ jackSetup boardInRV = Jack.handleExceptions $ do
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
     Jack.withProcess client (jackCallBack client input output
-                              toProcessRV boardInRV) $
-    Jack.withActivation client $ do
-    Trans.lift $ putStrLn $ "Started" ++ rcmaName
+                              toProcessRV boardInRV) $ do
+    Trans.lift $ putStrLn $ "Started " ++ rcmaName
     Trans.lift $ Jack.waitForBreak
 
+{-
 -- Loop that does nothing except setting up a callback function
 -- (called when Jack is ready to take new inputs).
 jackRun :: (JExc.ThrowsErrno e) =>
@@ -57,9 +57,9 @@ jackRun :: (JExc.ThrowsErrno e) =>
         -> Sync.ExceptionalT e IO ()
 jackRun client callback =
   Jack.withProcess client callback $ do
-  Trans.lift $ putStrLn $ "Started " ++ rcmaName
+  Trans.lift $ putStrLn $ "Startedbbb " ++ rcmaName
   Trans.lift $ Jack.waitForBreak
-
+-}
 defaultTempo :: Tempo
 defaultTempo = 96
 

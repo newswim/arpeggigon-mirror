@@ -7,6 +7,7 @@ import Data.ReactiveValue
 import FRP.Yampa
 import Hails.Yampa
 import RCMA.Auxiliary.Concurrent
+import RCMA.Auxiliary.RV
 import RCMA.Global.Clock
 import RCMA.Layer.Board
 import RCMA.Layer.Layer
@@ -53,6 +54,9 @@ tempoRV = ReactiveFieldReadWrite (\_ -> return ()) (return 96) (\_ -> return ())
 main :: IO ()
 main = do
   layerRV <- getDefaultLayerRV
-  boardInRV <- boardSetup board tempoRV layerRV
-  jackT <- forkChild $ jackSetup (liftR2 (\t n -> (t, 0, n)) tempoRV boardInRV)
+  boardOutRV <- newCBMVarRW []
+  boardSetup board tempoRV layerRV boardOutRV
+  boardI <- reactiveValueRead boardOutRV
+  print boardI
+  jackT <- forkChild $ jackSetup (liftR2 (\t n -> (t, 0, n)) tempoRV boardOutRV)
   return ()

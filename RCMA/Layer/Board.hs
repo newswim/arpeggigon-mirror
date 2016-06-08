@@ -12,6 +12,7 @@ import RCMA.Auxiliary.Curry
 import RCMA.Layer.Layer
 import RCMA.Semantics
 import RCMA.Global.Clock
+import Control.Monad
 
 -- The state of the board is described by the list of the playheads
 -- and the different actions onto the board.
@@ -49,27 +50,21 @@ boardSF board = boardSF'' board []
 boardSetup :: Board
            -> ReactiveFieldReadWrite IO Tempo
            -> ReactiveFieldReadWrite IO Layer
-           -> IO (ReactiveFieldRead IO [Note])
-boardSetup board tempoRV layerRV = do
+           -> ReactiveFieldReadWrite IO [Note]
+           -> IO ()
+boardSetup board tempoRV layerRV outBoardRV = do
   layer <- reactiveValueRead layerRV
   tempo <- reactiveValueRead tempoRV
   (inBoard, outBoard) <- yampaReactiveDual (layer, tempo) (boardSF board)
-  boardRun board tempoRV layerRV inBoard outBoard
+  let inRV =  pairRW layerRV tempoRV
+  clock <- mkClockRV 10
+  inRV =:> inBoard
+  clock ^:> inRV
+  reactiveValueOnCanRead outBoard
+    (reactiveValueRead outBoard >>= reactiveValueWrite outBoardRV . event [] id)
+  return ()
 
 (^:>) :: (ReactiveValueRead a b m, ReactiveValueReadWrite c d m) =>
          a -> c -> m ()
 not ^:> rv = reactiveValueOnCanRead not resync
   where resync = reactiveValueRead rv >>= reactiveValueWrite rv
-
-boardRun :: Board
-         -> ReactiveFieldReadWrite IO Tempo
-         -> ReactiveFieldReadWrite IO Layer
-         -> ReactiveFieldWrite IO (Layer, Tempo)
-         -> ReactiveFieldRead IO (Event [Note])
-         -> IO (ReactiveFieldRead IO [Note])
-boardRun board tempoRV layerRV inBoard outBoard = do
-  let inRV =  pairRW layerRV tempoRV
-  clock <- mkClockRV 10
-  inRV =:> inBoard
-  clock ^:> inRV
-  return $ liftR (event [] id) outBoard
