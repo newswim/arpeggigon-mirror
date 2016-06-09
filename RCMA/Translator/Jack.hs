@@ -101,6 +101,7 @@ jackCallBack client input output toProcessRV boardInRV
     reactiveValueRead outRaw <**>
       (mappend <$> reactiveValueRead toProcessRV) >>=
       reactiveValueWrite toProcessRV
+    --map fst <$> reactiveValueRead toProcessRV >>= print . ("toProcess " ++) . show
     (go, old') <- schedule nframesInt <$> reactiveValueRead toProcessRV
     let old = map (BF.first (+ (- nframesInt))) old'
     reactiveValueWrite outMIDIRV go

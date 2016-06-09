@@ -16,39 +16,41 @@ import RCMA.Semantics
 import RCMA.Global.Clock
 import Control.Monad
 
+import Debug.Trace
+
 -- The state of the board is described by the list of the playheads
 -- and the different actions onto the board.
 -- It can then be modified discretly when a beat is received or
 -- continuously when the user acts on it.
-boardAction :: Board
-            -> SF (Layer, [PlayHead], Event BeatNo)
+boardAction :: SF (Board, Layer, [PlayHead], Event BeatNo)
                   (Event ([PlayHead], [Note]))
-boardAction board = proc (Layer { relPitch    = rp
-                                , strength    = s
-                                , beatsPerBar = bpb
-                                }, pl, ebn) ->
-  ahSF <<^ arr propEvent -< (ebn, rp, s, pl)
+boardAction = proc (board, Layer { relPitch    = rp
+                                 , strength    = s
+                                 , beatsPerBar = bpb
+                                 }, pl, ebn) ->
+  ahSF <<^ arr propEvent -< (board, ebn, rp, s, pl)
   where
-    ahSF :: SF (Event (BeatNo, RelPitch, Strength, [PlayHead]))
+    ahSF :: SF (Event (Board, BeatNo, RelPitch, Strength, [PlayHead]))
                (Event ([PlayHead], [Note]))
-    ahSF = arr $ fmap (uncurry4 $ advanceHeads board)
-    propEvent (a,b,c,d) = if isEvent a
-                          then Event (fromEvent a,b,c,d)
-                          else NoEvent
+    ahSF = arr $ fmap (uncurry5 $ advanceHeads)
+    propEvent (a,b,c,d,e) = if let a = b in traceShow a $ isEvent b
+                            then Event (a,fromEvent b,c,d,e)
+                            else NoEvent
 
-boardSF' :: Board
-         -> [PlayHead]
-         -> SF (Layer, Tempo) (Event ([PlayHead], [Note]))
-boardSF' board ph = proc (l, t) -> do
-  (ebno, el) <- splitE ^<< layerMetronome -< (t, l)
-  boardAction board -< (l, ph, ebno)
+boardSF :: SF (Event BeatNo) (Event ([PlayHead], [Note]))
 
-boardSF :: Board -> SF (Layer, Tempo) (Event [Note])
-boardSF board = boardSF'' board []
-  where boardSF'' :: Board -> [PlayHead] -> SF (Layer, Tempo) (Event [Note])
-        boardSF'' board ph = switch (splitE ^<< fmap swap ^<< boardSF' board ph)
-                             (boardSF'' board)
+boardSF' :: [PlayHead]
+         -> SF (Board, Layer, Tempo) (Event ([PlayHead], [Note]))
+boardSF' ph = proc (board, l, t) -> do
+  ebno <- layerMetronome -< (t, l)
+  boardAction -< (board, l, ph, ebno)
 
+boardSF :: SF (Board, Layer, Tempo) (Event [Note])
+boardSF = boardSF'' []
+  where boardSF'' :: [PlayHead] -> SF (Board, Layer, Tempo) (Event [Note])
+        boardSF'' ph = switch (splitE ^<< fmap swap ^<< boardSF' ph)
+                       boardSF''
+{-
 boardSetup :: Board
            -> ReactiveFieldReadWrite IO Tempo
            -> ReactiveFieldReadWrite IO Layer
@@ -68,7 +70,7 @@ boardSetup board tempoRV layerRV outBoardRV = do
   n <- newEmptyMVar
   takeMVar n
   return ()
-
+-}
 (^:>) :: (ReactiveValueRead a b m, ReactiveValueReadWrite c d m) =>
          a -> c -> m ()
 not ^:> rv = reactiveValueOnCanRead not resync

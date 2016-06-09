@@ -8,6 +8,7 @@ import FRP.Yampa
 import Hails.Yampa
 import RCMA.Auxiliary.Concurrent
 import RCMA.Auxiliary.RV
+import RCMA.Auxiliary.RV
 import RCMA.Global.Clock
 import RCMA.Layer.Board
 import RCMA.Layer.Layer
@@ -19,9 +20,9 @@ import RCMA.Translator.Translator
 import Control.Monad
 import Data.Ratio
 
-board =
+boardRVIO = newCBMVarRW $
     makeBoard [((0,0),  mkCell (ChDir False na1 N)),
-               ((0,1),  mkCell (ChDir False na1 SE)),
+               ((0,1),  mkCell (ChDir True na1 SE)),
                ((1,1),  mkCell (Split na1)),
                ((1,-1), mkCell (Split na1)),
                ((-1,0), mkCell (ChDir False na2 NE))]
@@ -57,11 +58,15 @@ main = do
   -- Board setup
   layer <- reactiveValueRead layerRV
   tempo <- reactiveValueRead tempoRV
-  (inBoard, outBoard) <- yampaReactiveDual (layer, tempo) (boardSF board)
-  let inRV =  pairRW layerRV tempoRV
-  clock <- mkClockRV 1000
+  boardRV <- boardRVIO
+  board <- reactiveValueRead boardRV
+  (inBoard, outBoard) <- yampaReactiveDual (board, layer, tempo) boardSF
+  let inRV = liftRW2 (bijection (\(x,y,z) -> (x,(y,z)), \(x,(y,z)) -> (x,y,z)))
+             boardRV $ pairRW layerRV tempoRV
+  clock <- mkClockRV 100
   clock ^:> inRV
   inRV =:> inBoard
+  --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print . ("Board out " ++) . show)
   -- /!\ To be removed.
   --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print)
   putStrLn "Board started."
