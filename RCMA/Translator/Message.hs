@@ -47,15 +47,15 @@ toRawPitch (Pitch p) = Voice.toPitch p
 
 
 isNoteOn :: Message -> Bool
-isNoteOn (NoteOn _ _ _) = True
+isNoteOn NoteOn {} = True
 isNoteOn _ = False
 
 isNoteOff :: Message -> Bool
-isNoteOff (NoteOff _ _ _) = True
+isNoteOff NoteOff {} = True
 isNoteOff _ = False
 
 isControl :: Message -> Bool
-isControl (Control _ _ _) = True
+isControl Control {} = True
 isControl _ = False
 
 switchOnOff :: Message -> Message
@@ -76,11 +76,11 @@ fromRawMessage _ = Nothing
 
 toRawMessage :: Message -> RawMessage
 toRawMessage (NoteOn  c p v) =
-  (Message.Channel $ Channel.Cons c
-    (Channel.Voice $ Voice.NoteOn  (toRawPitch p) (Voice.toVelocity $ fromUCtrl v)))
+  Message.Channel $ Channel.Cons c
+  (Channel.Voice $ Voice.NoteOn  (toRawPitch p) (Voice.toVelocity $ fromUCtrl v))
 toRawMessage (NoteOff c p v) =
-  (Message.Channel $ Channel.Cons c
-    (Channel.Voice $ Voice.NoteOff (toRawPitch p) (Voice.toVelocity $ fromUCtrl v)))
+  Message.Channel $ Channel.Cons c
+  (Channel.Voice $ Voice.NoteOff (toRawPitch p) (Voice.toVelocity $ fromUCtrl v))
 toRawMessage (Control c n v) =
-  (Message.Channel (Channel.Cons c
-                     (Channel.Voice (Voice.Control n (fromUCtrl v)))))
+  Message.Channel (Channel.Cons c
+                    (Channel.Voice (Voice.Control n (fromUCtrl v))))

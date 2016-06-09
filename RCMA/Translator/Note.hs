@@ -29,11 +29,11 @@ noteToMessages layTempo sr chan =
                  , noteDur = d
                  }) -> do
     nm <- noteOnToMessage chan -< n
-    let dt = fromRational (d * (toRational $ tempoToDTime layTempo))
+    let dt = fromRational (d * toRational (tempoToDTime layTempo))
         dn = floor $ dt * fromIntegral sr
     returnA -< [(t,nm),(t + dn,switchOnOff nm)]
 
 noteOnToMessage :: Int -> Note -> Message
-noteOnToMessage c (Note { notePch = p
-                        , noteStr = s
-                        }) = NoteOn (makeChannel c) p s
+noteOnToMessage c Note { notePch = p
+                       , noteStr = s
+                       } = NoteOn (makeChannel c) p s

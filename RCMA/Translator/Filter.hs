@@ -46,5 +46,5 @@ nubDuplicate f = map (BF.second f) . scatterEvents
 scatterEvents :: [(Frames, a)] -> [(Frames, a)]
 scatterEvents (x@(n,a):(m,b):xs) = x:scatterEvents ((m',b):xs)
   where m' = m + max 0 (1 + n - m)
-scatterEvents (x:[]) = x:[]
+scatterEvents [x] = [x]
 scatterEvents _ = []

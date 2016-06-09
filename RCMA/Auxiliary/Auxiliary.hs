@@ -18,7 +18,7 @@ stepBack = sscan f (Nothing, Nothing) >>^ snd
 stepBack' :: SF a a
 stepBack' = proc x -> do
   x' <- stepBack -< x
-  returnA -< maybe x id x'
+  returnA -< fromMaybe x x'
 
 -- Throws an Event when the incoming signal change. The Event is
 -- tagged with the new value.

@@ -26,7 +26,7 @@ boardAction :: Board
 boardAction board = proc (Layer { relPitch    = rp
                                 , strength    = s
                                 , beatsPerBar = bpb
-                                }, pl, ebn) -> do
+                                }, pl, ebn) ->
   ahSF <<^ arr propEvent -< (ebn, rp, s, pl)
   where
     ahSF :: SF (Event (BeatNo, RelPitch, Strength, [PlayHead]))
@@ -47,7 +47,7 @@ boardSF :: Board -> SF (Layer, Tempo) (Event [Note])
 boardSF board = boardSF'' board []
   where boardSF'' :: Board -> [PlayHead] -> SF (Layer, Tempo) (Event [Note])
         boardSF'' board ph = switch (splitE ^<< fmap swap ^<< boardSF' board ph)
-                             (\nph -> boardSF'' board nph)
+                             (boardSF'' board)
 
 boardSetup :: Board
            -> ReactiveFieldReadWrite IO Tempo

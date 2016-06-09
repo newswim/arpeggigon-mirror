@@ -17,7 +17,7 @@ data Layer = Layer { relTempo    :: Double
                    } deriving (Show)
 
 layerTempo :: SF (Tempo, Layer) LTempo
-layerTempo = proc (t, Layer { relTempo = r }) -> do
+layerTempo = proc (t, Layer { relTempo = r }) ->
   returnA -< floor $ r * fromIntegral t
 
 -- The layer is modified after the beat as been

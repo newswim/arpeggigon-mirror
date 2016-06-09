@@ -30,7 +30,7 @@ sortRawMessages = sortRawMessages' ([],[])
 -- Direct each message to a specific channel.
 -- /!\ To be modified.
 sortChannel :: [Message] -> [(Int,[Message])]
-sortChannel = map ((,) <$> (fst . head) <*> (map snd))
+sortChannel = map ((,) <$> (fst . head) <*> map snd)
               . groupBy ((==) `on` fst) . map sortChannel'
   where sortChannel' :: Message -> (Int, Message)
         sortChannel' m = let c = getChannel m in (c,m)

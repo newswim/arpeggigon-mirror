@@ -1,5 +1,3 @@
-{-# LANGUAGE Arrows #-}
-
 -- Contains all the information and functions necessary to run a Jack
 -- port and exchange information through reactive values and Yampa.
 module RCMA.Translator.Jack ( jackSetup
@@ -45,9 +43,9 @@ jackSetup boardInRV = Jack.handleExceptions $ do
     Jack.withPort client inPortName  $ \input ->
     Jack.withProcess client (jackCallBack client input output
                               toProcessRV boardInRV) $
-    Jack.withActivation client $ do
-    Trans.lift $ putStrLn $ "Started " ++ rcmaName ++ " JACK client."
-    Trans.lift $ Jack.waitForBreak
+    Jack.withActivation client $ Trans.lift $ do
+    putStrLn $ "Started " ++ rcmaName ++ " JACK client."
+    Jack.waitForBreak
 
 {-
 -- Loop that does nothing except setting up a callback function
@@ -84,13 +82,6 @@ jackCallBack client input output toProcessRV boardInRV
   -- it processed. We then use it to calculate the current absolute time
   sr <- Trans.lift $ Jack.getSampleRate client
   (Jack.NFrames lframeInt) <- Trans.lift $ Jack.lastFrameTime client
-  let transform :: EventListAbs.T Jack.NFrames t -> [(Frames, t)]
-      transform = map (BF.first (\(Jack.NFrames n) -> fromIntegral n)) .
-                    EventListAbs.toPairList
-  Trans.lift $ let a = handleError $ transform <$>
-                         JMIDI.readEventsFromPort input nframes
-                 in do a >>= print . map fst
-                       a
   --Trans.lift (reactiveValueRead inMIDIRV >>= (print . map (fst)))
   -- We write the content of the input buffer to the input of a
   -- translation signal function.
@@ -106,7 +97,7 @@ jackCallBack client input output toProcessRV boardInRV
                       (defaultTempo, sr, chan, ([],[],[])) gatherMessages
   -- This should all go in its own IO action
   Trans.lift $ do
-    reactiveValueWrite inPure (tempo, sr, chan, (boardIn `mappend` outMIDI))
+    reactiveValueWrite inPure (tempo, sr, chan, boardIn `mappend` outMIDI)
     reactiveValueRead outRaw <**>
       (mappend <$> reactiveValueRead toProcessRV) >>=
       reactiveValueWrite toProcessRV
