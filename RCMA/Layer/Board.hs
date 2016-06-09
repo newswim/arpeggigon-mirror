@@ -1,9 +1,11 @@
 {-# LANGUAGE Arrows, FlexibleContexts #-}
 
-module RCMA.Layer.Board ( boardSetup
+module RCMA.Layer.Board ( boardSF
+                        , (^:>)
                         ) where
 
 import Control.Concurrent
+import Control.Concurrent.MVar
 import Data.ReactiveValue
 import Data.Tuple
 import FRP.Yampa
@@ -62,6 +64,9 @@ boardSetup board tempoRV layerRV outBoardRV = do
   clock ^:> inRV
   reactiveValueOnCanRead outBoard
     (reactiveValueRead outBoard >>= reactiveValueWrite outBoardRV . event [] id)
+  putStrLn "Board started."
+  n <- newEmptyMVar
+  takeMVar n
   return ()
 
 (^:>) :: (ReactiveValueRead a b m, ReactiveValueReadWrite c d m) =>

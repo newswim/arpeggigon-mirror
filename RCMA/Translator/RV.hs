@@ -4,6 +4,7 @@ module RCMA.Translator.RV where
 
 import           Control.Monad
 import           Control.Monad.Exception.Synchronous (ExceptionalT, resolveT)
+import qualified Control.Monad.Trans.Class           as Trans
 import qualified Data.Bifunctor                      as BF
 import           Data.CBMVar
 import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
@@ -20,6 +21,8 @@ import           Sound.JACK.Exception
     )
 import qualified Sound.JACK.MIDI                     as JMIDI
 import qualified System.IO                           as IO
+
+import           Debug.Trace
 
 handleError :: (Monoid a) => ExceptionalT All IO a -> IO a
 handleError = resolveT $ \e -> do

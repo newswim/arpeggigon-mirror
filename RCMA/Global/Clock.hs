@@ -28,15 +28,24 @@ tempoToDTime = (15/) . fromIntegral
 
 type TickingClock = (CBMVar (), ThreadId)
 
--- Ticking clock in the IO monad, sending callbacks every t milliseconds.
-mkClock :: DTime -> IO TickingClock
-mkClock d = do
+-- Make a clock that will execute any IO when it updates.
+mkClockGeneric :: IO () -> DTime -> IO TickingClock
+mkClockGeneric io d = do
   n <- newCBMVar ()
   tid <- forkIO $ forever $  do
     threadDelay dInt
     modifyCBMVar n return
+    io
   return (n, tid)
   where dInt = floor $ d * (10^3)
+
+-- Ticking clock in the IO monad, sending callbacks every t milliseconds.
+mkClock :: DTime -> IO TickingClock
+mkClock = mkClockGeneric (return ())
+
+-- For debugging purposes.
+mkClockDebug :: DTime -> IO TickingClock
+mkClockDebug = mkClockGeneric (putStrLn "Ping !")
 
 clockRV :: TickingClock -> ReactiveFieldRead IO ThreadId
 clockRV (mvar, tid) = ReactiveFieldRead (return tid)

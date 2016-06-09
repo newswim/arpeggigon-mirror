@@ -44,8 +44,9 @@ jackSetup boardInRV = Jack.handleExceptions $ do
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
     Jack.withProcess client (jackCallBack client input output
-                              toProcessRV boardInRV) $ do
-    Trans.lift $ putStrLn $ "Started " ++ rcmaName
+                              toProcessRV boardInRV) $
+    Jack.withActivation client $ do
+    Trans.lift $ putStrLn $ "Started " ++ rcmaName ++ " JACK client."
     Trans.lift $ Jack.waitForBreak
 
 {-
@@ -83,6 +84,14 @@ jackCallBack client input output toProcessRV boardInRV
   -- it processed. We then use it to calculate the current absolute time
   sr <- Trans.lift $ Jack.getSampleRate client
   (Jack.NFrames lframeInt) <- Trans.lift $ Jack.lastFrameTime client
+  let transform :: EventListAbs.T Jack.NFrames t -> [(Frames, t)]
+      transform = map (BF.first (\(Jack.NFrames n) -> fromIntegral n)) .
+                    EventListAbs.toPairList
+  Trans.lift $ let a = handleError $ transform <$>
+                         JMIDI.readEventsFromPort input nframes
+                 in do a >>= print . map fst
+                       a
+  --Trans.lift (reactiveValueRead inMIDIRV >>= (print . map (fst)))
   -- We write the content of the input buffer to the input of a
   -- translation signal function.
   -- /!\ Should maybe be moved elsewhere
