@@ -1,12 +1,12 @@
-module RCMA.Global.Clock where
+module RMCA.Global.Clock where
 
 import Control.Concurrent
 import Control.Monad
 import Data.CBMVar
 import Data.ReactiveValue
 import FRP.Yampa
-import RCMA.Auxiliary.Auxiliary
-import RCMA.Semantics
+import RMCA.Auxiliary.Auxiliary
+import RMCA.Semantics
 
 tempo :: Tempo -> SF () Tempo
 tempo = constant

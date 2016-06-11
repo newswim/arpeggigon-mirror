@@ -1,4 +1,4 @@
-module RCMA.Auxiliary.Concurrent where
+module RMCA.Auxiliary.Concurrent where
 
 import Control.Concurrent
 import Control.Concurrent.MVar

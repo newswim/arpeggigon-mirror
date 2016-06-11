@@ -1,6 +1,6 @@
-module RCMA.Translator.Message where
+module RMCA.Translator.Message where
 
-import           RCMA.Semantics
+import           RMCA.Semantics
 import qualified Sound.JACK                       as Jack
 import qualified Sound.MIDI.Message               as Message
 import qualified Sound.MIDI.Message.Channel       as Channel

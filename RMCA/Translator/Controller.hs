@@ -1,7 +1,7 @@
-module RCMA.Translator.Controller where
+module RMCA.Translator.Controller where
 
-import RCMA.Semantics
-import RCMA.Translator.Message
+import RMCA.Semantics
+import RMCA.Translator.Message
 
 messageToController :: Message -> Controller
 messageToController _ = Lol

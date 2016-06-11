@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module RCMA.Auxiliary.RV where
+module RMCA.Auxiliary.RV where
 
 import Data.CBMVar
 import Data.ReactiveValue

@@ -1,12 +1,12 @@
 {-# LANGUAGE Arrows #-}
 
-module RCMA.Layer.Layer where
+module RMCA.Layer.Layer where
 
 import Data.CBMVar
 import Data.ReactiveValue
 import FRP.Yampa
-import RCMA.Global.Clock
-import RCMA.Semantics
+import RMCA.Global.Clock
+import RMCA.Semantics
 
 import Debug.Trace
 
@@ -29,7 +29,7 @@ layerMetronome' b = proc (t, l@Layer { beatsPerBar = bpb }) -> do
 
 layerMetronome :: SF (Tempo, Layer) (Event BeatNo)
 layerMetronome = layerMetronome'' 0
-  where layerMetronome'' no = switch (layerMetronome' no >>^ dup)
+  where layerMetronome'' no = dSwitch (layerMetronome' no >>^ dup)
                               layerMetronome''
 
 layerRV :: CBMVar Layer -> ReactiveFieldReadWrite IO Layer

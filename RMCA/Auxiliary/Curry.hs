@@ -1,7 +1,7 @@
 -- Contains function to currify/uncurrify functions with more than
 -- two arguments. It might be useful to use Template Haskell there.
 
-module RCMA.Auxiliary.Curry where
+module RMCA.Auxiliary.Curry where
 
 curry3 :: ((a,b,c) -> d) -> a -> b -> c -> d
 curry3 f a b c = f (a,b,c)

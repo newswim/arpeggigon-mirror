@@ -30,7 +30,7 @@
 --   a distinct graphical representation?
 --   DECIDED AGAINST FOR NOW
 
-module RMCA.Semantics where
+module Main where
 
 import Data.Array
 import Data.List  (intersperse, nub)
@@ -443,11 +443,11 @@ moveHead bd (ph@PlayHead {phPos = p, phBTM = btm, phDir = d})
                   in
                       moveHead bd (ph {phPos = p', phBTM = btm'})
     | btm > 0   = ph {phBTM = btm - 1}
-    | otherwise = ph		-- Repeat indefinitely
+    | otherwise = ph        -- Repeat indefinitely
 
 mkNote :: Pos -> BeatNo -> RelPitch -> Strength -> NoteAttr -> Maybe Note
 mkNote p bn tr st na@(NoteAttr {naDur = d})
-    | d <= 0    = Nothing	-- Notes of non-positive length are silent.
+    | d <= 0    = Nothing    -- Notes of non-positive length are silent.
     | otherwise = Just $
         Note {
             notePch = posToPitch p tr,
@@ -513,7 +513,7 @@ runRMCA bd bpb mri tr st
                                      \least 1 bar."
     | otherwise = error "The number of beats per bar must be at least 1."
     where
-        nss = runAux 1 (startHeads bd)
+        nss = runAux 1 []--(startHeads bd)
 
         runAux bn phs = ns : runAux (nextBeatNo bpb bn) phs'
             where

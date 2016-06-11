@@ -1,6 +1,6 @@
 {-# LANGUAGE Arrows #-}
 
-module RCMA.Auxiliary.Auxiliary where
+module RMCA.Auxiliary.Auxiliary where
 
 import Data.Maybe
 import FRP.Yampa

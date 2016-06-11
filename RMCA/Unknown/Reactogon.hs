@@ -40,8 +40,8 @@ outLoop = concat [[(t,MIDI.Channel $ Channel.Cons
     })] | t <- [0,2..]]
 -}
 
-rcmaName :: String
-rcmaName = "RCMA"
+rmcaName :: String
+rmcaName = "RMCA"
 
 inPortName :: String
 inPortName = "input"
@@ -56,7 +56,7 @@ main = do
   inState <- newMVar M.empty
   outState <- newMVar M.empty
   Jack.handleExceptions $
-    Jack.withClientDefault rcmaName $ \client ->
+    Jack.withClientDefault rmcaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName $ \input -> do
     clientState <- Trans.lift $ newEmptyMVar
@@ -64,8 +64,8 @@ main = do
       (jackLoop client clientState inState outState input output) $
       Jack.withActivation client $ do
       frpid <- Trans.lift $ forkIO $ mainReact inState outState clientState
-      Jack.connect client (rcmaName ++ ":" ++ outPortName) fsPortName
-      Trans.lift $ putStrLn $ "Started " ++ rcmaName
+      Jack.connect client (rmcaName ++ ":" ++ outPortName) fsPortName
+      Trans.lift $ putStrLn $ "Started " ++ rmcaName
       Trans.lift $ Jack.waitForBreak
 
 jackLoop :: Jack.Client

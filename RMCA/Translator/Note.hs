@@ -1,13 +1,13 @@
 {-# LANGUAGE Arrows #-}
 
-module RCMA.Translator.Note where
+module RMCA.Translator.Note where
 
 import Data.Ratio
 import FRP.Yampa
-import RCMA.Global.Clock
-import RCMA.Layer.Layer
-import RCMA.Semantics
-import RCMA.Translator.Message
+import RMCA.Global.Clock
+import RMCA.Layer.Layer
+import RMCA.Semantics
+import RMCA.Translator.Message
 
 messageToNote :: Message -> Note
 messageToNote (NoteOn _ p s) = Note { notePch = p

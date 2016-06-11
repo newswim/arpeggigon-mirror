@@ -1,4 +1,4 @@
-import RCMA.Auxiliary.Auxiliary
+import RMCA.Auxiliary.Auxiliary
 import FRP.Yampa
 
 main :: IO ()

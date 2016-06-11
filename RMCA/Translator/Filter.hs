@@ -1,15 +1,15 @@
 -- Contains function for scheduling and filtering events given the
 -- correct informations.
 
-module RCMA.Translator.Filter where
+module RMCA.Translator.Filter where
 
 import Data.Bifunctor          as BF
 import Data.Function           (on)
 import Data.List               (group, groupBy, sortBy)
 import Data.Ord
 import FRP.Yampa
-import RCMA.Semantics
-import RCMA.Translator.Message
+import RMCA.Semantics
+import RMCA.Translator.Message
 import Sound.JACK              (NFrames (NFrames))
 
 -- Takes a list of time stamped "things", a sample rate and a buffer

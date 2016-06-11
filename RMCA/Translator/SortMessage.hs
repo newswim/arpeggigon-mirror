@@ -5,7 +5,7 @@
 -- events and other events. The latter will be transmitted as is
 -- through the whole systems.
 
-module RCMA.Translator.SortMessage where
+module RMCA.Translator.SortMessage where
 
 import qualified Data.Bifunctor             as BF
 import           Data.Function              (on)
@@ -13,10 +13,10 @@ import           Data.List                  (groupBy)
 import           Data.Maybe
 import           Data.Ratio
 import           FRP.Yampa
-import           RCMA.Semantics
-import           RCMA.Translator.Controller
-import           RCMA.Translator.Message
-import           RCMA.Translator.Note
+import           RMCA.Semantics
+import           RMCA.Translator.Controller
+import           RMCA.Translator.Message
+import           RMCA.Translator.Note
 
 sortRawMessages :: [(Frames, RawMessage)]
                 -> ([(Frames,Message)], [(Frames,RawMessage)])

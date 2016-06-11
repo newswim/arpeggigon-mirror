@@ -1,18 +1,18 @@
 {-# LANGUAGE Arrows #-}
 
-module RCMA.Translator.Translator ( readMessages
+module RMCA.Translator.Translator ( readMessages
                                   , gatherMessages
                                   ) where
 
 import qualified Data.Bifunctor              as BF
 import           FRP.Yampa
-import           RCMA.Auxiliary.Curry
-import           RCMA.Layer.Layer
-import           RCMA.Semantics
-import           RCMA.Translator.Controller
-import           RCMA.Translator.Message
-import           RCMA.Translator.Note
-import           RCMA.Translator.SortMessage
+import           RMCA.Auxiliary.Curry
+import           RMCA.Layer.Layer
+import           RMCA.Semantics
+import           RMCA.Translator.Controller
+import           RMCA.Translator.Message
+import           RMCA.Translator.Note
+import           RMCA.Translator.SortMessage
 
 -- Uses function defined in SortMessage. This is a pure function and
 -- it might not need to be a signal function.

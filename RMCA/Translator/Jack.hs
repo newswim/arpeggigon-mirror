@@ -1,6 +1,6 @@
 -- Contains all the information and functions necessary to run a Jack
 -- port and exchange information through reactive values and Yampa.
-module RCMA.Translator.Jack ( jackSetup
+module RMCA.Translator.Jack ( jackSetup
                             ) where
 
 import           Control.Applicative                 ((<**>))
@@ -12,19 +12,19 @@ import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
 import           Hails.Yampa
-import           RCMA.Semantics
-import           RCMA.Translator.Filter
-import           RCMA.Translator.Message
-import           RCMA.Translator.RV
-import           RCMA.Translator.Translator
+import           RMCA.Semantics
+import           RMCA.Translator.Filter
+import           RMCA.Translator.Message
+import           RMCA.Translator.RV
+import           RMCA.Translator.Translator
 import qualified Sound.JACK                          as Jack
 import qualified Sound.JACK.Exception                as JExc
 import qualified Sound.JACK.MIDI                     as JMIDI
 
 import           Debug.Trace
 
-rcmaName :: String
-rcmaName = "RCMA"
+rmcaName :: String
+rmcaName = "RMCA"
 
 inPortName :: String
 inPortName = "input"
@@ -38,13 +38,13 @@ jackSetup :: ReactiveFieldRead IO (LTempo, Int, [Note])
           -> IO ()
 jackSetup boardInRV = Jack.handleExceptions $ do
   toProcessRV <- Trans.lift $ toProcess <$> newCBMVar []
-  Jack.withClientDefault rcmaName $ \client ->
+  Jack.withClientDefault rmcaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
     Jack.withProcess client (jackCallBack client input output
                               toProcessRV boardInRV) $
     Jack.withActivation client $ Trans.lift $ do
-    putStrLn $ "Started " ++ rcmaName ++ " JACK client."
+    putStrLn $ "Started " ++ rmcaName ++ " JACK client."
     Jack.waitForBreak
 
 {-
@@ -56,7 +56,7 @@ jackRun :: (JExc.ThrowsErrno e) =>
         -> Sync.ExceptionalT e IO ()
 jackRun client callback =
   Jack.withProcess client callback $ do
-  Trans.lift $ putStrLn $ "Startedbbb " ++ rcmaName
+  Trans.lift $ putStrLn $ "Startedbbb " ++ rmcaName
   Trans.lift $ Jack.waitForBreak
 -}
 defaultTempo :: Tempo

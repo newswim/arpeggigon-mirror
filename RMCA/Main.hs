@@ -6,16 +6,16 @@ import Control.Concurrent
 import Data.ReactiveValue
 import FRP.Yampa
 import Hails.Yampa
-import RCMA.Auxiliary.Concurrent
-import RCMA.Auxiliary.RV
-import RCMA.Auxiliary.RV
-import RCMA.Global.Clock
-import RCMA.Layer.Board
-import RCMA.Layer.Layer
-import RCMA.Semantics
-import RCMA.Translator.Jack
-import RCMA.Translator.Message
-import RCMA.Translator.Translator
+import RMCA.Auxiliary.Concurrent
+import RMCA.Auxiliary.RV
+import RMCA.Auxiliary.RV
+import RMCA.Global.Clock
+import RMCA.Layer.Board
+import RMCA.Layer.Layer
+import RMCA.Semantics
+import RMCA.Translator.Jack
+import RMCA.Translator.Message
+import RMCA.Translator.Translator
 
 import Control.Monad
 import Data.Ratio

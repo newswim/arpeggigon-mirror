@@ -1,6 +1,6 @@
-import RCMA.Global.Clock
-import RCMA.Auxiliary.Auxiliary
-import RCMA.Semantics
+import RMCA.Global.Clock
+import RMCA.Auxiliary.Auxiliary
+import RMCA.Semantics
 import FRP.Yampa
 
 main :: IO ()

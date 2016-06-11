@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module RCMA.Translator.RV where
+module RMCA.Translator.RV where
 
 import           Control.Monad
 import           Control.Monad.Exception.Synchronous (ExceptionalT, resolveT)
@@ -12,7 +12,7 @@ import qualified Data.List                           as L
 import           Data.Ord                            (comparing)
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
-import           RCMA.Translator.Message
+import           RMCA.Translator.Message
 import qualified Sound.JACK                          as Jack
 import           Sound.JACK.Exception
     ( All
