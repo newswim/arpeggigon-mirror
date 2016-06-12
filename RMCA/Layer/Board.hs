@@ -26,7 +26,8 @@ boardAction ph = proc ((board, Layer { relPitch    = rp
                                      , strength    = s
                                      , beatsPerBar = bpb
                                      }), ebno) -> do
-  e <- arr $ fmap (uncurry5 $ advanceHeads) -< ebno `tag` (board, fromEvent ebno, rp, s, ph)
+  e <- arr $ fmap (uncurry5 $ advanceHeads)
+       -< ebno `tag` (board, fromEvent ebno, rp, s, ph)
   returnA -< traceShow e e
 {-
 boardSF :: SF (Board, Layer, Tempo) (Event [Note])
@@ -39,13 +40,14 @@ boardSF = proc (board, l, t) -> do
                       boardSF'
 -}
 
-boardSF :: SF (Board, Layer, Tempo) (Event [Note])
-boardSF = proc (board, l@Layer { relPitch = rp
-                               , strength = s
-                               }, t) -> do
+-- We need the list of initial playheads
+boardSF :: [PlayHead] -> SF (Board, Layer, Tempo) (Event [Note])
+boardSF iph = proc (board, l@Layer { relPitch = rp
+                                   , strength = s
+                                   }, t) -> do
   ebno <- layerMetronome -< (t,l)
   --iph <- arr startHeads -< board
-  boardSF' [] -< ((board, l), ebno)
+  boardSF' iph -< ((board, l), ebno)
   where
     boardSF' :: [PlayHead] -> SF ((Board, Layer), Event BeatNo) (Event [Note])
     boardSF' ph = switch (boardAction ph >>> arr splitE >>> arr swap)

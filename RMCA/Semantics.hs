@@ -443,7 +443,7 @@ startHeads bd =
 -- later) and possibly a note to be played at *this* beat.
 
 advanceHead :: Board -> BeatNo -> RelPitch -> Strength -> PlayHead
-               -> ([PlayHead], Maybe Note)
+            -> ([PlayHead], Maybe Note)
 advanceHead bd bn tr st ph = ahAux (moveHead bd ph)
     where
         ahAux ph@PlayHead {phPos = p, phBTM = btm, phDir = d} =

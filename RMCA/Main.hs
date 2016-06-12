@@ -60,7 +60,7 @@ main = do
   tempo <- reactiveValueRead tempoRV
   boardRV <- boardRVIO
   board <- reactiveValueRead boardRV
-  (inBoard, outBoard) <- yampaReactiveDual (board, layer, tempo) boardSF
+  (inBoard, outBoard) <- yampaReactiveDual (board, layer, tempo) (boardSF $ startHeads board)
   let inRV = liftRW2 (bijection (\(x,y,z) -> (x,(y,z)), \(x,(y,z)) -> (x,y,z)))
              boardRV $ pairRW layerRV tempoRV
   clock <- mkClockRV 100

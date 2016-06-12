@@ -513,7 +513,7 @@ runRMCA bd bpb mri tr st
                                      \least 1 bar."
     | otherwise = error "The number of beats per bar must be at least 1."
     where
-        nss = runAux 1 []--(startHeads bd)
+        nss = runAux 1 (startHeads bd)
 
         runAux bn phs = ns : runAux (nextBeatNo bpb bn) phs'
             where
