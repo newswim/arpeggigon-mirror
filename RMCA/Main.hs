@@ -49,29 +49,36 @@ na3 = NoteAttr {
 bpb :: Int
 bpb = 4
 
-tempoRV :: ReactiveFieldReadWrite IO Tempo
-tempoRV = ReactiveFieldReadWrite (\_ -> return ()) (return 96) (\_ -> return ())
+newTempoRV :: IO (ReactiveFieldReadWrite IO Tempo)
+newTempoRV = newCBMVarRW 96
 
 main :: IO ()
 main = do
   layerRV <- getDefaultLayerRV
+  boardQueue <- newCBMVarRW []
   -- Board setup
   layer <- reactiveValueRead layerRV
+  tempoRV <- newTempoRV
   tempo <- reactiveValueRead tempoRV
   boardRV <- boardRVIO
   board <- reactiveValueRead boardRV
-  (inBoard, outBoard) <- yampaReactiveDual (board, layer, tempo) (boardSF $ startHeads board)
+  (inBoard, outBoard) <- yampaReactiveDual (board, layer, tempo)
+                         (boardSF $ startHeads board)
   let inRV = liftRW2 (bijection (\(x,y,z) -> (x,(y,z)), \(x,(y,z)) -> (x,y,z)))
              boardRV $ pairRW layerRV tempoRV
   clock <- mkClockRV 100
   clock ^:> inRV
   inRV =:> inBoard
   --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print . ("Board out " ++) . show)
+  reactiveValueOnCanRead outBoard $ do
+    bq <- reactiveValueRead boardQueue
+    ob <- reactiveValueRead $ liftR (event [] id) outBoard
+    reactiveValueWrite boardQueue (bq ++ ob)
   -- /!\ To be removed.
   --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print)
   putStrLn "Board started."
   -- Jack setup
-  jackSetup (liftR2 (\t n -> (t, 0, event [] id n)) tempoRV outBoard)
+  jackSetup tempoRV (constR 0) (boardQueue)
   return ()
 
 {-jackT <- forkChild $ jackSetup (liftR2 (\t n -> (t, 0, n)) tempoRV

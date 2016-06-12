@@ -45,3 +45,9 @@ onChange' = proc x -> do
 
 discard :: a -> ()
 discard _ = ()
+
+bound :: (Ord a) => (a, a) -> a -> a
+bound (min, max) x
+  | x < min = min
+  | x > max = max
+  | otherwise = x

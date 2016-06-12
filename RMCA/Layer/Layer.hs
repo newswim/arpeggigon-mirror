@@ -47,6 +47,6 @@ getDefaultLayerRV :: IO (ReactiveFieldReadWrite IO Layer)
 getDefaultLayerRV = layerRV <$> newCBMVar dl
   where dl = Layer { relTempo = 1
                    , relPitch = 0
-                   , strength = 127
+                   , strength = 1
                    , beatsPerBar = 4
                    }

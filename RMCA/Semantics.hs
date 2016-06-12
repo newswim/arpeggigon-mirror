@@ -33,9 +33,10 @@
 module RMCA.Semantics where
 
 import Data.Array
-import Data.List  (intersperse, nub)
-import Data.Maybe (catMaybes)
+import Data.List                (intersperse, nub)
+import Data.Maybe               (catMaybes)
 import Data.Ratio
+import RMCA.Auxiliary.Auxiliary
 
 
 ------------------------------------------------------------------------------
@@ -53,7 +54,7 @@ toUCtrl :: Int -> UCtrl
 toUCtrl x = fromIntegral x / 127
 
 fromUCtrl :: UCtrl -> Int
-fromUCtrl x = floor $ x * 127
+fromUCtrl x = floor $ (bound (0,1) x) * 127
 
 -- Bipolar control values are usually between -127 and 127.
 toBCtrl :: Int -> BCtrl

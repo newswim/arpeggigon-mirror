@@ -12,6 +12,7 @@ import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
 import           Hails.Yampa
+import           RMCA.Auxiliary.RV
 import           RMCA.Semantics
 import           RMCA.Translator.Filter
 import           RMCA.Translator.Message
@@ -34,15 +35,17 @@ outPortName = "output"
 
 -- Starts a default client with an input and an output port. Doesn't
 -- do anything as such.
-jackSetup :: ReactiveFieldRead IO (LTempo, Int, [Note])
+jackSetup :: ReactiveFieldReadWrite IO LTempo
+          -> ReactiveFieldRead IO Int
+          -> ReactiveFieldReadWrite IO [Note]
           -> IO ()
-jackSetup boardInRV = Jack.handleExceptions $ do
+jackSetup tempoRV chanRV boardInRV = Jack.handleExceptions $ do
   toProcessRV <- Trans.lift $ toProcess <$> newCBMVar []
   Jack.withClientDefault rmcaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
     Jack.withProcess client (jackCallBack client input output
-                              toProcessRV boardInRV) $
+                              toProcessRV tempoRV chanRV boardInRV) $
     Jack.withActivation client $ Trans.lift $ do
     putStrLn $ "Started " ++ rmcaName ++ " JACK client."
     Jack.waitForBreak
@@ -70,10 +73,12 @@ jackCallBack :: Jack.Client
              -> JMIDI.Port Jack.Input
              -> JMIDI.Port Jack.Output
              -> ReactiveFieldReadWrite IO [(Frames, RawMessage)]
-             -> ReactiveFieldRead IO (LTempo, Int, [Note])
+             -> ReactiveFieldReadWrite IO LTempo
+             -> ReactiveFieldRead IO Int
+             -> ReactiveFieldReadWrite IO [Note]
              -> Jack.NFrames
              -> Sync.ExceptionalT E.Errno IO ()
-jackCallBack client input output toProcessRV boardInRV
+jackCallBack client input output toProcessRV tempoRV chanRV outBoard
   nframes@(Jack.NFrames nframesInt') = do
   let inMIDIRV = inMIDIEvent input nframes
       outMIDIRV = outMIDIEvent output nframes
@@ -88,7 +93,10 @@ jackCallBack client input output toProcessRV boardInRV
   -- /!\ Should maybe be moved elsewhere
   (inRaw, outPure) <- Trans.lift $ yampaReactiveDual [] readMessages
   Trans.lift (inMIDIRV =:> inRaw)
-  (tempo, chan, boardIn') <- Trans.lift $ reactiveValueRead boardInRV
+  tempo <- Trans.lift $ reactiveValueRead tempoRV
+  chan <- Trans.lift $ reactiveValueRead chanRV
+  boardIn' <- Trans.lift $ reactiveValueRead outBoard
+  Trans.lift $ emptyRW outBoard
   let boardIn = (zip (repeat 0) boardIn',[],[])
   outMIDI <- Trans.lift $ reactiveValueRead outPure
   -- We translate all signals to be sent into low level signals and
