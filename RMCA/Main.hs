@@ -21,21 +21,26 @@ import Control.Monad
 import Data.Ratio
 
 boardRVIO = newCBMVarRW $
-    makeBoard [((0,0),  mkCell (ChDir False na1 N)),
-               ((0,1),  mkCell (ChDir True na1 SE)),
-               ((1,1),  mkCell (Split na1)),
-               ((1,-1), mkCell (Split na1)),
-               ((-1,0), mkCell (ChDir False na2 NE))]
+    makeBoard [((0,0),  mkCell (ChDir True na1 NE)),
+               ((1,1),  mkCellRpt (ChDir False na1 NW) 3),
+               ((0,1),  mkCell (ChDir False na1 S))]
+            {-makeBoard [((0,0), mkCell (ChDir True na1 N)),
+               ((0,2), mkCellRpt (ChDir False na2 SE) 3),
+               ((2,1), mkCell (ChDir False na1 SW)),
+               ((1,1), mkCellRpt (ChDir False na1 N) 0) {- Skipped! -},
+               ((0,4), mkCellRpt (ChDir True na1 N) (-1)) {- Rpt indef. -},
+               ((0, -6), mkCell (ChDir True na1 N)),
+               ((0, -2), mkCell (ChDir False na3 S) {- Silent -})]-}
 
 na1 = NoteAttr {
           naArt = Accent13,
-          naDur = 1 % 4,
+          naDur = 1 % 1,
           naOrn = Ornaments Nothing [] NoSlide
       }
 
 na2 = NoteAttr {
           naArt = NoAccent,
-          naDur = 1 % 16,
+          naDur = 1 % 1,
           naOrn = Ornaments Nothing [(10, MIDICVRnd)] SlideUp
       }
 
@@ -50,7 +55,7 @@ bpb :: Int
 bpb = 4
 
 newTempoRV :: IO (ReactiveFieldReadWrite IO Tempo)
-newTempoRV = newCBMVarRW 96
+newTempoRV = newCBMVarRW 200
 
 main :: IO ()
 main = do

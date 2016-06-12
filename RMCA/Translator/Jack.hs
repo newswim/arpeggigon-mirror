@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 -- Contains all the information and functions necessary to run a Jack
 -- port and exchange information through reactive values and Yampa.
 module RMCA.Translator.Jack ( jackSetup
@@ -35,9 +37,12 @@ outPortName = "output"
 
 -- Starts a default client with an input and an output port. Doesn't
 -- do anything as such.
-jackSetup :: ReactiveFieldReadWrite IO LTempo
-          -> ReactiveFieldRead IO Int
-          -> ReactiveFieldReadWrite IO [Note]
+jackSetup :: ( ReactiveValueRead tempo LTempo IO
+             , ReactiveValueRead channel Int IO
+             , ReactiveValueReadWrite board [Note] IO) =>
+             tempo
+          -> channel
+          -> board
           -> IO ()
 jackSetup tempoRV chanRV boardInRV = Jack.handleExceptions $ do
   toProcessRV <- Trans.lift $ toProcess <$> newCBMVar []
@@ -69,13 +74,17 @@ defaultTempo = 96
 -- them with value coming from the machine itself and stuff them into
 -- the output port. When this function is not running, events are
 -- processed.
-jackCallBack :: Jack.Client
+jackCallBack :: ( ReactiveValueReadWrite toProcess [(Frames, RawMessage)] IO
+                , ReactiveValueRead tempo LTempo IO
+                , ReactiveValueRead channel Int IO
+                , ReactiveValueReadWrite board [Note] IO) =>
+                Jack.Client
              -> JMIDI.Port Jack.Input
              -> JMIDI.Port Jack.Output
-             -> ReactiveFieldReadWrite IO [(Frames, RawMessage)]
-             -> ReactiveFieldReadWrite IO LTempo
-             -> ReactiveFieldRead IO Int
-             -> ReactiveFieldReadWrite IO [Note]
+             -> toProcess
+             -> tempo
+             -> channel
+             -> board
              -> Jack.NFrames
              -> Sync.ExceptionalT E.Errno IO ()
 jackCallBack client input output toProcessRV tempoRV chanRV outBoard
