@@ -1,9 +1,10 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleContexts #-}
 
 module RMCA.Auxiliary.RV where
 
 import Data.CBMVar
 import Data.ReactiveValue
+import FRP.Yampa
 
 newCBMVarRW :: forall a. a -> IO (ReactiveFieldReadWrite IO a)
 newCBMVarRW val = do
@@ -24,3 +25,17 @@ emptyRW rv = do
 
 emptyW :: (Monoid b, ReactiveValueWrite a b m) => a -> m ()
 emptyW rv = reactiveValueWrite rv mempty
+
+(^:>) :: (ReactiveValueRead a b m, ReactiveValueReadWrite c d m) =>
+         a -> c -> m ()
+notif ^:> rv = reactiveValueOnCanRead notif resync
+  where resync = reactiveValueRead rv >>= reactiveValueWrite rv
+
+-- Update when the value is an Event. It would be nice to have that
+-- even for Maybe as well.
+(>:>) :: (ReactiveValueRead a (Event b) m, ReactiveValueWrite c b m) =>
+         a -> c -> m ()
+eventRV >:> rv = reactiveValueOnCanRead eventRV syncOnEvent
+  where  syncOnEvent = reactiveValueRead eventRV >>=
+                       (\erv -> if isNoEvent erv then return ()
+                                else reactiveValueWrite rv $ fromEvent erv)

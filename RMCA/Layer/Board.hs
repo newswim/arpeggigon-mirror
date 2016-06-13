@@ -1,20 +1,19 @@
 {-# LANGUAGE Arrows, FlexibleContexts #-}
 
 module RMCA.Layer.Board ( boardSF
-                        , (^:>)
                         ) where
 
 import Control.Concurrent
 import Control.Concurrent.MVar
+import Control.Monad
 import Data.ReactiveValue
 import Data.Tuple
 import FRP.Yampa
 import Hails.Yampa
 import RMCA.Auxiliary.Curry
+import RMCA.Global.Clock
 import RMCA.Layer.Layer
 import RMCA.Semantics
-import RMCA.Global.Clock
-import Control.Monad
 
 import Debug.Trace
 
@@ -74,7 +73,3 @@ boardSetup board tempoRV layerRV outBoardRV = do
   takeMVar n
   return ()
 -}
-(^:>) :: (ReactiveValueRead a b m, ReactiveValueReadWrite c d m) =>
-         a -> c -> m ()
-not ^:> rv = reactiveValueOnCanRead not resync
-  where resync = reactiveValueRead rv >>= reactiveValueWrite rv
