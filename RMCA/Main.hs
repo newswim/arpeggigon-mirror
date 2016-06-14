@@ -5,6 +5,8 @@ module Main where
 import Control.Concurrent
 import Data.ReactiveValue
 import FRP.Yampa
+import Graphics.UI.Gtk
+import Graphics.UI.Gtk.Reactive
 import Hails.Yampa
 import RMCA.Auxiliary.Concurrent
 import RMCA.Auxiliary.RV
@@ -58,11 +60,24 @@ newTempoRV = newCBMVarRW 200
 
 main :: IO ()
 main = do
+  -- GUI
+  initGUI
+  window <- windowNew
+  set window [ windowTitle := "Reactogon"
+             ]
+  globalSettingsBox <- vBoxNew False 10
+  containerAdd window globalSettingsBox
+  tempoAdj <- adjustmentNew 96 0 200 1 1 0
+  tempoLabel <- labelNew (Just "Tempo")
+  boxPackStart globalSettingsBox tempoLabel PackNatural 0
+  tempoScale <- hScaleNew tempoAdj
+  boxPackStart globalSettingsBox tempoScale PackGrow 0
+  let tempoRV = bijection (floor, fromIntegral) `liftRW` scaleValueReactive tempoScale
+  ------------------------------------------------------------------------------
   layerRV <- getDefaultLayerRV
   boardQueue <- newCBMVarRW []
   -- Board setup
   layer <- reactiveValueRead layerRV
-  tempoRV <- newTempoRV
   tempo <- reactiveValueRead tempoRV
   boardRV <- boardRVIO
   board <- reactiveValueRead boardRV
@@ -82,5 +97,8 @@ main = do
   --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print)
   putStrLn "Board started."
   -- Jack setup
-  jackSetup tempoRV (constR 0) boardQueue
+  forkIO $ jackSetup tempoRV (constR 0) boardQueue
+  widgetShowAll window
+  onDestroy window mainQuit
+  mainGUI
   --return ()
