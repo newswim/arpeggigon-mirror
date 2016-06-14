@@ -84,7 +84,4 @@ main = do
   putStrLn "Board started."
   -- Jack setup
   jackSetup tempoRV (constR 0) (boardQueue)
-  return ()
-
-{-jackT <- forkChild $ jackSetup (liftR2 (\t n -> (t, 0, n)) tempoRV
-  boardOutRV) -}
+  --return ()
