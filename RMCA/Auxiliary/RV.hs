@@ -5,6 +5,7 @@ module RMCA.Auxiliary.RV where
 import Data.CBMVar
 import Data.ReactiveValue
 import FRP.Yampa
+import Control.Monad
 
 newCBMVarRW :: forall a. a -> IO (ReactiveFieldReadWrite IO a)
 newCBMVarRW val = do
@@ -36,6 +37,6 @@ notif ^:> rv = reactiveValueOnCanRead notif resync
 (>:>) :: (ReactiveValueRead a (Event b) m, ReactiveValueWrite c b m) =>
          a -> c -> m ()
 eventRV >:> rv = reactiveValueOnCanRead eventRV syncOnEvent
-  where  syncOnEvent = reactiveValueRead eventRV >>=
-                       (\erv -> if isNoEvent erv then return ()
-                                else reactiveValueWrite rv $ fromEvent erv)
+  where  syncOnEvent = do
+           erv <- reactiveValueRead eventRV
+           when (isEvent erv) $ reactiveValueWrite rv $ fromEvent erv

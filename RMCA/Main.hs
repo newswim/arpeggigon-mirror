@@ -8,7 +8,6 @@ import FRP.Yampa
 import Hails.Yampa
 import RMCA.Auxiliary.Concurrent
 import RMCA.Auxiliary.RV
-import RMCA.Auxiliary.RV
 import RMCA.Global.Clock
 import RMCA.Layer.Board
 import RMCA.Layer.Layer
@@ -83,5 +82,5 @@ main = do
   --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print)
   putStrLn "Board started."
   -- Jack setup
-  jackSetup tempoRV (constR 0) (boardQueue)
+  jackSetup tempoRV (constR 0) boardQueue
   --return ()

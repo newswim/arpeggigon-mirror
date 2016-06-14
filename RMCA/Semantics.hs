@@ -33,7 +33,7 @@
 module RMCA.Semantics where
 
 import Data.Array
-import Data.List                (intersperse, nub)
+import Data.List                (intercalate, intersperse, nub)
 import Data.Maybe               (catMaybes)
 import Data.Ratio
 import RMCA.Auxiliary.Auxiliary
@@ -54,7 +54,7 @@ toUCtrl :: Int -> UCtrl
 toUCtrl x = fromIntegral x / 127
 
 fromUCtrl :: UCtrl -> Int
-fromUCtrl x = floor $ (bound (0,1) x) * 127
+fromUCtrl x = floor $ bound (0,1) x * 127
 
 -- Bipolar control values are usually between -127 and 127.
 toBCtrl :: Int -> BCtrl
@@ -396,7 +396,7 @@ makeBoard pcs =
 
 -- Look up a cell
 lookupCell :: Board -> Pos -> Cell
-lookupCell b p = if onBoard p then (b ! p) else (Absorb, 1)
+lookupCell b p = if onBoard p then b ! p else (Absorb, 1)
 
 
 ------------------------------------------------------------------------------
@@ -480,9 +480,9 @@ moveHead bd (ph@PlayHead {phPos = p, phBTM = btm, phDir = d})
     | otherwise = ph        -- Repeat indefinitely
 
 mkNote :: Pos -> BeatNo -> RelPitch -> Strength -> NoteAttr -> Maybe Note
-mkNote p bn tr st na@(NoteAttr {naDur = d})
+mkNote p bn tr st na@NoteAttr {naDur = d}
     | d <= 0    = Nothing    -- Notes of non-positive length are silent.
-    | otherwise = Just $
+    | otherwise = Just
         Note {
             notePch = posToPitch p tr,
             noteStr = articStrength st bn (naArt na),
@@ -562,13 +562,13 @@ ppNotes bpb nss = ppnAux (zip [(br,bn) | br <- [1..], bn <- [1..bpb]] nss)
         ppnAux [] = return ()
         ppnAux ((_, []) : tnss) = ppnAux tnss
         ppnAux ((t, ns) : tnss) = do
-            putStrLn ((leftJustify 10 (show t)) ++ ": "
-                      ++ concat (intersperse ", " (map show ns)))
+            putStrLn (leftJustify 10 (show t) ++ ": "
+                       ++ intercalate ", " (map show ns))
             ppnAux tnss
 
 
 leftJustify :: Int -> String -> String
-leftJustify w s = take (w - length s) (repeat ' ') ++ s
+leftJustify w s = replicate (w - length s) ' ' ++ s
 
 {-
 ------------------------------------------------------------------------------

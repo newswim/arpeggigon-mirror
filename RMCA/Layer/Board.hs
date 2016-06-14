@@ -24,9 +24,9 @@ boardAction :: [PlayHead]
 boardAction ph = proc ((board, Layer { relPitch    = rp
                                      , strength    = s
                                      , beatsPerBar = bpb
-                                     }), ebno) -> do
-  arr $ fmap (uncurry5 $ advanceHeads)
-       -< ebno `tag` (board, fromEvent ebno, rp, s, ph)
+                                     }), ebno) ->
+  arr $ fmap (uncurry5 advanceHeads)
+  -< ebno `tag` (board, fromEvent ebno, rp, s, ph)
   --returnA -< traceShow e e
 {-
 boardSF :: SF (Board, Layer, Tempo) (Event [Note])
