@@ -40,3 +40,97 @@ eventRV >:> rv = reactiveValueOnCanRead eventRV syncOnEvent
   where  syncOnEvent = do
            erv <- reactiveValueRead eventRV
            when (isEvent erv) $ reactiveValueWrite rv $ fromEvent erv
+
+liftR3 :: ( Monad m
+          , ReactiveValueRead a b m
+          , ReactiveValueRead c d m
+          , ReactiveValueRead e f m) =>
+          ((b,d,f) -> i)
+       -> a
+       -> c
+       -> e
+       -> ReactiveFieldRead m i
+liftR3 f a b c = ReactiveFieldRead getter notifier
+  where getter = do
+          x1 <- reactiveValueRead a
+          x2 <- reactiveValueRead b
+          x3 <- reactiveValueRead c
+          return $ f (x1, x2, x3)
+        notifier p = reactiveValueOnCanRead a p >>
+                     reactiveValueOnCanRead b p >>
+                     reactiveValueOnCanRead c p
+
+liftW3 :: ( Monad m
+          , ReactiveValueWrite a b m
+          , ReactiveValueWrite c d m
+          , ReactiveValueWrite e f m) =>
+          (i -> (b,d,f))
+       -> a
+       -> c
+       -> e
+       -> ReactiveFieldWrite m i
+liftW3 f a b c = ReactiveFieldWrite setter
+  where setter x = do
+          let (x1,x2,x3) = f x
+          reactiveValueWrite a x1
+          reactiveValueWrite b x2
+          reactiveValueWrite c x3
+
+liftR4 :: ( Monad m
+          , ReactiveValueRead a b m
+          , ReactiveValueRead c d m
+          , ReactiveValueRead e f m
+          , ReactiveValueRead g h m) =>
+          ((b,d,f,h) -> i)
+       -> a
+       -> c
+       -> e
+       -> g
+       -> ReactiveFieldRead m i
+liftR4 f a b c d = ReactiveFieldRead getter notifier
+  where getter = do
+          x1 <- reactiveValueRead a
+          x2 <- reactiveValueRead b
+          x3 <- reactiveValueRead c
+          x4 <- reactiveValueRead d
+          return $ f (x1, x2, x3, x4)
+        notifier p = reactiveValueOnCanRead a p >>
+                     reactiveValueOnCanRead b p >>
+                     reactiveValueOnCanRead c p >>
+                     reactiveValueOnCanRead d p
+
+liftW4 :: ( Monad m
+          , ReactiveValueWrite a b m
+          , ReactiveValueWrite c d m
+          , ReactiveValueWrite e f m
+          , ReactiveValueWrite g h m) =>
+          (i -> (b,d,f,h))
+       -> a
+       -> c
+       -> e
+       -> g
+       -> ReactiveFieldWrite m i
+liftW4 f a b c d = ReactiveFieldWrite setter
+  where setter x = do
+          let (x1,x2,x3,x4) = f x
+          reactiveValueWrite a x1
+          reactiveValueWrite b x2
+          reactiveValueWrite c x3
+          reactiveValueWrite d x4
+
+liftRW4 :: ( Monad m
+           , ReactiveValueReadWrite a b m
+           , ReactiveValueReadWrite c d m
+           , ReactiveValueReadWrite e f m
+           , ReactiveValueReadWrite g h m) =>
+           BijectiveFunc i (b,d,f,h)
+        -> a
+        -> c
+        -> e
+        -> g
+        -> ReactiveFieldReadWrite m i
+liftRW4 bij a b c d =
+  ReactiveFieldReadWrite setter getter notifier
+  where ReactiveFieldRead getter notifier = liftR4 f2 a b c d
+        ReactiveFieldWrite setter = liftW4 f1 a b c d
+        (f1, f2) = (direct bij, inverse bij)
