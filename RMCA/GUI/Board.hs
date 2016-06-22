@@ -1,12 +1,34 @@
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances #-}
+
 module RMCA.GUI.Board where
 
+import Data.Array
 import Game.Board.BasicTurnGame
+import Graphics.UI.Gtk
+import RMCA.Semantics           hiding (Action)
 
-instance PlayableGame Board Int BoardTile () Cell where
-  -- Only one player
-  curPlayer _ = ()
-  allPos = (\((x,y),z) -> (x,y,z)) . assoc
+newtype GUIBoard = GUIBoard (GameState Int Cell () Action)
 
+boardToList :: Board -> [(Int,Int,Cell)]
+boardToList = map (\((x,y),z) -> (x,y,z)) . assocs
+
+initGUIBoard :: GUIBoard
+initGUIBoard = GUIBoard $ GameState
+  { curPlayer'   = ()
+  , boardPos     = boardToList $ makeBoard []
+  , boardPieces' = []
+  }
+
+instance Show GUIBoard where
+  show _ = "lol"
+
+instance PlayableGame GUIBoard Int Cell () Action where
+  curPlayer _               = ()
+  allPos (GUIBoard game)    = boardPos game
+  allPieces (GUIBoard game) = boardPieces' game
+  moveEnabled _             = True
+  canMove _ _ _             = True
+  canMoveTo _ _ _ _         = True
 
 pixbufFrom :: (Int, Int) -> Cell -> IO Pixbuf
 pixbufFrom (hexW,hexH) (a,_) = do
