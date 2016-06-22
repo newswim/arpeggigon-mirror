@@ -19,6 +19,7 @@ import RMCA.Translator.Jack
 import RMCA.Translator.Message
 import RMCA.Translator.Translator
 import Graphics.UI.Gtk.Layout.BackgroundContainer
+import RMCA.GUI.Board
 
 import Control.Monad
 import Data.Ratio
