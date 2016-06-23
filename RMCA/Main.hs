@@ -86,7 +86,7 @@ main = do
   boxPackEnd mainBox settingsBox PackNatural 0
   globalSettingsBox <- vBoxNew False 10
   boxPackStart settingsBox globalSettingsBox PackNatural 0
-  tempoAdj <- adjustmentNew 96 0 200 1 1 1
+  tempoAdj <- adjustmentNew 120 40 200 1 1 1
   tempoLabel <- labelNew (Just "Tempo")
   boxPackStart globalSettingsBox tempoLabel PackNatural 0
   tempoScale <- hScaleNew tempoAdj
@@ -105,7 +105,8 @@ main = do
   layTempoLabel <- labelNew (Just "Layer tempo")
   labelSetAngle layTempoLabel 90
   boxPackStart layTempoBox layTempoLabel PackNatural 0
-  layTempoScale <- vScaleNewWithRange 0 1 0.01
+  layTempoAdj <- adjustmentNew 1 0 2 1 1 1
+  layTempoScale <- vScaleNew layTempoAdj
   boxPackStart layTempoBox layTempoScale PackNatural 0
   laySep <- hSeparatorNew
 

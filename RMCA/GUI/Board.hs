@@ -18,7 +18,7 @@ data Tile = Tile
 data Player = Player
 
 tileW :: Int
-tileW = 35
+tileW = 40
 
 tileH :: Int
 tileH = round (sqrt 3 * fromIntegral tileW / 3)
@@ -26,18 +26,18 @@ tileH = round (sqrt 3 * fromIntegral tileW / 3)
 hexW :: Int
 hexW = round (4 * fromIntegral tileW / 3)
 
+(xMax,yMax) = BF.second (*2) $ neighbor N nec
+(xMin,yMin) = BF.second (*2) swc
+
 boardToTile :: [(Int,Int,Tile)]
 boardToTile = [(x,y,Tile) | (x,y) <- range ( (xMin-1,yMin)
                                            , (xMax+1,yMax+1))]
-  where (xMax,yMax) = BF.second (*2) $ neighbor N nec
-        (xMin,yMin) = BF.second (*2) swc
 
 boardToPiece :: Board -> [(Int,Int,Player,Action)]
 boardToPiece = map placePiece . filter (onBoard . fst) . assocs
   where placePiece :: (Pos,Cell) -> (Int,Int,Player,Action)
         placePiece ((x,y),(a,_)) = let y' = 2*(-y) + x `mod` 2 in
                                      (x,y',Player,a)
-
 
 na = NoteAttr {
           naArt = Accent13,
@@ -63,13 +63,14 @@ instance PlayableGame GUIBoard Int Tile Player Action where
   canMove (GUIBoard game) _ (x,y)
     | Just (_,p) <- getPieceAt game (x,y)
     , Inert <- p = False
-    | otherwise = True{-
+    | otherwise = True
+    {-
   canMoveTo _ _ _ (x,y)
-    | (x `mod` 2 == 0 && y `mod` 2 == 0) || (x `mod` 2 /= 0 && y `mod` 2 /= 0)
-    = True
-    | otherwise = False-}
-  canMoveTo _ _ _ _ = True
-
+    | x == xMin - 1 || y == yMax + 1 || x == xMax + 1  = False
+    | otherwise = True
+-}
+  canMoveTo _ _ _ (x,y) = (x,y) `elem` validArea
+    where validArea = map (\(x,y,_,_) -> (x,y)) $ boardToPiece $ makeBoard []
 
   move (GUIBoard game) _ iPos@(_,yi) fPos@(xf,yf) = [MovePiece iPos fPos']
     where fPos'
@@ -79,7 +80,6 @@ instance PlayableGame GUIBoard Int Tile Player Action where
           signum' x
             | x == 0 = 1
             | otherwise = signum x
-
 
 
   applyChange (GUIBoard game) (AddPiece pos@(x,y) _ piece) =
