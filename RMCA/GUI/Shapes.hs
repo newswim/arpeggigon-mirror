@@ -12,7 +12,7 @@ hexagon :: (Double, Double, Double) -- Background color
         -> Render ()
 hexagon (backR, backG, backB) (frameR, frameG, frameB) (x,y) w = do
   setSourceRGB frameR frameG frameB
-  setLineWidth (0.05 * w)
+  setLineWidth (0.01 * w)
 
   let a = 0.5*w
       b = 0.87*w

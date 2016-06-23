@@ -23,4 +23,4 @@ QUESTIONS.md
 *.#*
 html/
 /GUI/
-*.png
+/img/Shapes.hs

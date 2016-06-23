@@ -20,6 +20,7 @@ import RMCA.Translator.Message
 import RMCA.Translator.Translator
 import Graphics.UI.Gtk.Layout.BackgroundContainer
 import RMCA.GUI.Board
+import Graphics.UI.Gtk.Board.BoardLink
 
 import Control.Monad
 import Data.Ratio
@@ -79,6 +80,7 @@ main = do
              , containerChild := mainBox
              , containerBorderWidth := 10
              ]
+  windowMaximize window
 
   settingsBox <- vBoxNew False 0
   boxPackEnd mainBox settingsBox PackNatural 0
@@ -157,8 +159,13 @@ main = do
   boxPackStart buttonBox buttonRecord PackRepel 0
 
   -- Board
-  boardCont <- backgroundContainerNewWithPicture "ussr.png"
-  containerAdd mainBox boardCont
+  boardCont <- backgroundContainerNew
+  game <- initGame
+  board <- attachGameRules game
+  --centerBoard <- alignmentNew 0.5 0.5 0 0
+  containerAdd boardCont board
+  --containerAdd boardCont centerBoard
+  boxPackStart mainBox boardCont PackNatural 0
   --boxPackStart mainBox boardCont PackNatural 0
   ------------------------------------------------------------------------------
   boardQueue <- newCBMVarRW []
