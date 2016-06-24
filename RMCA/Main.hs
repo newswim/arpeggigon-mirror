@@ -21,6 +21,8 @@ import RMCA.Translator.Translator
 import Graphics.UI.Gtk.Layout.BackgroundContainer
 import RMCA.GUI.Board
 import Graphics.UI.Gtk.Board.BoardLink
+import           Game.Board.BasicTurnGame
+import Graphics.UI.Gtk.Board.TiledBoard
 
 import Control.Monad
 import Data.Ratio
@@ -163,6 +165,10 @@ main = do
   boardCont <- backgroundContainerNew
   game <- initGame
   board <- attachGameRules game
+  forkIO $ forever $ do
+    threadDelay (10^6)
+    p <- boardGetPiece (0,-10) board
+    print p
   --centerBoard <- alignmentNew 0.5 0.5 0 0
   containerAdd boardCont board
   --containerAdd boardCont centerBoard

@@ -12,10 +12,12 @@ import           Graphics.UI.Gtk                 hiding (Action)
 import           Graphics.UI.Gtk.Board.BoardLink
 import           RMCA.Semantics
 
-newtype GUIBoard = GUIBoard (GameState Int Tile Player Action)
+import           Debug.Trace
+
+newtype GUIBoard = GUIBoard { toGS :: (GameState Int Tile Player Action) }
 
 data Tile = Tile
-data Player = Player
+data Player = Player deriving(Show)
 
 tileW :: Int
 tileW = 40
@@ -26,7 +28,12 @@ tileH = round (sqrt 3 * fromIntegral tileW / 3)
 hexW :: Int
 hexW = round (4 * fromIntegral tileW / 3)
 
+hexH :: Int
+hexH = round (sqrt 3 * fromIntegral hexW / 2)
+
+xMax, yMax :: Int
 (xMax,yMax) = BF.second (*2) $ neighbor N nec
+xMin, yMin :: Int
 (xMin,yMin) = BF.second (*2) swc
 
 boardToTile :: [(Int,Int,Tile)]
@@ -51,10 +58,8 @@ initGUIBoard = GUIBoard $ GameState
   , boardPos     = boardToTile
   , boardPieces' = boardToPiece $ makeBoard [((0,5), mkCell (ChDir True na NE))]
   }
-{-
-instance Show GUIBoard where
-  show _ = "lol"
--}
+
+
 instance PlayableGame GUIBoard Int Tile Player Action where
   curPlayer _               = Player
   allPos (GUIBoard game)    = boardPos game
@@ -64,15 +69,11 @@ instance PlayableGame GUIBoard Int Tile Player Action where
     | Just (_,p) <- getPieceAt game (x,y)
     , Inert <- p = False
     | otherwise = True
-    {-
-  canMoveTo _ _ _ (x,y)
-    | x == xMin - 1 || y == yMax + 1 || x == xMax + 1  = False
-    | otherwise = True
--}
   canMoveTo _ _ _ (x,y) = (x,y) `elem` validArea
-    where validArea = map (\(x,y,_,_) -> (x,y)) $ boardToPiece $ makeBoard []
+    where validArea = map (\(x',y',_,_) -> (x',y')) $ boardToPiece $ makeBoard []
 
-  move (GUIBoard game) _ iPos@(_,yi) fPos@(xf,yf) = [MovePiece iPos fPos']
+  move _ _ iPos@(_,yi) (xf,yf) = [ MovePiece iPos fPos'
+                                 , AddPiece iPos Player Inert]
     where fPos'
             |    (xf `mod` 2 == 0 && yf `mod` 2 == 0)
               || (xf `mod` 2 /= 0 && yf `mod` 2 /= 0) = (xf,yf)
@@ -82,15 +83,14 @@ instance PlayableGame GUIBoard Int Tile Player Action where
             | otherwise = signum x
 
 
-  applyChange (GUIBoard game) (AddPiece pos@(x,y) _ piece) =
+  applyChange (GUIBoard game) (AddPiece pos@(x,y) Player piece) =
     GUIBoard $ game { boardPieces' = bp' }
-    where bp' = (x,y,Player,piece):(
-                filter (\(x',y',_,_) -> (x',y') /= pos) $ boardPieces' game)
+    where bp' = (x,y,Player,piece):(boardPieces' game)
 
-  applyChange (GUIBoard game) (RemovePiece pos) =
-    (\g -> applyChange g (AddPiece pos Player Inert)) $
-    GUIBoard $ game { boardPieces' = bp' }
-    where bp' = filter (\(x',y',_,_) -> pos /= (x',y')) $ boardPieces' game
+  applyChange (GUIBoard game) (RemovePiece (x,y)) = GUIBoard $
+    game { boardPieces' = bp' }
+    where bp' = [p | p@(x',y',_,_) <- boardPieces' game
+                   , (x /= x' || y /= y')]
 
   applyChange guiBoard@(GUIBoard game) (MovePiece iPos fPos)
     | Just (_,p) <- getPieceAt game iPos
@@ -108,21 +108,21 @@ initGame = do
       pixPiece (_,a) = fromJust $ lookup (actionToFile a) pixbufs
       pixTile :: Tile -> Pixbuf
       pixTile _ = tilePixbuf
-      visual = VisualGameAspects { tileF = pixTile
-                                 , pieceF = pixPiece
-                                 , bgColor = (1000,1000,1000)
-                                 , bg = Nothing
-                                 }
+      visualA = VisualGameAspects { tileF = pixTile
+                                  , pieceF = pixPiece
+                                  , bgColor = (1000,1000,1000)
+                                  , bg = Nothing
+                                  }
 
-  return $ Game visual initGUIBoard
+  return $ Game visualA initGUIBoard
 
 fileToPixbuf :: IO [(FilePath,Pixbuf)]
 fileToPixbuf = sequence $
-  map (\f -> uncurry (liftM2 (,))
-             ( return f
-             , pixbufNewFromFile f >>=
+  map (\f -> let f' = "img/" ++ f in uncurry (liftM2 (,))
+             ( return f'
+             , pixbufNewFromFile f' >>=
                \p -> pixbufScaleSimple p hexW hexW InterpBilinear )) $
-  map ("img/" ++) $ ["hexOn.png","stop.svg","split.svg"] ++
+  ["hexOn.png","stop.svg","split.svg"] ++
   concat [["start" ++ show d ++ ".svg","ric" ++ show d ++ ".svg"]
          | d <- [N .. NW]]
 
