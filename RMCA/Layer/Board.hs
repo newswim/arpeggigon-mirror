@@ -19,26 +19,21 @@ import Debug.Trace
 
 -- The state of the board is described by the list of the playheads
 -- and the different actions onto the board.
-boardAction :: [PlayHead]
-            -> SF ((Board, Layer), Event BeatNo) (Event ([PlayHead], [Note]))
-boardAction ph = proc ((board, Layer { relPitch    = rp
-                                     , strength    = s
-                                     , beatsPerBar = bpb
-                                     }), ebno) ->
+boardAction :: SF ((Board, Layer, [PlayHead]), Event BeatNo) (Event ([PlayHead], [Note]))
+boardAction = proc ((board, Layer { relPitch    = rp
+                                  , strength    = s
+                                  , beatsPerBar = bpb
+                                  },ph), ebno) ->
   arr $ fmap (uncurry5 advanceHeads)
   -< ebno `tag` (board, fromEvent ebno, rp, s, ph)
   --returnA -< traceShow e e
-{-
-boardSF :: SF (Board, Layer, Tempo) (Event [Note])
-boardSF = proc (board, l, t) -> do
-  ebno <- layerMetronome -< (t, l)
-  iph <- startHeads -< board
-  boardSF' iph -< (board, l, ebno)
-  where boardSF' :: [PlayHead] -> SF (Board, Layer, Event BeatNo) (Event [Note])
-        boardSF' ph = switch (swap ^<< splitE ^<< boardAction ph)
-                      boardSF'
--}
 
+boardSF :: SF (Board, Layer, [PlayHead], Tempo) (Event ([PlayHead], [Note]))
+boardSF = proc (board, l, ph, t) -> do
+  ebno <- layerMetronome -< (t, l)
+  boardAction -< ((board, l, ph), ebno)
+
+{-
 -- We need the list of initial playheads
 boardSF :: [PlayHead] -> SF (Board, Layer, Tempo) (Event [Note])
 boardSF iph = proc (board, l@Layer { relPitch = rp
@@ -72,4 +67,5 @@ boardSetup board tempoRV layerRV outBoardRV = do
   n <- newEmptyMVar
   takeMVar n
   return ()
+-}
 -}

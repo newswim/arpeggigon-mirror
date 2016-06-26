@@ -6,6 +6,7 @@ import Data.CBMVar
 import Data.ReactiveValue
 import FRP.Yampa
 import Control.Monad
+import RMCA.Auxiliary.Curry
 
 newCBMVarRW :: forall a. a -> IO (ReactiveFieldReadWrite IO a)
 newCBMVarRW val = do
@@ -27,10 +28,14 @@ emptyRW rv = do
 emptyW :: (Monoid b, ReactiveValueWrite a b m) => a -> m ()
 emptyW rv = reactiveValueWrite rv mempty
 
-(^:>) :: (ReactiveValueRead a b m, ReactiveValueReadWrite c d m) =>
+(^:>) :: (ReactiveValueRead a b m, ReactiveValueRead c d m) =>
          a -> c -> m ()
+      {-
 notif ^:> rv = reactiveValueOnCanRead notif resync
   where resync = reactiveValueRead rv >>= reactiveValueWrite rv
+-}
+notif ^:> rv =
+  reactiveValueOnCanRead notif (reactiveValueOnCanRead rv (return ()))
 
 -- Update when the value is an Event. It would be nice to have that
 -- even for Maybe as well.
@@ -40,7 +45,7 @@ eventRV >:> rv = reactiveValueOnCanRead eventRV syncOnEvent
   where  syncOnEvent = do
            erv <- reactiveValueRead eventRV
            when (isEvent erv) $ reactiveValueWrite rv $ fromEvent erv
-
+{-
 liftR3 :: ( Monad m
           , ReactiveValueRead a b m
           , ReactiveValueRead c d m
@@ -59,6 +64,7 @@ liftR3 f a b c = ReactiveFieldRead getter notifier
         notifier p = reactiveValueOnCanRead a p >>
                      reactiveValueOnCanRead b p >>
                      reactiveValueOnCanRead c p
+-}
 
 liftW3 :: ( Monad m
           , ReactiveValueWrite a b m
@@ -75,6 +81,21 @@ liftW3 f a b c = ReactiveFieldWrite setter
           reactiveValueWrite a x1
           reactiveValueWrite b x2
           reactiveValueWrite c x3
+
+liftRW3 :: ( Monad m
+           , ReactiveValueReadWrite a b m
+           , ReactiveValueReadWrite c d m
+           , ReactiveValueReadWrite e f m) =>
+           BijectiveFunc i (b,d,f)
+        -> a
+        -> c
+        -> e
+        -> ReactiveFieldReadWrite m i
+liftRW3 bij a b c =
+  ReactiveFieldReadWrite setter getter notifier
+  where ReactiveFieldRead getter notifier = liftR3 (curry3 f2) a b c
+        ReactiveFieldWrite setter = liftW3 f1 a b c
+        (f1, f2) = (direct bij, inverse bij)
 
 liftR4 :: ( Monad m
           , ReactiveValueRead a b m

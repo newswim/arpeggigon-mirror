@@ -23,6 +23,9 @@ import RMCA.GUI.Board
 import Graphics.UI.Gtk.Board.BoardLink
 import           Game.Board.BasicTurnGame
 import Graphics.UI.Gtk.Board.TiledBoard
+import Data.Array.MArray
+import qualified Graphics.UI.Gtk.Board.TiledBoard as BIO
+import Data.Array.IO
 
 import Control.Monad
 import Data.Ratio
@@ -164,13 +167,9 @@ main = do
   -- Board
   boardCont <- backgroundContainerNew
   game <- initGame
-  board <- attachGameRules game
-  forkIO $ forever $ do
-    threadDelay (10^6)
-    p <- boardGetPiece (0,-10) board
-    print p
+  guiBoard <- attachGameRules game
   --centerBoard <- alignmentNew 0.5 0.5 0 0
-  containerAdd boardCont board
+  containerAdd boardCont guiBoard
   --containerAdd boardCont centerBoard
   boxPackStart mainBox boardCont PackNatural 0
   --boxPackStart mainBox boardCont PackNatural 0
@@ -179,19 +178,19 @@ main = do
   -- Board setup
   layer <- reactiveValueRead layerRV
   tempo <- reactiveValueRead tempoRV
-  boardRV <- boardRVIO
+  (boardRV, phRV) <- initBoardRV guiBoard
   board <- reactiveValueRead boardRV
-  (inBoard, outBoard) <- yampaReactiveDual (board, layer, tempo)
-                         (boardSF $ startHeads board)
-  let inRV = liftRW2 (bijection (\(x,y,z) -> (x,(y,z)), \(x,(y,z)) -> (x,y,z)))
-             boardRV $ pairRW layerRV tempoRV
+  (inBoard, outBoard) <- yampaReactiveDual (board, layer, [], tempo) boardSF
+  (splitE >>> fst) `liftR` outBoard >:> phRV
+  let inRV = liftR4 id
+             boardRV layerRV phRV tempoRV
   clock <- mkClockRV 100
   clock ^:> inRV
   inRV =:> inBoard
   --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print . ("Board out " ++) . show)
   reactiveValueOnCanRead outBoard $ do
     bq <- reactiveValueRead boardQueue
-    ob <- reactiveValueRead $ liftR (event [] id) outBoard
+    ob <- reactiveValueRead $ liftR (event [] id <<< snd <<< splitE) outBoard
     reactiveValueWrite boardQueue (bq ++ ob)
   -- /!\ To be removed.
   --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print)
