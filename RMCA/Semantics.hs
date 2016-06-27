@@ -287,8 +287,15 @@ data Note = Note {
 -- Angle measured in multiples of 60 degrees.
 type Angle = Int
 
-data Dir = N | NE | SE | S | SW | NW deriving (Enum, Eq, Show)
+data Dir = N | NE | SE | S | SW | NW deriving (Enum, Bounded, Eq, Show)
 
+predDir :: Dir -> Dir
+predDir d | d == minBound =  maxBound
+          | otherwise = pred d
+
+nextDir :: Dir -> Dir
+nextDir d | d ==  maxBound = minBound
+          | otherwise = succ d
 
 turn :: Dir -> Angle -> Dir
 turn d a = toEnum ((fromEnum d + a) `mod` 6)

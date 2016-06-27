@@ -179,6 +179,7 @@ main = do
   layer <- reactiveValueRead layerRV
   tempo <- reactiveValueRead tempoRV
   (boardRV, phRV) <- initBoardRV guiBoard
+  clickHandling guiBoard
   reactiveValueOnCanRead playRV
     (reactiveValueRead boardRV >>= reactiveValueWrite phRV . startHeads)
   reactiveValueOnCanRead stopRV $ reactiveValueWrite phRV []

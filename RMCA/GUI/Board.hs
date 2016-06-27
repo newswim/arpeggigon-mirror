@@ -3,7 +3,9 @@
 
 module RMCA.GUI.Board where
 
+import           Control.Concurrent.MVar
 import           Control.Monad
+import           Control.Monad.IO.Class
 import           Data.Array
 import           Data.Array.MArray
 import qualified Data.Bifunctor                   as BF
@@ -25,6 +27,10 @@ data GUICell = GUICell { cellAction  :: Action
                        , repeatCount :: Int
                        , asPh        :: Bool
                        } deriving(Show)
+
+rotateGUICell g = g { cellAction = rotateAction $ cellAction g }
+  where rotateAction (ChDir b na d) = ChDir b na (nextDir d)
+        rotateAction x = x
 
 newtype GUIBoard = GUIBoard { toGS :: GameState Int Tile Player GUICell }
 
@@ -108,10 +114,7 @@ initGUIBoard :: GUIBoard
 initGUIBoard = GUIBoard GameState
   { curPlayer'   = Player
   , boardPos     = boardToTile
-  , boardPieces' = boardToPiece [] $
-                   makeBoard [((0,0),  mkCell (ChDir True na NE)),
-                              ((2,1),  mkCellRpt (ChDir False na NW) 3),
-                              ((0,2),  mkCell (ChDir False na S))]
+  , boardPieces' = boardToPiece [] $ makeBoard []
   }
 
 instance PlayableGame GUIBoard Int Tile Player GUICell where
@@ -127,8 +130,6 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
   canMoveTo _ _ _ (x,y) = (x,y) `elem` validArea
 
   move guiBoard@(GUIBoard game) p iPos@(_,yi) (xf,yf)
-    | not (canMove guiBoard p iPos) = []
-    | not (canMoveTo guiBoard p iPos fPos') = []
     | iPos `elem` ctrlCoord = [ RemovePiece fPos'
                               , AddPiece fPos' Player (nCell { cellAction = ctrlAction })
                               ]
@@ -185,10 +186,13 @@ initGame = do
 
   return $ Game visualA initGUIBoard
 
+-- Initializes a readable RV for the board and an readable-writable RV
+-- for the playheads. Also installs some handlers for pieces modification.
 initBoardRV :: BIO.Board Int Tile (Player,GUICell)
             -> IO ( ReactiveFieldRead IO Board
                   , ReactiveFieldReadWrite IO [PlayHead])
 initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
+  -- RV creation
   phMVar <- newCBMVar []
   oldphMVar <- newCBMVar []
   notBMVar <- mkClockRV 100
@@ -238,12 +242,39 @@ initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
       ph = ReactiveFieldReadWrite setterP getterP notifierP
   return (b,ph)
 
+clickHandling :: BIO.Board Int Tile (Player,GUICell) -> IO ()
+clickHandling board = do
+  state <- newEmptyMVar
+  boardOnPress board
+    (\iPos -> liftIO $ do
+        tryPutMVar state iPos
+        return True
+    )
+  boardOnRelease board
+    (\fPos -> liftIO $ do
+        mp <- boardGetPiece fPos board
+        mstate <- tryTakeMVar state
+        when (fPos `elem` validArea && isJust mp &&
+              maybe False (== fPos) mstate) $ do
+          boardSetPiece fPos (BF.second rotateGUICell $
+                              fromJust mp) board
+        return True
+    )
+
+    {-
+  boardOnPress board
+    (\i -> do
+        mp <- boardGetPiece i board
+        when (i `elem` validArea && isJust mp && fromJust mp == Inert) $
+-}
+
+
 fileToPixbuf :: IO [(FilePath,Pixbuf)]
 fileToPixbuf = mapM (\f -> let f' = "img/" ++ f in uncurry (liftM2 (,))
                       ( return f'
                       , pixbufNewFromFile f' >>=
                         \p -> pixbufScaleSimple p hexW hexW InterpBilinear ))
-               (["hexOn.png","hexOff.png","stop.svg","split.svg"] ++
+               (["hexOn.png","hexOff.png","stop.svg","split.svg","absorb.svg"] ++
                 concat [["start" ++ show d ++ ".svg","ric" ++ show d ++ ".svg"]
                        | d <- [N .. NW]])
 
@@ -254,7 +285,7 @@ actionToFile GUICell { cellAction = a
   case (a,ph) of
     (Inert,True) -> "img/hexOn.png"
     (Inert,False) -> "img/hexOff.png"
-    (Absorb,_) -> "img/stop.svg"
+    (Absorb,_) -> "img/absorb.svg"
     (Stop _,_) -> "img/stop.svg"
     (ChDir True _ d,_) -> "img/start" ++ show d ++ ".svg"
     (ChDir False _ d,_) -> "img/ric" ++ show d ++ ".svg"
