@@ -18,12 +18,13 @@ import           Graphics.UI.Gtk                  hiding (Action)
 import           Graphics.UI.Gtk.Board.BoardLink
 import           Graphics.UI.Gtk.Board.TiledBoard hiding (Board)
 import qualified Graphics.UI.Gtk.Board.TiledBoard as BIO
+import           RMCA.Global.Clock
 import           RMCA.Semantics
 
 data GUICell = GUICell { cellAction  :: Action
                        , repeatCount :: Int
                        , asPh        :: Bool
-                       }
+                       } deriving(Show)
 
 newtype GUIBoard = GUIBoard { toGS :: GameState Int Tile Player GUICell }
 
@@ -88,7 +89,9 @@ initGUIBoard = GUIBoard GameState
   { curPlayer'   = Player
   , boardPos     = boardToTile
   , boardPieces' = boardToPiece [] $
-                   makeBoard [((0,5), mkCell (ChDir True na NE))]
+                   makeBoard [((0,0),  mkCell (ChDir True na NE)),
+                              ((2,1),  mkCellRpt (ChDir False na NW) 3),
+                              ((0,2),  mkCell (ChDir False na S))]
   }
 
 instance PlayableGame GUIBoard Int Tile Player GUICell where
@@ -159,8 +162,10 @@ initGame = do
 initBoardRV :: BIO.Board Int Tile (Player,GUICell)
             -> IO ( ReactiveFieldRead IO Board
                   , ReactiveFieldReadWrite IO [PlayHead])
-initBoardRV BIO.Board { boardPieces = GameBoard array } = do
+initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
   phMVar <- newCBMVar []
+  oldphMVar <- newCBMVar []
+  notBMVar <- mkClockRV 100
   let getterB :: IO Board
       getterB = do
         (boardArray :: [((Int,Int),Maybe (Player,GUICell))]) <- getAssocs array
@@ -172,21 +177,35 @@ initBoardRV BIO.Board { boardPieces = GameBoard array } = do
         return board
 
       notifierB :: IO () -> IO ()
-      notifierB _ = return ()
+      notifierB = reactiveValueOnCanRead notBMVar
 
       getterP :: IO [PlayHead]
       getterP = readCBMVar phMVar
 
       setterP :: [PlayHead] -> IO ()
       setterP lph = do
+        let phPosS = map phPos lph
+        readCBMVar phMVar >>= writeCBMVar oldphMVar
+        oph <- readCBMVar oldphMVar
         writeCBMVar phMVar lph
-        boardArray <- getAssocs array
-        let phPosS = map (toGUICoords . phPos) lph
-            updatePh :: ((Int,Int),Maybe (Player,GUICell)) -> IO ()
-            updatePh (i,c) = when (isJust c) $ do
-              let (_,c') = fromJust c
-              writeArray array i (Just (Player,c' { asPh = i `elem` phPosS }))
-        mapM_ updatePh boardArray
+        let offPh :: PlayHead -> IO ()
+            offPh ph = do
+              let pos = toGUICoords $ phPos ph
+              piece <- boardGetPiece pos board
+              when (isJust piece) $ do
+                let (_,c) = fromJust piece
+                boardSetPiece pos (Player, c { asPh = pos `elem` phPosS }) board
+            onPh :: PlayHead -> IO ()
+            onPh ph =  do
+              let pos = toGUICoords $ phPos ph
+              piece <- boardGetPiece pos board
+              when (isJust piece) $ do
+                let (_,c) = fromJust piece
+                boardSetPiece pos (Player, c { asPh = True }) board
+        mapM_ offPh oph
+        print oph
+        mapM_ onPh lph
+        print lph
 
       notifierP :: IO () -> IO ()
       notifierP = installCallbackCBMVar phMVar
@@ -200,15 +219,15 @@ fileToPixbuf = mapM (\f -> let f' = "img/" ++ f in uncurry (liftM2 (,))
                       ( return f'
                       , pixbufNewFromFile f' >>=
                         \p -> pixbufScaleSimple p hexW hexW InterpBilinear ))
-               (["hexOn.png","stop.svg","split.svg"] ++
+               (["hexOn.png","hexOff.png","stop.svg","split.svg"] ++
                 concat [["start" ++ show d ++ ".svg","ric" ++ show d ++ ".svg"]
                        | d <- [N .. NW]])
 
 actionToFile :: GUICell -> FilePath
 actionToFile GUICell { cellAction = a
-                     , asPh = bool
+                     , asPh = ph
                      } =
-  case (a,bool) of
+  case (a,ph) of
     (Inert,True) -> "img/hexOn.png"
     (Inert,False) -> "img/hexOff.png"
     (Absorb,_) -> "img/stop.svg"

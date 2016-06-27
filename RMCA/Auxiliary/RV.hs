@@ -28,19 +28,21 @@ emptyRW rv = do
 emptyW :: (Monoid b, ReactiveValueWrite a b m) => a -> m ()
 emptyW rv = reactiveValueWrite rv mempty
 
-(^:>) :: (ReactiveValueRead a b m, ReactiveValueRead c d m) =>
-         a -> c -> m ()
-      {-
-notif ^:> rv = reactiveValueOnCanRead notif resync
-  where resync = reactiveValueRead rv >>= reactiveValueWrite rv
--}
+onTick :: (ReactiveValueRead a b m, ReactiveValueRead c d m) =>
+          a -> c -> ReactiveFieldRead m d
+onTick notif rv = ReactiveFieldRead getter notifier
+  where getter = reactiveValueRead rv
+        notifier cb = do
+          reactiveValueOnCanRead notif cb
+          reactiveValueOnCanRead rv cb
+{-
 notif ^:> rv =
   reactiveValueOnCanRead notif (reactiveValueOnCanRead rv (return ()))
-
+-}
 -- Update when the value is an Event. It would be nice to have that
 -- even for Maybe as well.
-(>:>) :: (ReactiveValueRead a (Event b) m, ReactiveValueWrite c b m) =>
-         a -> c -> m ()
+(>:>) :: (ReactiveValueRead a (Event b) IO, ReactiveValueWrite c b IO) =>
+         a -> c -> IO ()
 eventRV >:> rv = reactiveValueOnCanRead eventRV syncOnEvent
   where  syncOnEvent = do
            erv <- reactiveValueRead eventRV
@@ -115,10 +117,11 @@ liftR4 f a b c d = ReactiveFieldRead getter notifier
           x3 <- reactiveValueRead c
           x4 <- reactiveValueRead d
           return $ f (x1, x2, x3, x4)
-        notifier p = reactiveValueOnCanRead a p >>
-                     reactiveValueOnCanRead b p >>
-                     reactiveValueOnCanRead c p >>
-                     reactiveValueOnCanRead d p
+        notifier p = do
+          reactiveValueOnCanRead a p
+          reactiveValueOnCanRead b p
+          reactiveValueOnCanRead c p
+          reactiveValueOnCanRead d p
 
 liftW4 :: ( Monad m
           , ReactiveValueWrite a b m

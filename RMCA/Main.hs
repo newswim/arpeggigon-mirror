@@ -27,6 +27,7 @@ import Data.Array.MArray
 import qualified Graphics.UI.Gtk.Board.TiledBoard as BIO
 import Data.Array.IO
 
+
 import Control.Monad
 import Data.Ratio
 
@@ -34,7 +35,7 @@ floatConv :: (ReactiveValueReadWrite a b m,
               Real c, Real b, Fractional c, Fractional b) =>
              a -> ReactiveFieldReadWrite m c
 floatConv = liftRW $ bijection (realToFrac, realToFrac)
-
+{-
 boardRVIO = newCBMVarRW $
     makeBoard [((0,0),  mkCell (ChDir True na1 NE)),
                ((1,1),  mkCellRpt (ChDir False na1 NW) 3),
@@ -68,9 +69,7 @@ na3 = NoteAttr {
 
 bpb :: Int
 bpb = 4
-
-newTempoRV :: IO (ReactiveFieldReadWrite IO Tempo)
-newTempoRV = newCBMVarRW 200
+-}
 
 main :: IO ()
 main = do
@@ -152,10 +151,10 @@ main = do
       layerRV =
         liftRW4 (bijection (f1,f2)) layTempoRV layPitchRV strengthRV bpbRV
 
-
   buttonBox <- hBoxNew True 10
   boxPackEnd settingsBox buttonBox PackNatural 0
   buttonPlay <- buttonNewFromStock gtkMediaPlay
+  let playRV = buttonActivateField buttonPlay
   boxPackStart buttonBox buttonPlay PackRepel 0
   buttonPause <- buttonNewFromStock gtkMediaPause
   boxPackStart buttonBox buttonPause PackRepel 0
@@ -179,21 +178,26 @@ main = do
   layer <- reactiveValueRead layerRV
   tempo <- reactiveValueRead tempoRV
   (boardRV, phRV) <- initBoardRV guiBoard
+  reactiveValueOnCanRead playRV
+    (reactiveValueRead boardRV >>= reactiveValueWrite phRV . startHeads)
   board <- reactiveValueRead boardRV
-  (inBoard, outBoard) <- yampaReactiveDual (board, layer, [], tempo) boardSF
-  (splitE >>> fst) `liftR` outBoard >:> phRV
+  ph <- reactiveValueRead phRV
+  (inBoard, outBoard) <- yampaReactiveDual (board, layer, ph, tempo) boardSF
+  (splitE >>> fst) <^> outBoard >:> phRV
+  --reactiveValueOnCanRead phRV $ boardRefresh guiBoard
   let inRV = liftR4 id
              boardRV layerRV phRV tempoRV
   clock <- mkClockRV 100
-  clock ^:> inRV
+  --let inRV = onTick clock inRV
   inRV =:> inBoard
-  --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print . ("Board out " ++) . show)
   reactiveValueOnCanRead outBoard $ do
     bq <- reactiveValueRead boardQueue
     ob <- reactiveValueRead $ liftR (event [] id <<< snd <<< splitE) outBoard
     reactiveValueWrite boardQueue (bq ++ ob)
   -- /!\ To be removed.
+  --reactiveValueOnCanRead inRV (reactiveValueRead inRV >>= print . \(_,_,ph,_) -> ph)
   --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print)
+  reactiveValueOnCanRead phRV (reactiveValueRead phRV >>= print)
   putStrLn "Board started."
   -- Jack setup
   forkIO $ jackSetup tempoRV (constR 0) boardQueue
