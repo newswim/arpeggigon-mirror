@@ -60,23 +60,43 @@ xMin, yMin :: Int
 
 boardToTile :: [(Int,Int,Tile)]
 boardToTile = [(x,y,Tile) | (x,y) <- range ( (xMin-1,yMin)
-                                           , (xMax+1,yMax+1))]
+                                           , (xMax+3,yMax+1))]
 
+defNa :: NoteAttr
+defNa = NoteAttr { naArt = NoAccent
+                 , naDur = 1 % 4
+                 , naOrn = noOrn
+                 }
 
+ctrlPieces :: [(Int,Int,Player,GUICell)]
+ctrlPieces = [(xMax+2,y,Player,GUICell { cellAction = action
+                                       , repeatCount = 1
+                                       , asPh = False
+                                       })
+             | let actions = [ Absorb, Stop defNa
+                             , ChDir False defNa N, ChDir True defNa N
+                             , Split defNa]
+                     -- /!\ It would be nice to find a general formula
+                     -- for placing the control pieces.
+                     , (y,action) <- zip [ yMin+4,yMin+8..] actions]
+
+ctrlCoord = map (\(x,y,_,_) -> (x,y)) ctrlPieces
 
 boardToPiece :: [PlayHead] -> Board -> [(Int,Int,Player,GUICell)]
-boardToPiece ph = map placePiece . filter (onBoard . fst) . assocs
+boardToPiece ph = (++ ctrlPieces) . map placePiece .
+                  filter (onBoard . fst) . assocs
   where placePiece :: (Pos,Cell) -> (Int,Int,Player,GUICell)
-        placePiece ((x,y),(a,n)) = let y' = 2*(-y) + x `mod` 2
-                                       c = GUICell { cellAction = a
+        placePiece ((x,y),(a,n)) = let c = GUICell { cellAction = a
                                                    , repeatCount = n
                                                    , asPh = (x,y) `elem` phPosS
                                                    }
-                                   in (x,y',Player,c)
+                                       (x',y') = toGUICoords (x,y)
+                                   in (x',y',Player,c)
         phPosS = map phPos ph
 
-validArea :: Board -> [(Int,Int)]
-validArea = map (\(x,y,_,_) -> (x,y)) . boardToPiece []
+validArea :: [(Int,Int)]
+validArea = filter (onBoard . fromGUICoords) $
+            map (\(x,y,_,_) -> (x,y)) $ boardToPiece [] $ makeBoard []
 
 na = NoteAttr {
           naArt = Accent13,
@@ -102,20 +122,26 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
   canMove (GUIBoard game) _ (x,y)
     | Just (_,p) <- getPieceAt game (x,y)
     , GUICell { cellAction = Inert } <- p = False
+    | Nothing <- getPieceAt game (x,y) = False
     | otherwise = True
   canMoveTo _ _ _ (x,y) = (x,y) `elem` validArea
-    where validArea = map (\(x',y',_,_) -> (x',y')) $ boardToPiece [] $
-                      makeBoard []
 
-  move (GUIBoard game) _ iPos@(_,yi) (xf,yf) = [ MovePiece iPos fPos'
-                                               , AddPiece iPos Player nCell]
+  move guiBoard@(GUIBoard game) p iPos@(_,yi) (xf,yf)
+    | not (canMove guiBoard p iPos) = []
+    | not (canMoveTo guiBoard p iPos fPos') = []
+    | iPos `elem` ctrlCoord = [ RemovePiece fPos'
+                              , AddPiece fPos' Player (nCell { cellAction = ctrlAction })
+                              ]
+    | otherwise = [ MovePiece iPos fPos'
+                  , AddPiece iPos Player nCell]
     where fPos'
             |    (xf `mod` 2 == 0 && yf `mod` 2 == 0)
               || (xf `mod` 2 /= 0 && yf `mod` 2 /= 0) = (xf,yf)
-            | otherwise = (xf,yf+signum' (yf-yi))
+            | otherwise = (xf,yf)-- (xf,yf+signum' (yf-yi))
           signum' x
             | x == 0 = 1
             | otherwise = signum x
+          ctrlAction = cellAction $ snd $ fromJust $ getPieceAt game iPos
           nCell
             | Just (_,GUICell { asPh = ph, repeatCount = n }) <-
                 getPieceAt game iPos = inertCell { repeatCount = n

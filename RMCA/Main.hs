@@ -77,7 +77,7 @@ main = do
   initGUI
   window <- windowNew
   -- Main box
-  mainBox <- hBoxNew True 0
+  mainBox <- hBoxNew False 10
   set window [ windowTitle := "Reactogon"
              --, windowDefaultWidth := 250
              --, windowDefaultHeight := 500
@@ -168,9 +168,9 @@ main = do
   boardCont <- backgroundContainerNew
   game <- initGame
   guiBoard <- attachGameRules game
-  --centerBoard <- alignmentNew 0.5 0.5 0 0
-  containerAdd boardCont guiBoard
-  --containerAdd boardCont centerBoard
+  centerBoard <- alignmentNew 0.5 0.5 0 0
+  containerAdd centerBoard guiBoard
+  containerAdd boardCont centerBoard
   boxPackStart mainBox boardCont PackNatural 0
   --boxPackStart mainBox boardCont PackNatural 0
   ------------------------------------------------------------------------------
