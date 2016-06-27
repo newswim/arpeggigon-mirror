@@ -184,11 +184,11 @@ initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
 
       setterP :: [PlayHead] -> IO ()
       setterP lph = do
-        let phPosS = map phPos lph
         readCBMVar phMVar >>= writeCBMVar oldphMVar
-        oph <- readCBMVar oldphMVar
         writeCBMVar phMVar lph
-        let offPh :: PlayHead -> IO ()
+        oph <- readCBMVar oldphMVar
+        let phPosS = map phPos lph
+            offPh :: PlayHead -> IO ()
             offPh ph = do
               let pos = toGUICoords $ phPos ph
               piece <- boardGetPiece pos board
@@ -203,9 +203,7 @@ initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
                 let (_,c) = fromJust piece
                 boardSetPiece pos (Player, c { asPh = True }) board
         mapM_ offPh oph
-        print oph
         mapM_ onPh lph
-        print lph
 
       notifierP :: IO () -> IO ()
       notifierP = installCallbackCBMVar phMVar

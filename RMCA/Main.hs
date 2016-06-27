@@ -159,6 +159,7 @@ main = do
   buttonPause <- buttonNewFromStock gtkMediaPause
   boxPackStart buttonBox buttonPause PackRepel 0
   buttonStop <- buttonNewFromStock gtkMediaStop
+  let stopRV = buttonActivateField buttonStop
   boxPackStart buttonBox buttonStop PackRepel 0
   buttonRecord <- buttonNewFromStock gtkMediaRecord
   boxPackStart buttonBox buttonRecord PackRepel 0
@@ -180,11 +181,10 @@ main = do
   (boardRV, phRV) <- initBoardRV guiBoard
   reactiveValueOnCanRead playRV
     (reactiveValueRead boardRV >>= reactiveValueWrite phRV . startHeads)
+  reactiveValueOnCanRead stopRV $ reactiveValueWrite phRV []
   board <- reactiveValueRead boardRV
   ph <- reactiveValueRead phRV
   (inBoard, outBoard) <- yampaReactiveDual (board, layer, ph, tempo) boardSF
-  (splitE >>> fst) <^> outBoard >:> phRV
-  --reactiveValueOnCanRead phRV $ boardRefresh guiBoard
   let inRV = liftR4 id
              boardRV layerRV phRV tempoRV
   clock <- mkClockRV 100
@@ -194,10 +194,10 @@ main = do
     bq <- reactiveValueRead boardQueue
     ob <- reactiveValueRead $ liftR (event [] id <<< snd <<< splitE) outBoard
     reactiveValueWrite boardQueue (bq ++ ob)
-  -- /!\ To be removed.
-  --reactiveValueOnCanRead inRV (reactiveValueRead inRV >>= print . \(_,_,ph,_) -> ph)
-  --reactiveValueOnCanRead outBoard (reactiveValueRead outBoard >>= print)
-  reactiveValueOnCanRead phRV (reactiveValueRead phRV >>= print)
+  -- This needs to be set last otherwise phRV is written to, so
+  -- inBoard is written to and the notes don't get played. There
+  -- supposedly is no guaranty of order but apparently there is…
+  (fst <$>) <^> outBoard >:> phRV
   putStrLn "Board started."
   -- Jack setup
   forkIO $ jackSetup tempoRV (constR 0) boardQueue

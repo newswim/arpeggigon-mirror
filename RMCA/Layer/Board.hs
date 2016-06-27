@@ -19,7 +19,8 @@ import Debug.Trace
 
 -- The state of the board is described by the list of the playheads
 -- and the different actions onto the board.
-boardAction :: SF ((Board, Layer, [PlayHead]), Event BeatNo) (Event ([PlayHead], [Note]))
+boardAction :: SF ((Board, Layer, [PlayHead]), Event BeatNo)
+               (Event ([PlayHead], [Note]))
 boardAction = proc ((board, Layer { relPitch    = rp
                                   , strength    = s
                                   , beatsPerBar = bpb
