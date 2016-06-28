@@ -138,7 +138,7 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
     where fPos'
             |    (xf `mod` 2 == 0 && yf `mod` 2 == 0)
               || (xf `mod` 2 /= 0 && yf `mod` 2 /= 0) = (xf,yf)
-            | otherwise = (xf,yf)-- (xf,yf+signum' (yf-yi))
+            | otherwise = (xf,yf+signum' (yf-yi))
           signum' x
             | x == 0 = 1
             | otherwise = signum x
@@ -194,7 +194,6 @@ initBoardRV :: BIO.Board Int Tile (Player,GUICell)
 initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
   -- RV creation
   phMVar <- newCBMVar []
-  oldphMVar <- newCBMVar []
   notBMVar <- mkClockRV 100
   let getterB :: IO Board
       getterB = do
@@ -214,9 +213,7 @@ initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
 
       setterP :: [PlayHead] -> IO ()
       setterP lph = do
-        readCBMVar phMVar >>= writeCBMVar oldphMVar
-        writeCBMVar phMVar lph
-        oph <- readCBMVar oldphMVar
+        oph <- readCBMVar phMVar
         let phPosS = map phPos lph
             offPh :: PlayHead -> IO ()
             offPh ph = do
@@ -224,7 +221,7 @@ initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
               piece <- boardGetPiece pos board
               when (isJust piece) $ do
                 let (_,c) = fromJust piece
-                boardSetPiece pos (Player, c { asPh = pos `elem` phPosS }) board
+                boardSetPiece pos (Player, c { asPh = False }) board
             onPh :: PlayHead -> IO ()
             onPh ph =  do
               let pos = toGUICoords $ phPos ph
@@ -232,8 +229,9 @@ initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
               when (isJust piece) $ do
                 let (_,c) = fromJust piece
                 boardSetPiece pos (Player, c { asPh = True }) board
-        mapM_ offPh oph
-        mapM_ onPh lph
+        postGUIAsync $ mapM_ offPh oph
+        postGUIAsync $ mapM_ onPh lph
+        writeCBMVar phMVar lph
 
       notifierP :: IO () -> IO ()
       notifierP = installCallbackCBMVar phMVar
@@ -247,17 +245,18 @@ clickHandling board = do
   state <- newEmptyMVar
   boardOnPress board
     (\iPos -> liftIO $ do
-        tryPutMVar state iPos
+        postGUIAsync $ void $ tryPutMVar state iPos
         return True
     )
   boardOnRelease board
     (\fPos -> liftIO $ do
-        mp <- boardGetPiece fPos board
-        mstate <- tryTakeMVar state
-        when (fPos `elem` validArea && isJust mp &&
-              maybe False (== fPos) mstate) $ do
-          boardSetPiece fPos (BF.second rotateGUICell $
-                              fromJust mp) board
+        postGUIAsync $ do
+          mp <- boardGetPiece fPos board
+          mstate <- tryTakeMVar state
+          when (fPos `elem` validArea && isJust mp &&
+                maybe False (== fPos) mstate) $ do
+            boardSetPiece fPos (BF.second rotateGUICell $
+                                fromJust mp) board
         return True
     )
 

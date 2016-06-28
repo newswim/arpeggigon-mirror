@@ -14,17 +14,17 @@ tempo = constant
 -- The initial value is arbitrary but never appears because the switch
 -- is immediate.
 metronome :: SF Tempo (Event Beat)
-metronome = switch (repeatedly (tempoToDTime 60) ()
+metronome = switch (repeatedly (tempoToQNoteIvl 120) ()
                     &&&
                     onChange') metronome'
   where metronome' :: Tempo -> SF Tempo (Event Beat)
-        metronome' t = switch (repeatedly (4 * tempoToDTime t) ()
+        metronome' t = switch (repeatedly (tempoToQNoteIvl t) ()
                                &&&
                                onChange) metronome'
 
--- Tempo is the number of whole notes per minute.
-tempoToDTime :: Tempo -> DTime
-tempoToDTime = (15/) . fromIntegral
+-- Tempo is the number of quarter notes per minute.
+tempoToQNoteIvl :: Tempo -> DTime
+tempoToQNoteIvl = (15/) . fromIntegral
 
 type TickingClock = (CBMVar (), ThreadId)
 

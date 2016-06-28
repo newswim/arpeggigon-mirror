@@ -29,7 +29,7 @@ noteToMessages layTempo sr chan =
                  , noteDur = d
                  }) -> do
     nm <- noteOnToMessage chan -< n
-    let dt = fromRational (d * toRational (tempoToDTime layTempo))
+    let dt = fromRational (d * toRational (tempoToQNoteIvl layTempo))
         dn = floor $ dt * fromIntegral sr
     returnA -< [(t,nm),(t + dn,switchOnOff nm)]
 

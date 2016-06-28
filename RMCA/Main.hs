@@ -1,35 +1,35 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables #-}
 
 module Main where
 
-import Control.Concurrent
-import Data.ReactiveValue
-import FRP.Yampa
-import Graphics.UI.Gtk
-import Graphics.UI.Gtk.Reactive
-import Hails.Yampa
-import RMCA.Auxiliary.Concurrent
-import RMCA.Auxiliary.RV
-import RMCA.Global.Clock
-import RMCA.GUI.Buttons
-import RMCA.Layer.Board
-import RMCA.Layer.Layer
-import RMCA.Semantics
-import RMCA.Translator.Jack
-import RMCA.Translator.Message
-import RMCA.Translator.Translator
-import Graphics.UI.Gtk.Layout.BackgroundContainer
-import RMCA.GUI.Board
-import Graphics.UI.Gtk.Board.BoardLink
+import           Control.Concurrent
+import           Data.Array.IO
+import           Data.Array.MArray
+import           Data.ReactiveValue
+import           FRP.Yampa
 import           Game.Board.BasicTurnGame
-import Graphics.UI.Gtk.Board.TiledBoard
-import Data.Array.MArray
-import qualified Graphics.UI.Gtk.Board.TiledBoard as BIO
-import Data.Array.IO
+import           Graphics.UI.Gtk
+import           Graphics.UI.Gtk.Board.BoardLink
+import           Graphics.UI.Gtk.Board.TiledBoard
+import qualified Graphics.UI.Gtk.Board.TiledBoard           as BIO
+import           Graphics.UI.Gtk.Layout.BackgroundContainer
+import           Graphics.UI.Gtk.Reactive
+import           Hails.Yampa
+import           RMCA.Auxiliary.Concurrent
+import           RMCA.Auxiliary.RV
+import           RMCA.Global.Clock
+import           RMCA.GUI.Board
+import           RMCA.GUI.Buttons
+import           RMCA.Layer.Board
+import           RMCA.Layer.Layer
+import           RMCA.Semantics
+import           RMCA.Translator.Jack
+import           RMCA.Translator.Message
+import           RMCA.Translator.Translator
 
 
-import Control.Monad
-import Data.Ratio
+import           Control.Monad
+import           Data.Ratio
 
 floatConv :: (ReactiveValueReadWrite a b m,
               Real c, Real b, Fractional c, Fractional b) =>
