@@ -136,11 +136,12 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
                          || outGUIBoard fPos
 
   move guiBoard@(GUIBoard game) p iPos@(_,yi) fPos@(xf,yf)
+    | outGUIBoard iPos && outGUIBoard fPos = []
+    | outGUIBoard fPos = [ RemovePiece iPos
+                         , AddPiece iPos Player nCell ]
     | iPos `elem` ctrlCoords = [ RemovePiece fPos'
                                , AddPiece fPos' Player
                                  (nCell { cellAction = ctrlAction }) ]
-    | outGUIBoard fPos = [ RemovePiece iPos
-                         , AddPiece iPos Player nCell ]
     | otherwise = [ MovePiece iPos fPos'
                   , AddPiece iPos Player nCell ]
     where fPos'
