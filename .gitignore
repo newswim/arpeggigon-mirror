@@ -24,3 +24,5 @@ QUESTIONS.md
 html/
 /GUI/
 /img/Shapes.hs
+/dist
+*.save*

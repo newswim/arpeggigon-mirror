@@ -20,6 +20,7 @@ import           Graphics.UI.Gtk                  hiding (Action)
 import           Graphics.UI.Gtk.Board.BoardLink
 import           Graphics.UI.Gtk.Board.TiledBoard hiding (Board)
 import qualified Graphics.UI.Gtk.Board.TiledBoard as BIO
+import           Paths_RMCA
 import           RMCA.Global.Clock
 import           RMCA.Semantics
 
@@ -276,10 +277,12 @@ clickHandling board = do
 
 
 fileToPixbuf :: IO [(FilePath,Pixbuf)]
-fileToPixbuf = mapM (\f -> let f' = "img/" ++ f in uncurry (liftM2 (,))
-                      ( return f'
-                      , pixbufNewFromFile f' >>=
-                        \p -> pixbufScaleSimple p hexW hexW InterpBilinear ))
+fileToPixbuf = mapM (\f -> let f' = ("img/" ++ f) in
+                        uncurry (liftM2 (,))
+                        ( return f'
+                        , getDataFileName f' >>=
+                          \f'' -> pixbufNewFromFile f'' >>=
+                          \p -> pixbufScaleSimple p hexW hexW InterpBilinear))
                (["hexOn.png","hexOff.png","stop.svg","split.svg","absorb.svg"] ++
                 concat [["start" ++ show d ++ ".svg","ric" ++ show d ++ ".svg"]
                        | d <- [N .. NW]])
@@ -288,11 +291,10 @@ actionToFile :: GUICell -> FilePath
 actionToFile GUICell { cellAction = a
                      , asPh = ph
                      } =
-  case (a,ph) of
-    (Inert,True) -> "img/hexOn.png"
-    (Inert,False) -> "img/hexOff.png"
-    (Absorb,_) -> "img/absorb.svg"
-    (Stop _,_) -> "img/stop.svg"
-    (ChDir True _ d,_) -> "img/start" ++ show d ++ ".svg"
-    (ChDir False _ d,_) -> "img/ric" ++ show d ++ ".svg"
-    (Split _,_) -> "img/split.svg"
+  case a of
+    Inert           -> "img/hexO" ++ (if ph then "n" else "ff") ++ ".png"
+    Absorb          -> "img/absorb.svg"
+    Stop _          -> "img/stop.svg"
+    ChDir True _ d  -> "img/start" ++ show d ++ ".svg"
+    ChDir False _ d -> "img/ric" ++ show d ++ ".svg"
+    Split _         -> "img/split.svg"
