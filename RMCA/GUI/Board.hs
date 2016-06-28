@@ -86,7 +86,8 @@ ctrlPieces = [(xMax+2,y,Player,GUICell { cellAction = action
                      -- for placing the control pieces.
                      , (y,action) <- zip [ yMin+4,yMin+8..] actions]
 
-ctrlCoord = map (\(x,y,_,_) -> (x,y)) ctrlPieces
+ctrlCoords :: [(Int,Int)]
+ctrlCoords = map (\(x,y,_,_) -> (x,y)) ctrlPieces
 
 boardToPiece :: [PlayHead] -> Board -> [(Int,Int,Player,GUICell)]
 boardToPiece ph = (++ ctrlPieces) . map placePiece .
@@ -103,6 +104,9 @@ boardToPiece ph = (++ ctrlPieces) . map placePiece .
 validArea :: [(Int,Int)]
 validArea = filter (onBoard . fromGUICoords) $
             map (\(x,y,_,_) -> (x,y)) $ boardToPiece [] $ makeBoard []
+
+outGUIBoard :: (Int,Int) -> Bool
+outGUIBoard (xf,yf) = xf < xMin || xf > xMax || yf < yMin || yf > yMax
 
 na = NoteAttr {
           naArt = Accent13,
@@ -127,14 +131,17 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
     , GUICell { cellAction = Inert } <- p = False
     | Nothing <- getPieceAt game (x,y) = False
     | otherwise = True
-  canMoveTo _ _ _ (x,y) = (x,y) `elem` validArea
+  canMoveTo _ _ _ fPos = fPos `elem` validArea
+                         || outGUIBoard fPos
 
-  move guiBoard@(GUIBoard game) p iPos@(_,yi) (xf,yf)
-    | iPos `elem` ctrlCoord = [ RemovePiece fPos'
-                              , AddPiece fPos' Player (nCell { cellAction = ctrlAction })
-                              ]
+  move guiBoard@(GUIBoard game) p iPos@(_,yi) fPos@(xf,yf)
+    | iPos `elem` ctrlCoords = [ RemovePiece fPos'
+                               , AddPiece fPos' Player
+                                 (nCell { cellAction = ctrlAction }) ]
+    | outGUIBoard fPos = [ RemovePiece iPos
+                         , AddPiece iPos Player nCell ]
     | otherwise = [ MovePiece iPos fPos'
-                  , AddPiece iPos Player nCell]
+                  , AddPiece iPos Player nCell ]
     where fPos'
             |    (xf `mod` 2 == 0 && yf `mod` 2 == 0)
               || (xf `mod` 2 /= 0 && yf `mod` 2 /= 0) = (xf,yf)
