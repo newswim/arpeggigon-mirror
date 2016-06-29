@@ -2,18 +2,21 @@
 
 module RMCA.GUI.Settings where
 
-import Control.Monad
-import Data.Array
-import Data.Maybe
-import Data.ReactiveValue
-import Data.String
-import Data.Tuple
-import Graphics.UI.Gtk
-import Graphics.UI.Gtk.Board.TiledBoard hiding (Board)
-import Graphics.UI.Gtk.Reactive
-import RMCA.Auxiliary.RV
-import RMCA.GUI.Board
-import RMCA.Semantics
+import           Control.Concurrent.MVar
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Data.Array
+import qualified Data.Bifunctor                   as BF
+import           Data.Maybe
+import           Data.ReactiveValue
+import           Data.String
+import           Data.Tuple
+import           Graphics.UI.Gtk
+import           Graphics.UI.Gtk.Board.TiledBoard hiding (Board)
+import           Graphics.UI.Gtk.Reactive
+import           RMCA.Auxiliary.RV
+import           RMCA.GUI.Board
+import           RMCA.Semantics
 
 comboBoxIndexRV :: (ComboBoxClass box) =>
                    box -> ReactiveFieldReadWrite IO Int
@@ -22,12 +25,11 @@ comboBoxIndexRV box = ReactiveFieldReadWrite setter getter notifier
         setter = comboBoxSetActive box
         notifier = void . on box changed
 
-pieceButtons :: Array Pos (ReactiveFieldWrite IO GUICell)
-             -> IOBoard
-             -> VBox
-             -> IO VBox
-pieceButtons rvArray board pieceBox = do
+clickHandling :: Array Pos (ReactiveFieldWrite IO GUICell)
+              -> IOBoard -> VBox -> IO VBox
+clickHandling pieceArrRV board pieceBox = do
   naBox <- vBoxNew False 10
+  boxPackStart pieceBox naBox PackNatural 10
 
   -- Articulation box
   artCombo <- comboBoxNewText
@@ -53,27 +55,42 @@ pieceButtons rvArray board pieceBox = do
       slideComboRV = liftRW (bijection (indexToSlide,slideToIndex)) $
                      comboBoxIndexRV slideCombo
 
-  let displayPieceInfo :: (Int,Int) -> IO ()
-      displayPieceInfo i = do
-        print i
-        when (i `elem` validArea) $ do
-          let pieceRV = rvArray ! i
-          piece <- boardGetPiece i board
-          when (isJust piece) $ do
-            setRV <- newCBMVarRW $ snd $ fromJust piece
-            setRV =:> pieceRV
-            reactiveValueOnCanRead setRV $ updateNaBox $ snd $ fromJust piece
-      hideNa :: IO ()
-      hideNa = widgetHide slideCombo >> widgetHide artCombo
-      showNa :: IO ()
-      showNa = widgetShow slideCombo >> widgetShow artCombo
-      updateNaBox :: GUICell -> IO ()
-      updateNaBox GUICell { cellAction = act } = case act of
-        Inert -> hideNa
-        Absorb -> hideNa
-        _ -> showNa
 
-  boardOnClick board displayPieceInfo
-  boxPackStart pieceBox naBox PackNatural 10
-  print "Coucou !"
+  state <- newEmptyMVar
+  boardOnPress board
+    (\iPos -> liftIO $ do
+        postGUIAsync $ void $ tryPutMVar state iPos
+        return True
+    )
+  boardOnRelease board
+    (\fPos -> liftIO $ do
+        postGUIAsync $ do
+          mp <- boardGetPiece fPos board
+          mstate <- tryTakeMVar state
+          when (fPos `elem` validArea && isJust mp) $ do
+            when (maybe False (== fPos) mstate) $
+              boardSetPiece fPos (BF.second rotateGUICell $
+                                  fromJust mp) board
+            let hideNa :: IO ()
+                hideNa = widgetHide slideCombo >> widgetHide artCombo
+                showNa :: IO ()
+                showNa = widgetShow slideCombo >> widgetShow artCombo
+                updateNaBox :: GUICell -> IO ()
+                updateNaBox GUICell { cellAction = act } = case act of
+                  Inert -> hideNa
+                  Absorb -> hideNa
+                  _ -> print "Show!" >> showNa
+                pieceRV = pieceArrRV ! fPos
+                piece = snd $ fromJust mp
+            updateNaBox piece
+            setRV <- newCBMVarRW $ piece
+            reactiveValueOnCanRead slideComboRV $ do
+              nSlide <- reactiveValueWrite slideComboRV
+              oCell <- reactiveValueRead setRV
+              reactiveValueWrite setRV (setSlide oCell nSlide)
+            setRV =:> pieceRV
+            reactiveValueOnCanRead setRV $ updateNaBox $ piece
+        return True
+    )
+  widgetShow pieceBox >> widgetShow naBox
   return pieceBox

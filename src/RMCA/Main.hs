@@ -181,7 +181,6 @@ main = do
   layer <- reactiveValueRead layerRV
   tempo <- reactiveValueRead tempoRV
   (boardRV, pieceArrRV, phRV) <- initBoardRV guiBoard
-  clickHandling guiBoard
   reactiveValueOnCanRead playRV
     (reactiveValueRead boardRV >>= reactiveValueWrite phRV . startHeads)
   reactiveValueOnCanRead stopRV $ reactiveValueWrite phRV []
@@ -205,6 +204,7 @@ main = do
   -- Jack setup
   forkIO $ jackSetup tempoRV (constR 0) boardQueue
   widgetShowAll window
+  pieceBox <- clickHandling pieceArrRV guiBoard =<< vBoxNew False 10
   -- Piece characteristic
   --pieceBox <- pieceButtons pieceArrRV guiBoard =<< vBoxNew False 10
   ------------------------------------------------------------

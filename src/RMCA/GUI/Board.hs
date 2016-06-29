@@ -14,6 +14,8 @@ import           Data.CBMVar
 import           Data.Maybe
 import           Data.Ratio
 import           Data.ReactiveValue
+import           Data.String
+import           Data.Tuple
 import           Debug.Trace
 import           Game.Board.BasicTurnGame
 import           Graphics.UI.Gtk                  hiding (Action)
@@ -263,26 +265,6 @@ initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard gArray) } = do
              | i <- (validArea :: [(Int,Int)])]
 
   return (b,arrW,ph)
-
-clickHandling :: BIO.Board Int Tile (Player,GUICell) -> IO ()
-clickHandling board = do
-  state <- newEmptyMVar
-  boardOnPress board
-    (\iPos -> liftIO $ do
-        postGUIAsync $ void $ tryPutMVar state iPos
-        return True
-    )
-  boardOnRelease board
-    (\fPos -> liftIO $ do
-        postGUIAsync $ do
-          mp <- boardGetPiece fPos board
-          mstate <- tryTakeMVar state
-          when (fPos `elem` validArea && isJust mp &&
-                maybe False (== fPos) mstate) $ do
-            boardSetPiece fPos (BF.second rotateGUICell $
-                                fromJust mp) board
-        return True
-    )
 
     {-
   boardOnPress board
