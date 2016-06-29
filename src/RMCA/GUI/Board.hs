@@ -35,6 +35,8 @@ rotateGUICell g = g { cellAction = rotateAction $ cellAction g }
 
 newtype GUIBoard = GUIBoard { toGS :: GameState Int Tile Player GUICell }
 
+type IOBoard = BIO.Board Int Tile (Player,GUICell)
+
 data Tile = Tile
 data Player = Player deriving(Show)
 
@@ -115,6 +117,12 @@ na = NoteAttr {
           naOrn = Ornaments Nothing [] NoSlide
       }
 
+inertCell :: GUICell
+inertCell = GUICell { cellAction = Inert
+                    , repeatCount = 1
+                    , asPh = False
+                    }
+
 initGUIBoard :: GUIBoard
 initGUIBoard = GUIBoard GameState
   { curPlayer'   = Player
@@ -158,9 +166,6 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
                                                  , asPh = ph
                                                  }
             | otherwise = inertCell
-            where inertCell = GUICell { cellAction = Inert
-                                      , repeatCount = 1
-                                      , asPh = False}
 
   applyChange (GUIBoard game) (AddPiece pos@(x,y) Player piece) =
     GUIBoard $ game { boardPieces' = bp' }
@@ -199,14 +204,15 @@ initGame = do
 -- for the playheads. Also installs some handlers for pieces modification.
 initBoardRV :: BIO.Board Int Tile (Player,GUICell)
             -> IO ( ReactiveFieldRead IO Board
+                  , Array Pos (ReactiveFieldWrite IO GUICell)
                   , ReactiveFieldReadWrite IO [PlayHead])
-initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
+initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard gArray) } = do
   -- RV creation
   phMVar <- newCBMVar []
   notBMVar <- mkClockRV 100
   let getterB :: IO Board
       getterB = do
-        (boardArray :: [((Int,Int),Maybe (Player,GUICell))]) <- getAssocs array
+        (boardArray :: [((Int,Int),Maybe (Player,GUICell))]) <- getAssocs gArray
         let board = makeBoard $
               map (BF.first fromGUICoords .
                    BF.second ((\(_,c) -> (cellAction c,repeatCount c)) .
@@ -247,7 +253,16 @@ initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard array) } = do
 
       b = ReactiveFieldRead getterB notifierB
       ph = ReactiveFieldReadWrite setterP getterP notifierP
-  return (b,ph)
+
+      setterW :: (Int,Int) -> GUICell -> IO ()
+      setterW i g = postGUIAsync $ boardSetPiece i (Player,g) board
+
+      arrW :: Array Pos (ReactiveFieldWrite IO GUICell)
+      arrW = array (minimum validArea, maximum validArea)
+             [(i, ReactiveFieldWrite (setterW i))
+             | i <- (validArea :: [(Int,Int)])]
+
+  return (b,arrW,ph)
 
 clickHandling :: BIO.Board Int Tile (Player,GUICell) -> IO ()
 clickHandling board = do

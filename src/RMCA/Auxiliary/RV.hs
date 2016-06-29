@@ -35,6 +35,13 @@ onTick notif rv = ReactiveFieldRead getter notifier
         notifier cb = do
           reactiveValueOnCanRead notif cb
           reactiveValueOnCanRead rv cb
+
+addHandlerR :: (ReactiveValueRead a b m) =>
+                  a
+               -> (m () -> m())
+               -> ReactiveFieldRead m b
+addHandlerR x h = ReactiveFieldRead (reactiveValueRead x)
+                  (\p -> reactiveValueOnCanRead x p >> h p)
 {-
 notif ^:> rv =
   reactiveValueOnCanRead notif (reactiveValueOnCanRead rv (return ()))

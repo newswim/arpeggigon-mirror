@@ -186,7 +186,7 @@ data Articulation = NoAccent
                   | Accent13
                   | Accent14
                   | Accent24
-                  deriving (Eq, Show)
+                  deriving (Eq, Show, Enum)
 
 accentStrength = 1.2
 
@@ -239,7 +239,7 @@ data Ornaments = Ornaments {
     ornSlide :: SlideType
 } deriving Show
 
-data SlideType = NoSlide | SlideUp | SlideDn deriving (Eq, Show)
+data SlideType = NoSlide | SlideUp | SlideDn deriving (Eq, Show, Enum)
 
 noOrn :: Ornaments
 noOrn = Ornaments { ornPC = Nothing
@@ -332,7 +332,7 @@ data Action = Inert                   -- No action, play heads move through.
             | Stop  NoteAttr          -- Play note then remove play head.
             | ChDir Bool NoteAttr Dir -- Play note then change direction.
             | Split NoteAttr          -- Play note then split head into five.
-            deriving Show
+            deriving (Show)
 
 
 -- Cells
