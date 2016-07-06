@@ -44,8 +44,6 @@ executable RMCA
                      , event-list >=0.1 && <0.2
                      , keera-callbacks >=0.1 && <0.2
                      , glib >=0.13 && <0.14
-                     , directory >=1.2 && <1.3
-                     , process >=1.4 && <1.5
   hs-source-dirs:      src
   build-tools:         hsc2hs
   default-language:    Haskell2010
