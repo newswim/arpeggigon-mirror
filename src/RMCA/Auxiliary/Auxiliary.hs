@@ -34,6 +34,7 @@ onChange' = proc x -> do
   x' <- stepBack -< x
   returnA -< makeEvent x x'
 
+makeEvent :: (Eq a) => a -> Maybe a -> Event a
 makeEvent x x'
   | isNothing x' = Event x
   | otherwise = let x'' = fromJust x' in

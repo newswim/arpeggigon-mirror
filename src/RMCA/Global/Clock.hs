@@ -37,7 +37,7 @@ mkClockGeneric io d = do
     modifyCBMVar n return
     io
   return (n, tid)
-  where dInt = floor $ d * (10^3)
+  where dInt = floor $ d * 1000
 
 -- Ticking clock in the IO monad, sending callbacks every t milliseconds.
 mkClock :: DTime -> IO TickingClock

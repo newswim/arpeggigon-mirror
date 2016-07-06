@@ -27,7 +27,9 @@ noteToMessages :: LTempo
 noteToMessages layTempo sr chan =
   proc (t,n@Note { noteDur = d }) -> do
     nm <- noteOnToMessage chan -< n
-    let dt = fromRational (d * toRational (tempoToQNoteIvl layTempo))
+    let dt :: Double
+        dt = fromRational (d * toRational (tempoToQNoteIvl layTempo))
+        dn :: Int
         dn = floor $ dt * fromIntegral sr
     returnA -< [(t,nm),(t + dn,switchOnOff nm)]
 

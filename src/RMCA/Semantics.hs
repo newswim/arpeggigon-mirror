@@ -118,7 +118,9 @@ type MIDINN = Int
 
 
 -- Assume MIDI convetion: 60 = "Middle C" = C4
+middleC :: Int
 middleC    = 60
+middleCOct :: MIDINN
 middleCOct = 4
 
 
@@ -187,6 +189,7 @@ data Articulation = NoAccent
                   | Accent24
                   deriving (Eq, Show, Enum)
 
+accentStrength :: Strength
 accentStrength = 1.2
 
 -- Articulated strength
@@ -564,12 +567,12 @@ runRMCA bd bpb mri tr st
 
 ppNotes :: BeatsPerBar -> [[Note]] -> IO ()
 ppNotes bpb nss = ppnAux (zip [(br,bn) | br <- [1..], bn <- [1..bpb]] nss)
-    where
-        ppnAux [] = return ()
-        ppnAux ((_, []) : tnss) = ppnAux tnss
-        ppnAux ((t, ns) : tnss) = do
+    where ppnAux :: [((Int,BeatsPerBar),[Note])] -> IO ()
+          ppnAux [] = return ()
+          ppnAux ((_, []) : tnss) = ppnAux tnss
+          ppnAux ((t, ns) : tnss) = do
             putStrLn (leftJustify 10 (show t) ++ ": "
-                       ++ intercalate ", " (map show ns))
+                      ++ intercalate ", " (map show ns))
             ppnAux tnss
 
 

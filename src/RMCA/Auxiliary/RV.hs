@@ -100,8 +100,7 @@ liftW3 f a b c = ReactiveFieldWrite setter
           reactiveValueWrite b x2
           reactiveValueWrite c x3
 
-liftRW3 :: ( Monad m
-           , ReactiveValueReadWrite a b m
+liftRW3 :: ( ReactiveValueReadWrite a b m
            , ReactiveValueReadWrite c d m
            , ReactiveValueReadWrite e f m) =>
            BijectiveFunc i (b,d,f)
@@ -115,8 +114,7 @@ liftRW3 bij a b c =
         ReactiveFieldWrite setter = liftW3 f1 a b c
         (f1, f2) = (direct bij, inverse bij)
 
-liftR4 :: ( Monad m
-          , ReactiveValueRead a b m
+liftR4 :: ( ReactiveValueRead a b m
           , ReactiveValueRead c d m
           , ReactiveValueRead e f m
           , ReactiveValueRead g h m) =>
@@ -158,8 +156,7 @@ liftW4 f a b c d = ReactiveFieldWrite setter
           reactiveValueWrite c x3
           reactiveValueWrite d x4
 
-liftRW4 :: ( Monad m
-           , ReactiveValueReadWrite a b m
+liftRW4 :: ( ReactiveValueReadWrite a b m
            , ReactiveValueReadWrite c d m
            , ReactiveValueReadWrite e f m
            , ReactiveValueReadWrite g h m) =>

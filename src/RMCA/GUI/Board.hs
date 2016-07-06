@@ -26,6 +26,7 @@ data GUICell = GUICell { cellAction  :: Action
                        , asPh        :: Bool
                        } deriving(Show)
 
+rotateGUICell :: GUICell -> GUICell
 rotateGUICell g = g { cellAction = rotateAction $ cellAction g }
   where rotateAction (ChDir b na d) = ChDir b na (nextDir d)
         rotateAction x = x
@@ -51,13 +52,19 @@ tileW :: Int
 tileW = 40
 
 tileH :: Int
-tileH = round (sqrt 3 * fromIntegral tileW / 3)
+tileH = round d
+  where d :: Double
+        d = sqrt 3 * fromIntegral tileW / 3
 
 hexW :: Int
-hexW = round (4 * fromIntegral tileW / 3)
+hexW = round d
+  where d :: Double
+        d = 4 * fromIntegral tileW / 3
 
 hexH :: Int
-hexH = round (sqrt 3 * fromIntegral hexW / 2)
+hexH = round d
+  where d :: Double
+        d = sqrt 3 * fromIntegral hexW / 2
 
 xMax, yMax :: Int
 (xMax,yMax) = BF.second (*2) $ neighbor N nec
@@ -107,12 +114,6 @@ validArea = filter (onBoard . fromGUICoords) $
 
 outGUIBoard :: (Int,Int) -> Bool
 outGUIBoard (xf,yf) = xf < xMin || xf > xMax || yf < yMin || yf > yMax
-
-na = NoteAttr {
-          naArt = Accent13,
-          naDur = 1 % 1,
-          naOrn = Ornaments Nothing [] NoSlide
-      }
 
 inertCell :: GUICell
 inertCell = GUICell { cellAction = Inert
