@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, TupleSections #-}
 
 module RMCA.GUI.Settings where
 
@@ -11,12 +11,25 @@ import           Data.Maybe
 import           Data.ReactiveValue
 import           Data.String
 import           Data.Tuple
-import           Graphics.UI.Gtk
+import           Graphics.UI.Gtk                  hiding (Action)
 import           Graphics.UI.Gtk.Board.TiledBoard hiding (Board)
-import           Graphics.UI.Gtk.Reactive
 import           RMCA.Auxiliary.RV
 import           RMCA.GUI.Board
 import           RMCA.Semantics
+
+setNAttr :: NoteAttr -> Action -> Action
+setNAttr _ Inert = Inert
+setNAttr _ Absorb = Absorb
+setNAttr na (Stop _) = Stop na
+setNAttr na (ChDir b _ dir) = ChDir b na dir
+setNAttr na (Split _) = Split na
+
+getNAttr :: Action -> Maybe NoteAttr
+getNAttr Inert = Nothing
+getNAttr Absorb = Nothing
+getNAttr (Stop na) = Just na
+getNAttr (ChDir _ na _) = Just na
+getNAttr (Split na) = Just na
 
 comboBoxIndexRV :: (ComboBoxClass box) =>
                    box -> ReactiveFieldReadWrite IO Int
@@ -57,6 +70,46 @@ clickHandling pieceArrRV board pieceBox = do
 
 
   state <- newEmptyMVar
+
+  -- Side RV
+  setRV <- newCBMVarRW ((0,0),inertCell)
+
+  reactiveValueOnCanRead slideComboRV $ do
+    nSlide <- reactiveValueRead slideComboRV
+    (i,oCell) <- reactiveValueRead setRV
+    let nCa :: Maybe NoteAttr
+        nCa = (\na -> na { naOrn = (naOrn na) { ornSlide = nSlide } }) <$>
+              (getNAttr $ cellAction oCell)
+        nCell :: GUICell
+        nCell = if (isJust nCa)
+                then oCell { cellAction =
+                             setNAttr (fromJust nCa) (cellAction oCell)
+                           }
+                else oCell
+    reactiveValueWrite setRV (i,nCell)
+
+  reactiveValueOnCanRead artComboRV $ do
+    nArt <- reactiveValueRead artComboRV
+    (i,oCell) <- reactiveValueRead setRV
+    let nCa :: Maybe NoteAttr
+        nCa = getNAttr $ cellAction oCell
+        nCell :: GUICell
+        nCell = if (isJust nCa)
+                then oCell { cellAction =
+                             setNAttr (fromJust nCa) (cellAction oCell) }
+                else oCell
+    reactiveValueWrite setRV (i,nCell)
+
+  let hideNa :: IO ()
+      hideNa = widgetHide slideCombo >> widgetHide artCombo
+      showNa :: IO ()
+      showNa = widgetShow slideCombo >> widgetShow artCombo
+      updateNaBox :: GUICell -> IO ()
+      updateNaBox GUICell { cellAction = act } = case act of
+        Inert -> hideNa
+        Absorb -> hideNa
+        _ -> showNa
+
   boardOnPress board
     (\iPos -> liftIO $ do
         postGUIAsync $ void $ tryPutMVar state iPos
@@ -68,29 +121,17 @@ clickHandling pieceArrRV board pieceBox = do
           mp <- boardGetPiece fPos board
           mstate <- tryTakeMVar state
           when (fPos `elem` validArea && isJust mp) $ do
-            when (maybe False (== fPos) mstate) $
-              boardSetPiece fPos (BF.second rotateGUICell $
-                                  fromJust mp) board
-            let hideNa :: IO ()
-                hideNa = widgetHide slideCombo >> widgetHide artCombo
-                showNa :: IO ()
-                showNa = widgetShow slideCombo >> widgetShow artCombo
-                updateNaBox :: GUICell -> IO ()
-                updateNaBox GUICell { cellAction = act } = case act of
-                  Inert -> hideNa
-                  Absorb -> hideNa
-                  _ -> print "Show!" >> showNa
-                pieceRV = pieceArrRV ! fPos
-                piece = snd $ fromJust mp
-            updateNaBox piece
-            setRV <- newCBMVarRW $ piece
-            reactiveValueOnCanRead slideComboRV $ do
-              nSlide <- reactiveValueWrite slideComboRV
-              oCell <- reactiveValueRead setRV
-              reactiveValueWrite setRV (setSlide oCell nSlide)
-            setRV =:> pieceRV
-            reactiveValueOnCanRead setRV $ updateNaBox $ piece
+            let piece = snd $ fromJust mp
+            when (maybe False (== fPos) mstate) $ do
+              boardSetPiece fPos (BF.second rotateGUICell (Player,piece)) board
+            nmp <- boardGetPiece fPos board
+            when (isJust nmp) $ reactiveValueWrite setRV $ (fPos,snd $ fromJust nmp)
         return True
     )
+
+  reactiveValueOnCanRead setRV $ do
+    (i,c) <- reactiveValueRead setRV
+    reactiveValueWrite (pieceArrRV ! i) c
+    updateNaBox c
   widgetShow pieceBox >> widgetShow naBox
   return pieceBox

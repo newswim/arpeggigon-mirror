@@ -10,7 +10,7 @@ import FRP.Yampa
 stepBack :: SF a (Maybe a)
 stepBack = sscan f (Nothing, Nothing) >>^ snd
   where f :: (Maybe a, Maybe a) -> a -> (Maybe a, Maybe a)
-        f (Nothing,Nothing) x' = (Just x', Nothing)
+        f (Nothing,_) x' = (Just x', Nothing)
         f (Just x, _) x' = (Just x', Just x)
 
 -- Just like stepBack but the output value is always defined and is
@@ -25,10 +25,6 @@ stepBack' = proc x -> do
 onChange :: (Eq a) => SF a (Event a)
 onChange = proc x -> do
   x' <- stepBack -< x
-  let makeEvent x x'
-        | isNothing x' = NoEvent
-        | isJust x' = let x'' = fromJust x' in
-            if x'' == x then NoEvent else Event x
   returnA -< makeEvent x x'
 
 -- Similar to onChange but contains its initial value in the first
@@ -36,12 +32,12 @@ onChange = proc x -> do
 onChange' :: (Eq a) => SF a (Event a)
 onChange' = proc x -> do
   x' <- stepBack -< x
-  -- If it's the first value, throw an Event, else behave like onChange.
-  let makeEvent x x'
-        | isNothing x' = Event x
-        | isJust x' = let x'' = fromJust x' in
-            if x'' == x then NoEvent else Event x
   returnA -< makeEvent x x'
+
+makeEvent x x'
+  | isNothing x' = Event x
+  | otherwise = let x'' = fromJust x' in
+                  if x'' == x then NoEvent else Event x
 
 discard :: a -> ()
 discard _ = ()

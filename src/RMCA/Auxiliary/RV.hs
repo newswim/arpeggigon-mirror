@@ -8,6 +8,15 @@ import FRP.Yampa
 import Control.Monad
 import RMCA.Auxiliary.Curry
 
+leftSyncWith :: (ReactiveValueRead a b m, ReactiveValueWrite c d m) =>
+                (b -> d) -> a -> c -> m ()
+leftSyncWith f a c = reactiveValueOnCanRead a
+  (reactiveValueRead a >>= reactiveValueWrite c . f)
+
+(=:$:>) :: (ReactiveValueRead a b m, ReactiveValueWrite c d m) =>
+           (b -> d) -> a -> c -> m ()
+(=:$:>) = leftSyncWith
+
 newCBMVarRW :: forall a. a -> IO (ReactiveFieldReadWrite IO a)
 newCBMVarRW val = do
   mvar <- newCBMVar val

@@ -10,7 +10,6 @@ import qualified Control.Monad.Exception.Synchronous as Sync
 import qualified Control.Monad.Trans.Class           as Trans
 import qualified Data.Bifunctor                      as BF
 import           Data.CBMVar
-import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
 import           Hails.Yampa
@@ -21,10 +20,7 @@ import           RMCA.Translator.Message
 import           RMCA.Translator.RV
 import           RMCA.Translator.Translator
 import qualified Sound.JACK                          as Jack
-import qualified Sound.JACK.Exception                as JExc
 import qualified Sound.JACK.MIDI                     as JMIDI
-
-import           Debug.Trace
 
 rmcaName :: String
 rmcaName = "RMCA"
@@ -95,7 +91,7 @@ jackCallBack client input output toProcessRV tempoRV chanRV outBoard
   -- This gets the sample rate of the client and the last frame number
   -- it processed. We then use it to calculate the current absolute time
   sr <- Trans.lift $ Jack.getSampleRate client
-  (Jack.NFrames lframeInt) <- Trans.lift $ Jack.lastFrameTime client
+  --(Jack.NFrames lframeInt) <- Trans.lift $ Jack.lastFrameTime client
   --Trans.lift (reactiveValueRead inMIDIRV >>= (print . map (fst)))
   -- We write the content of the input buffer to the input of a
   -- translation signal function.

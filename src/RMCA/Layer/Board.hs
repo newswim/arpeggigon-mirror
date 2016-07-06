@@ -3,19 +3,10 @@
 module RMCA.Layer.Board ( boardSF
                         ) where
 
-import Control.Concurrent
-import Control.Concurrent.MVar
-import Control.Monad
-import Data.ReactiveValue
-import Data.Tuple
 import FRP.Yampa
-import Hails.Yampa
 import RMCA.Auxiliary.Curry
-import RMCA.Global.Clock
 import RMCA.Layer.Layer
 import RMCA.Semantics
-
-import Debug.Trace
 
 -- The state of the board is described by the list of the playheads
 -- and the different actions onto the board.
@@ -23,7 +14,6 @@ boardAction :: SF ((Board, Layer, [PlayHead]), Event BeatNo)
                (Event ([PlayHead], [Note]))
 boardAction = proc ((board, Layer { relPitch    = rp
                                   , strength    = s
-                                  , beatsPerBar = bpb
                                   },ph), ebno) ->
   arr $ fmap (uncurry5 advanceHeads)
   -< ebno `tag` (board, fromEvent ebno, rp, s, ph)

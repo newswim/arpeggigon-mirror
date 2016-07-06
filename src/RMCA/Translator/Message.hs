@@ -1,7 +1,6 @@
 module RMCA.Translator.Message where
 
 import           RMCA.Semantics
-import qualified Sound.JACK                       as Jack
 import qualified Sound.MIDI.Message               as Message
 import qualified Sound.MIDI.Message.Channel       as Channel
 import qualified Sound.MIDI.Message.Channel.Voice as Voice
@@ -61,6 +60,7 @@ isControl _ = False
 switchOnOff :: Message -> Message
 switchOnOff (NoteOn  c p v) = NoteOff c p v
 switchOnOff (NoteOff c p v) = NoteOn  c p v
+switchOnOff m = error $ "The message " ++ show m ++ " is not a note message"
 
 fromRawMessage :: RawMessage -> Maybe Message
 fromRawMessage (Message.Channel (Channel.Cons c

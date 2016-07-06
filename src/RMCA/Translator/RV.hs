@@ -2,27 +2,18 @@
 
 module RMCA.Translator.RV where
 
-import           Control.Monad
 import           Control.Monad.Exception.Synchronous (ExceptionalT, resolveT)
-import qualified Control.Monad.Trans.Class           as Trans
 import qualified Data.Bifunctor                      as BF
 import           Data.CBMVar
 import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
 import qualified Data.List                           as L
 import           Data.Ord                            (comparing)
 import           Data.ReactiveValue
-import qualified Foreign.C.Error                     as E
 import           RMCA.Translator.Message
 import qualified Sound.JACK                          as Jack
-import           Sound.JACK.Exception
-    ( All
-    , ThrowsErrno
-    , toStringWithHead
-    )
+import           Sound.JACK.Exception                (All, toStringWithHead)
 import qualified Sound.JACK.MIDI                     as JMIDI
 import qualified System.IO                           as IO
-
-import           Debug.Trace
 
 handleError :: (Monoid a) => ExceptionalT All IO a -> IO a
 handleError = resolveT $ \e -> do

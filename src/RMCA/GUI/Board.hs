@@ -3,9 +3,7 @@
 
 module RMCA.GUI.Board where
 
-import           Control.Concurrent.MVar
 import           Control.Monad
-import           Control.Monad.IO.Class
 import           Data.Array
 import           Data.Array.MArray
 import qualified Data.Bifunctor                   as BF
@@ -14,9 +12,6 @@ import           Data.CBMVar
 import           Data.Maybe
 import           Data.Ratio
 import           Data.ReactiveValue
-import           Data.String
-import           Data.Tuple
-import           Debug.Trace
 import           Game.Board.BasicTurnGame
 import           Graphics.UI.Gtk                  hiding (Action)
 import           Graphics.UI.Gtk.Board.BoardLink
@@ -145,7 +140,7 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
   canMoveTo _ _ _ fPos = fPos `elem` validArea
                          || outGUIBoard fPos
 
-  move guiBoard@(GUIBoard game) p iPos@(_,yi) fPos@(xf,yf)
+  move (GUIBoard game) _ iPos@(_,yi) fPos@(xf,yf)
     | outGUIBoard iPos && outGUIBoard fPos = []
     | outGUIBoard fPos = [ RemovePiece iPos
                          , AddPiece iPos Player nCell ]
@@ -169,7 +164,7 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
                                                  }
             | otherwise = inertCell
 
-  applyChange (GUIBoard game) (AddPiece pos@(x,y) Player piece) =
+  applyChange (GUIBoard game) (AddPiece (x,y) Player piece) =
     GUIBoard $ game { boardPieces' = bp' }
     where bp' = (x,y,Player,piece):boardPieces' game
 
@@ -208,7 +203,7 @@ initBoardRV :: BIO.Board Int Tile (Player,GUICell)
             -> IO ( ReactiveFieldRead IO Board
                   , Array Pos (ReactiveFieldWrite IO GUICell)
                   , ReactiveFieldReadWrite IO [PlayHead])
-initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard gArray) } = do
+initBoardRV board@BIO.Board { boardPieces = (GameBoard gArray) } = do
   -- RV creation
   phMVar <- newCBMVar []
   notBMVar <- mkClockRV 100
@@ -231,8 +226,7 @@ initBoardRV board@BIO.Board { boardPieces = gBoard@(GameBoard gArray) } = do
       setterP :: [PlayHead] -> IO ()
       setterP lph = do
         oph <- readCBMVar phMVar
-        let phPosS = map phPos lph
-            offPh :: PlayHead -> IO ()
+        let offPh :: PlayHead -> IO ()
             offPh ph = do
               let pos = toGUICoords $ phPos ph
               piece <- boardGetPiece pos board

@@ -3,26 +3,14 @@
 module Main where
 
 import Control.Concurrent
-import Control.Monad
-import Control.Monad.IO.Class
-import Data.Array
-import Data.Array.IO
-import Data.Array.MArray
-import Data.Maybe
 import Data.ReactiveValue
-import Data.String
-import Data.Tuple
 import FRP.Yampa
-import Game.Board.BasicTurnGame
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Board.BoardLink
-import Graphics.UI.Gtk.Board.TiledBoard
 import Graphics.UI.Gtk.Layout.BackgroundContainer
 import Graphics.UI.Gtk.Reactive
 import Hails.Yampa
-import RMCA.Auxiliary.Concurrent
 import RMCA.Auxiliary.RV
-import RMCA.Global.Clock
 import RMCA.GUI.Board
 import RMCA.GUI.Buttons
 import RMCA.GUI.Settings
@@ -30,8 +18,6 @@ import RMCA.Layer.Board
 import RMCA.Layer.Layer
 import RMCA.Semantics
 import RMCA.Translator.Jack
-import RMCA.Translator.Message
-import RMCA.Translator.Translator
 
 floatConv :: (ReactiveValueReadWrite a b m,
               Real c, Real b, Fractional c, Fractional b) =>
@@ -189,7 +175,6 @@ main = do
   (inBoard, outBoard) <- yampaReactiveDual (board, layer, ph, tempo) boardSF
   let inRV = liftR4 id
              boardRV layerRV phRV tempoRV
-  clock <- mkClockRV 100
   --let inRV = onTick clock inRV
   inRV =:> inBoard
   reactiveValueOnCanRead outBoard $ do

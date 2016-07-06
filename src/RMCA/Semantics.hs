@@ -33,9 +33,8 @@
 module RMCA.Semantics where
 
 import Data.Array
-import Data.List                (intercalate, intersperse, nub)
+import Data.List                (intercalate, nub)
 import Data.Maybe               (catMaybes)
-import Data.Ratio
 import RMCA.Auxiliary.Auxiliary
 
 

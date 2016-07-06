@@ -8,8 +8,6 @@ import FRP.Yampa
 import RMCA.Global.Clock
 import RMCA.Semantics
 
-import Debug.Trace
-
 -- Data representing the state of a layer. It is updated continuously.
 data Layer = Layer { relTempo    :: Double
                    , relPitch    :: RelPitch

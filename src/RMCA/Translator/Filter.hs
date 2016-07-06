@@ -4,13 +4,9 @@
 module RMCA.Translator.Filter where
 
 import Data.Bifunctor          as BF
-import Data.Function           (on)
-import Data.List               (group, groupBy, sortBy)
+import Data.List               (sortBy)
 import Data.Ord
-import FRP.Yampa
-import RMCA.Semantics
 import RMCA.Translator.Message
-import Sound.JACK              (NFrames (NFrames))
 
 -- Takes a list of time stamped "things", a sample rate and a buffer
 -- size. The function argument is a function that needs to tell which
@@ -44,7 +40,7 @@ nubDuplicate f = map (BF.second f) . scatterEvents
 -- the first frame of the next list is at least one frame after the
 -- last frame of that list.
 scatterEvents :: [(Frames, a)] -> [(Frames, a)]
-scatterEvents (x@(n,a):(m,b):xs) = x:scatterEvents ((m',b):xs)
+scatterEvents (x@(n,_):(m,b):xs) = x:scatterEvents ((m',b):xs)
   where m' = m + max 0 (1 + n - m)
 scatterEvents [x] = [x]
 scatterEvents _ = []

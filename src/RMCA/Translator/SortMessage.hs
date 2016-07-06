@@ -11,7 +11,6 @@ import qualified Data.Bifunctor             as BF
 import           Data.Function              (on)
 import           Data.List                  (groupBy)
 import           Data.Maybe
-import           Data.Ratio
 import           FRP.Yampa
 import           RMCA.Semantics
 import           RMCA.Translator.Controller

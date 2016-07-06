@@ -1,7 +1,6 @@
 -- Contains button name definition
 module RMCA.GUI.Buttons where
 
-import Graphics.UI.Gtk
 import System.Glib
 
 gtkMediaPlay :: DefaultGlibString

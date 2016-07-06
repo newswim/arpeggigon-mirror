@@ -26,3 +26,4 @@ html/
 /img/Shapes.hs
 /dist
 *.save*
+*.txt
