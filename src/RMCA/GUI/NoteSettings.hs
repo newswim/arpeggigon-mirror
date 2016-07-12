@@ -38,14 +38,20 @@ getNAttr (Stop na) = Just na
 getNAttr (ChDir _ na _) = Just na
 getNAttr (Split na) = Just na
 
-noteList :: [(String, Duration)]
-noteList = sortBy (comparing snd)
-           [ ("♩ quarter note", 1 % 4)
-           , ("♪ eighth note", 1 % 8)
-           , ("𝅗𝅥 half note", 1 % 2)
-           , ("𝅘𝅥𝅯 sixteenth note", 1 % 16)
-           , ("𝅝 whole note", 1)
-           ]
+symbolString :: [(Duration,String)]
+symbolString = map (\(_,y,z) -> (z,y)) noteSymbList
+
+noteList :: [(String,Duration)]
+noteList = map (\(x,_,y) -> (x,y)) noteSymbList
+
+noteSymbList :: [(String, String, Duration)]
+noteSymbList = sortBy (comparing (\(_,_,x) -> x))
+               [ ("♩", "Quarter note", 1 % 4)
+               , ("♪", "Eighth note ", 1 % 8)
+               , ("𝅗𝅥", "Half note", 1 % 2)
+               , ("𝅘𝅥𝅯", "Sixteenth note", 1 % 16)
+               , ("𝅝", "Whole note", 1)
+               ]
 
 comboBoxIndexRV :: (ComboBoxClass box) =>
                    box -> ReactiveFieldReadWrite IO Int
@@ -67,8 +73,14 @@ clickHandling pieceArrRV board pieceBox = do
                                return (art,i)) [NoAccent ..]
   comboBoxSetActive artCombo 0
   boxPackStart naBox artCombo PackNatural 10
-  let indexToArt i = fromMaybe NoAccent $ lookup i $ map swap artIndex
-      artToIndex a = fromMaybe (-1) $ lookup a artIndex
+  let indexToArt i = case lookup i $ map swap artIndex of
+        Nothing -> error "In indexToArt: failed\
+                         \to find the selected articulation."
+        Just art -> art
+      artToIndex a = case lookup a artIndex of
+        Nothing -> error "In artToIndex: failed\
+                         \to find the correct index for the articulation."
+        Just i -> i
       artComboRV = bijection (indexToArt,artToIndex) `liftRW`
                    comboBoxIndexRV artCombo
 
@@ -79,22 +91,39 @@ clickHandling pieceArrRV board pieceBox = do
                                  return (sli,i)) [NoSlide ..]
   comboBoxSetActive slideCombo 0
   boxPackStart naBox slideCombo PackNatural 10
-  let indexToSlide i = fromMaybe NoSlide $ lookup i $ map swap slideIndex
-      slideToIndex s = fromMaybe (-1) $ lookup s slideIndex
+  let indexToSlide i = case lookup i $ map swap slideIndex of
+        Nothing -> error "In indexToSlide: failed\
+                         \to find the correct slide for the selected index."
+        Just sli -> sli
+      slideToIndex s = case lookup s slideIndex of
+        Nothing -> error "In slideToIndex: failed\
+                         \to find the correct index for the slide."
+        Just i -> i
       slideComboRV = bijection (indexToSlide,slideToIndex) `liftRW`
                      comboBoxIndexRV slideCombo
 
   -- Note duration box
+  noteDurBox <- hBoxNew False 10
   noteDurCombo <- comboBoxNewText
   noteDurIndex <- mapM (\(str,dur) -> do i <- comboBoxAppendText noteDurCombo
                                               (fromString str)
                                          return (dur,i)) noteList
   comboBoxSetActive noteDurCombo 0
-  boxPackStart naBox noteDurCombo PackNatural 10
-  let indexToDur i = fromMaybe (1 % 4) $ lookup i $ map swap noteDurIndex
-      durToIndex d = fromMaybe 0 $ lookup d noteDurIndex
+  let indexToDur i = case lookup i $ map swap noteDurIndex of
+        Nothing -> error "In indexToDur: failed\
+                         \to find the correct duration for the selected index."
+        Just dur -> dur
+      durToIndex d = case lookup d noteDurIndex of
+        Nothing -> error "In durToIndex: failed\
+                         \to find the correct index for the duration."
+        Just i -> i
       noteDurRV = bijection (indexToDur, durToIndex) `liftRW`
                   comboBoxIndexRV noteDurCombo
+  noteDurLabel <- labelNew =<< (\d -> lookup d symbolString) <$> reactiveValueRead noteDurRV
+  let noteDurLabelRV = labelTextReactive noteDurLabel
+  boxPackStart naBox noteDurBox PackNatural 10
+  boxPackStart noteDurBox noteDurCombo PackNatural 10
+  boxPackStart noteDurBox noteDurLabel PackNatural 10
 
   -- Repeat count box
   rCountAdj <- adjustmentNew 1 0 10 1 1 0
@@ -117,6 +146,7 @@ clickHandling pieceArrRV board pieceBox = do
                              setNAttr (fromJust nCa) (cellAction oCell) }
                 else oCell
     reactiveValueWrite setRV (i,nCell)
+    fromMaybeM_ $ reactiveValueWrite noteDurLabelRV <$> lookup nDur symbolString
     reactiveValueWrite (pieceArrRV ! i) nCell
 
 
@@ -159,12 +189,12 @@ clickHandling pieceArrRV board pieceBox = do
       hideNa = do widgetHide slideCombo
                   widgetHide artCombo
                   widgetShow rCount
-                  widgetHide noteDurCombo
+                  widgetHideAll noteDurBox
       showNa :: IO ()
       showNa = do widgetShow slideCombo
                   widgetShow artCombo
                   widgetShow rCount
-                  widgetShow noteDurCombo
+                  widgetShowAll noteDurBox
       updateNaBox :: GUICell -> IO ()
       updateNaBox GUICell { cellAction = act } = case act of
         Inert -> hideNa
@@ -187,7 +217,7 @@ clickHandling pieceArrRV board pieceBox = do
             when (maybe False (== fPos) mstate) $
               boardSetPiece fPos (BF.second rotateGUICell (Player,piece)) board
             nmp <- boardGetPiece fPos board
-            print nmp
+            --print nmp
             when (isJust nmp) $ do
               let nC = snd $ fromJust nmp
               reactiveValueWrite setRV (fPos,nC)
