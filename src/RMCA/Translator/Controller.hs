@@ -1,7 +1,8 @@
 module RMCA.Translator.Controller where
 
-import RMCA.Semantics
 import RMCA.Translator.Message
+
+data Controller = Lol
 
 messageToController :: Message -> Controller
 messageToController _ = Lol

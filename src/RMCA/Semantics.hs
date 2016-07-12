@@ -140,8 +140,6 @@ type MIDICV = Int
 -- (Handled through subsequent translation to low-level MIDI events.)
 data MIDICVRnd = MIDICV MIDICV | MIDICVRnd deriving (Eq, Show)
 
--- TEMPORARY
-data Controller = Lol
 --
 ------------------------------------------------------------------------------
 -- Notes

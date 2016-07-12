@@ -4,6 +4,8 @@ module Main where
 
 import Control.Concurrent
 import Data.ReactiveValue
+import Data.String
+import Data.Tuple
 import FRP.Yampa
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Board.BoardLink
@@ -18,6 +20,7 @@ import RMCA.GUI.NoteSettings
 import RMCA.Layer.Board
 import RMCA.Layer.Layer
 import RMCA.Semantics
+import RMCA.Translator.Instruments
 import RMCA.Translator.Jack
 
 floatConv :: (ReactiveValueReadWrite a b m,
@@ -33,8 +36,6 @@ main = do
   -- Main box
   mainBox <- hBoxNew False 10
   set window [ windowTitle := "Reactogon"
-             --, windowDefaultWidth := 250
-             --, windowDefaultHeight := 500
              , containerChild := mainBox
              , containerBorderWidth := 10
              ]
@@ -47,8 +48,10 @@ main = do
   globalSep <- hSeparatorNew
   boxPackStart settingsBox globalSep PackNatural 0
 
+  layerSettingsVBox <- vBoxNew True 10
+  boxPackStart settingsBox layerSettingsVBox PackNatural 0
   layerSettingsBox <- hBoxNew True 10
-  boxPackStart settingsBox layerSettingsBox PackNatural 0
+  boxPackStart layerSettingsVBox layerSettingsBox PackNatural 0
 
   layTempoBox <- hBoxNew False 10
   boxPackStart layerSettingsBox layTempoBox PackNatural 0
@@ -78,6 +81,29 @@ main = do
   bpbButton <- spinButtonNew bpbAdj 1 0
   boxPackStart bpbBox bpbButton PackNatural 0
 
+  instrumentCombo <- comboBoxNewText
+  instrumentIndex <- mapM (\(ind,ins) ->
+                             do i <- comboBoxAppendText instrumentCombo $
+                                     fromString ins
+                                return (i, ind)) instrumentList
+  comboBoxSetActive instrumentCombo 0
+  boxPackStart layerSettingsVBox instrumentCombo PackNatural 10
+  let indexToInstr i = case (lookup i instrumentIndex) of
+        Nothing -> error "Can't get the selected instrument."
+        Just x -> x
+      instrToIndex ins = case (lookup ins $ map swap instrumentIndex) of
+        Nothing -> error "Can't retrieve the index for the instrument."
+        Just x -> x
+      instrumentComboRV = bijection (indexToInstr, instrToIndex) `liftRW`
+                          comboBoxIndexRV instrumentCombo
+{-
+  reactiveValueOnCanRead instrumentComboRV $ do
+    ins <- reactiveValueRead instrumentComboRV
+    bq <- reactiveValueRead boardQueue
+    let body = ProgramChange $ toProgram ins
+
+    reactiveValueWrite boardQueue (bq ++
+  -}
   boxPackStart settingsBox laySep PackNatural 0
 
   layPitchRV <- newCBMVarRW 1
