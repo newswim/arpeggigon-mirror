@@ -173,10 +173,10 @@ clickHandling pieceArrRV board pieceBox = do
     reactiveValueWrite (pieceArrRV ! i) nCell
 
   reactiveValueOnCanRead artComboRV $ do
-    --nArt <- reactiveValueRead artComboRV
+    nArt <- reactiveValueRead artComboRV
     (i,oCell) <- reactiveValueRead setRV
     let nCa :: Maybe NoteAttr
-        nCa = getNAttr $ cellAction oCell
+        nCa = (\na -> na { naArt = nArt }) <$> getNAttr (cellAction oCell)
         nCell :: GUICell
         nCell = if isJust nCa
                 then oCell { cellAction =

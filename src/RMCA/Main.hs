@@ -97,18 +97,8 @@ main = do
       layerRV =
         liftRW4 (bijection (f1,f2)) layTempoRV layPitchRV strengthRV bpbRV
 
-  buttonBox <- hBoxNew True 10
+  (buttonBox, playRV, stopRV, pauseRV, recordRV) <- getButtons
   boxPackEnd settingsBox buttonBox PackNatural 0
-  buttonPlay <- buttonNewFromStock gtkMediaPlay
-  let playRV = buttonActivateField buttonPlay
-  boxPackStart buttonBox buttonPlay PackRepel 0
-  buttonPause <- buttonNewFromStock gtkMediaPause
-  boxPackStart buttonBox buttonPause PackRepel 0
-  buttonStop <- buttonNewFromStock gtkMediaStop
-  let stopRV = buttonActivateField buttonStop
-  boxPackStart buttonBox buttonStop PackRepel 0
-  buttonRecord <- buttonNewFromStock gtkMediaRecord
-  boxPackStart buttonBox buttonRecord PackRepel 0
 
   -- Board
   boardCont <- backgroundContainerNew
@@ -131,8 +121,9 @@ main = do
   board <- reactiveValueRead boardRV
   ph <- reactiveValueRead phRV
   (inBoard, outBoard) <- yampaReactiveDual (board, layer, ph, tempo) boardSF
-  let inRV = liftR4 id
-             boardRV layerRV phRV tempoRV
+  let tempoRV' = liftR2 (\bool t -> t * fromEnum (not bool)) pauseRV tempoRV
+      inRV = liftR4 id
+             boardRV layerRV phRV tempoRV'
   --let inRV = onTick clock inRV
   inRV =:> inBoard
   reactiveValueOnCanRead outBoard $ do
