@@ -27,3 +27,5 @@ html/
 /dist
 *.save*
 *.txt
+/.cabal-sandbox/
+/.ghci

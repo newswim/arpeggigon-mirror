@@ -13,9 +13,13 @@ import           Data.String
 import           Data.Tuple
 import           Graphics.UI.Gtk                  hiding (Action)
 import           Graphics.UI.Gtk.Board.TiledBoard hiding (Board)
+import           Graphics.UI.Gtk.Reactive
 import           RMCA.Auxiliary.RV
 import           RMCA.GUI.Board
 import           RMCA.Semantics
+
+fromMaybeM_ :: (Monad m) => Maybe (m ()) -> m ()
+fromMaybeM_ = fromMaybe (return ())
 
 setNAttr :: NoteAttr -> Action -> Action
 setNAttr _ Inert = Inert
@@ -68,11 +72,22 @@ clickHandling pieceArrRV board pieceBox = do
       slideComboRV = liftRW (bijection (indexToSlide,slideToIndex)) $
                      comboBoxIndexRV slideCombo
 
-
-  state <- newEmptyMVar
+  -- Repeat count box
+  rCountAdj <- adjustmentNew 1 0 10 1 1 0
+  rCount <- spinButtonNew rCountAdj 1 0
+  boxPackStart pieceBox rCount PackNatural 10
+  let rCountRV = spinButtonValueIntReactive rCount
 
   -- Side RV
+  -- Carries the index of the tile to display and what to display.
   setRV <- newCBMVarRW ((0,0),inertCell)
+
+  reactiveValueOnCanRead rCountRV $ do
+    nRCount <- reactiveValueRead rCountRV
+    (i,oCell) <- reactiveValueRead setRV
+    let nCell = oCell { repeatCount = nRCount }
+    reactiveValueWrite setRV (i,nCell)
+    reactiveValueWrite (pieceArrRV ! i) nCell
 
   reactiveValueOnCanRead slideComboRV $ do
     nSlide <- reactiveValueRead slideComboRV
@@ -87,9 +102,10 @@ clickHandling pieceArrRV board pieceBox = do
                            }
                 else oCell
     reactiveValueWrite setRV (i,nCell)
+    reactiveValueWrite (pieceArrRV ! i) nCell
 
   reactiveValueOnCanRead artComboRV $ do
-    nArt <- reactiveValueRead artComboRV
+    --nArt <- reactiveValueRead artComboRV
     (i,oCell) <- reactiveValueRead setRV
     let nCa :: Maybe NoteAttr
         nCa = getNAttr $ cellAction oCell
@@ -99,17 +115,23 @@ clickHandling pieceArrRV board pieceBox = do
                              setNAttr (fromJust nCa) (cellAction oCell) }
                 else oCell
     reactiveValueWrite setRV (i,nCell)
+    reactiveValueWrite (pieceArrRV ! i) nCell
 
   let hideNa :: IO ()
-      hideNa = widgetHide slideCombo >> widgetHide artCombo
+      hideNa = do widgetHide slideCombo
+                  widgetHide artCombo
+                  widgetShow rCount
       showNa :: IO ()
-      showNa = widgetShow slideCombo >> widgetShow artCombo
+      showNa = do widgetShow slideCombo
+                  widgetShow artCombo
+                  widgetShow rCount
       updateNaBox :: GUICell -> IO ()
       updateNaBox GUICell { cellAction = act } = case act of
         Inert -> hideNa
         Absorb -> hideNa
         _ -> showNa
 
+  state <- newEmptyMVar
   boardOnPress board
     (\iPos -> liftIO $ do
         postGUIAsync $ void $ tryPutMVar state iPos
@@ -125,13 +147,20 @@ clickHandling pieceArrRV board pieceBox = do
             when (maybe False (== fPos) mstate) $ do
               boardSetPiece fPos (BF.second rotateGUICell (Player,piece)) board
             nmp <- boardGetPiece fPos board
-            when (isJust nmp) $ reactiveValueWrite setRV $ (fPos,snd $ fromJust nmp)
+            print nmp
+            when (isJust nmp) $ do
+              let nC = snd $ fromJust nmp
+              reactiveValueWrite setRV (fPos,nC)
+              fromMaybeM_ $ reactiveValueWrite artComboRV <$>
+                naArt <$> getNAttr (cellAction nC)
+              fromMaybeM_ $ reactiveValueWrite slideComboRV <$>
+                ornSlide <$> naOrn <$> getNAttr (cellAction nC)
+              reactiveValueWrite rCountRV $ repeatCount nC
         return True
     )
 
-  reactiveValueOnCanRead setRV $ do
-    (i,c) <- reactiveValueRead setRV
-    reactiveValueWrite (pieceArrRV ! i) c
-    updateNaBox c
-  widgetShow pieceBox >> widgetShow naBox
+  reactiveValueOnCanRead setRV (reactiveValueRead setRV >>=  updateNaBox . snd)
+
+  widgetShow pieceBox
+  widgetShow naBox
   return pieceBox
