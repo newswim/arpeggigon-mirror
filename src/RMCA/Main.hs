@@ -13,7 +13,8 @@ import Hails.Yampa
 import RMCA.Auxiliary.RV
 import RMCA.GUI.Board
 import RMCA.GUI.Buttons
-import RMCA.GUI.Settings
+import RMCA.GUI.MainSettings
+import RMCA.GUI.NoteSettings
 import RMCA.Layer.Board
 import RMCA.Layer.Layer
 import RMCA.Semantics
@@ -23,41 +24,6 @@ floatConv :: (ReactiveValueReadWrite a b m,
               Real c, Real b, Fractional c, Fractional b) =>
              a -> ReactiveFieldReadWrite m c
 floatConv = liftRW $ bijection (realToFrac, realToFrac)
-{-
-boardRVIO = newCBMVarRW $
-    makeBoard [((0,0),  mkCell (ChDir True na1 NE)),
-               ((1,1),  mkCellRpt (ChDir False na1 NW) 3),
-               ((0,1),  mkCell (ChDir False na1 S))]
-            {-makeBoard [((0,0), mkCell (ChDir True na1 N)),
-               ((0,2), mkCellRpt (ChDir False na2 SE) 3),
-               ((2,1), mkCell (ChDir False na1 SW)),
-               ((1,1), mkCellRpt (ChDir False na1 N) 0) {- Skipped! -},
-               ((0,4), mkCellRpt (ChDir True na1 N) (-1)) {- Rpt indef. -},
-               ((0, -6), mkCell (ChDir True na1 N)),
-               ((0, -2), mkCell (ChDir False na3 S) {- Silent -})]-}
-
-na1 = NoteAttr {
-          naArt = Accent13,
-          naDur = 1 % 1,
-          naOrn = Ornaments Nothing [] NoSlide
-      }
-
-na2 = NoteAttr {
-          naArt = NoAccent,
-          naDur = 1 % 1,
-          naOrn = Ornaments Nothing [(10, MIDICVRnd)] SlideUp
-      }
-
-na3 = NoteAttr {
-          naArt = Accent13,
-          naDur = 0,
-          naOrn = Ornaments Nothing [] NoSlide
-      }
-
-
-bpb :: Int
-bpb = 4
--}
 
 main :: IO ()
 main = do
@@ -76,16 +42,8 @@ main = do
 
   settingsBox <- vBoxNew False 0
   boxPackEnd mainBox settingsBox PackNatural 0
-  globalSettingsBox <- vBoxNew False 10
+  (globalSettingsBox, tempoRV) <- globalSettings
   boxPackStart settingsBox globalSettingsBox PackNatural 0
-  tempoAdj <- adjustmentNew 120 40 200 1 1 1
-  tempoLabel <- labelNew (Just "Tempo")
-  boxPackStart globalSettingsBox tempoLabel PackNatural 0
-  tempoScale <- hScaleNew tempoAdj
-  boxPackStart globalSettingsBox tempoScale PackNatural 0
-  scaleSetDigits tempoScale 0
-  let tempoRV =
-        bijection (floor, fromIntegral) `liftRW` scaleValueReactive tempoScale
   globalSep <- hSeparatorNew
   boxPackStart settingsBox globalSep PackNatural 0
 

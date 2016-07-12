@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables, TupleSections #-}
 
-module RMCA.GUI.Settings where
+module RMCA.GUI.NoteSettings where
 
 import           Control.Concurrent.MVar
 import           Control.Monad
