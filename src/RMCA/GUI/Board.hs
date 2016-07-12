@@ -257,7 +257,7 @@ initBoardRV board@BIO.Board { boardPieces = (GameBoard gArray) } = do
       arrW :: Array Pos (ReactiveFieldWrite IO GUICell)
       arrW = array (minimum validArea, maximum validArea)
              [(i, ReactiveFieldWrite (setterW i))
-             | i <- (validArea :: [(Int,Int)])]
+             | i <- validArea :: [(Int,Int)]]
 
   return (b,arrW,ph)
 
@@ -274,8 +274,8 @@ fileToPixbuf = mapM (\f -> let f' = ("img/" ++ f) in
                         uncurry (liftM2 (,))
                         ( return f'
                         , getDataFileName f' >>=
-                          \f'' -> pixbufNewFromFile f'' >>=
-                          \p -> pixbufScaleSimple p hexW hexW InterpBilinear))
+                          (pixbufNewFromFile >=>
+                           \p -> pixbufScaleSimple p hexW hexW InterpBilinear)))
                (["hexOn.png","hexOff.png","stop.svg","split.svg","absorb.svg"] ++
                 concat [["start" ++ show d ++ ".svg","ric" ++ show d ++ ".svg"]
                        | d <- [N .. NW]])

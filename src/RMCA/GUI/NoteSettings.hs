@@ -7,7 +7,10 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Array
 import qualified Data.Bifunctor                   as BF
+import           Data.List
 import           Data.Maybe
+import           Data.Ord
+import           Data.Ratio
 import           Data.ReactiveValue
 import           Data.String
 import           Data.Tuple
@@ -35,6 +38,15 @@ getNAttr (Stop na) = Just na
 getNAttr (ChDir _ na _) = Just na
 getNAttr (Split na) = Just na
 
+noteList :: [(String, Duration)]
+noteList = sortBy (comparing snd)
+           [ ("♩ quarter note", 1 % 4)
+           , ("♪ eighth note", 1 % 8)
+           , ("𝅗𝅥 half note", 1 % 2)
+           , ("𝅘𝅥𝅯 sixteenth note", 1 % 16)
+           , ("𝅝 whole note", 1)
+           ]
+
 comboBoxIndexRV :: (ComboBoxClass box) =>
                    box -> ReactiveFieldReadWrite IO Int
 comboBoxIndexRV box = ReactiveFieldReadWrite setter getter notifier
@@ -57,7 +69,7 @@ clickHandling pieceArrRV board pieceBox = do
   boxPackStart naBox artCombo PackNatural 10
   let indexToArt i = fromMaybe NoAccent $ lookup i $ map swap artIndex
       artToIndex a = fromMaybe (-1) $ lookup a artIndex
-      artComboRV = liftRW (bijection (indexToArt,artToIndex)) $
+      artComboRV = bijection (indexToArt,artToIndex) `liftRW`
                    comboBoxIndexRV artCombo
 
   -- Slide box
@@ -69,8 +81,20 @@ clickHandling pieceArrRV board pieceBox = do
   boxPackStart naBox slideCombo PackNatural 10
   let indexToSlide i = fromMaybe NoSlide $ lookup i $ map swap slideIndex
       slideToIndex s = fromMaybe (-1) $ lookup s slideIndex
-      slideComboRV = liftRW (bijection (indexToSlide,slideToIndex)) $
+      slideComboRV = bijection (indexToSlide,slideToIndex) `liftRW`
                      comboBoxIndexRV slideCombo
+
+  -- Note duration box
+  noteDurCombo <- comboBoxNewText
+  noteDurIndex <- mapM (\(str,dur) -> do i <- comboBoxAppendText noteDurCombo
+                                              (fromString str)
+                                         return (dur,i)) noteList
+  comboBoxSetActive noteDurCombo 0
+  boxPackStart naBox noteDurCombo PackNatural 10
+  let indexToDur i = fromMaybe (1 % 4) $ lookup i $ map swap noteDurIndex
+      durToIndex d = fromMaybe 0 $ lookup d noteDurIndex
+      noteDurRV = bijection (indexToDur, durToIndex) `liftRW`
+                  comboBoxIndexRV noteDurCombo
 
   -- Repeat count box
   rCountAdj <- adjustmentNew 1 0 10 1 1 0
@@ -81,6 +105,20 @@ clickHandling pieceArrRV board pieceBox = do
   -- Side RV
   -- Carries the index of the tile to display and what to display.
   setRV <- newCBMVarRW ((0,0),inertCell)
+
+  reactiveValueOnCanRead noteDurRV $ do
+    nDur <- reactiveValueRead noteDurRV
+    (i,oCell) <- reactiveValueRead setRV
+    let nCa :: Maybe NoteAttr
+        nCa = (\na -> na { naDur = nDur }) <$> getNAttr (cellAction oCell)
+        nCell :: GUICell
+        nCell = if isJust nCa
+                then oCell { cellAction =
+                             setNAttr (fromJust nCa) (cellAction oCell) }
+                else oCell
+    reactiveValueWrite setRV (i,nCell)
+    reactiveValueWrite (pieceArrRV ! i) nCell
+
 
   reactiveValueOnCanRead rCountRV $ do
     nRCount <- reactiveValueRead rCountRV
@@ -94,9 +132,9 @@ clickHandling pieceArrRV board pieceBox = do
     (i,oCell) <- reactiveValueRead setRV
     let nCa :: Maybe NoteAttr
         nCa = (\na -> na { naOrn = (naOrn na) { ornSlide = nSlide } }) <$>
-              (getNAttr $ cellAction oCell)
+              getNAttr (cellAction oCell)
         nCell :: GUICell
-        nCell = if (isJust nCa)
+        nCell = if isJust nCa
                 then oCell { cellAction =
                              setNAttr (fromJust nCa) (cellAction oCell)
                            }
@@ -110,7 +148,7 @@ clickHandling pieceArrRV board pieceBox = do
     let nCa :: Maybe NoteAttr
         nCa = getNAttr $ cellAction oCell
         nCell :: GUICell
-        nCell = if (isJust nCa)
+        nCell = if isJust nCa
                 then oCell { cellAction =
                              setNAttr (fromJust nCa) (cellAction oCell) }
                 else oCell
@@ -121,10 +159,12 @@ clickHandling pieceArrRV board pieceBox = do
       hideNa = do widgetHide slideCombo
                   widgetHide artCombo
                   widgetShow rCount
+                  widgetHide noteDurCombo
       showNa :: IO ()
       showNa = do widgetShow slideCombo
                   widgetShow artCombo
                   widgetShow rCount
+                  widgetShow noteDurCombo
       updateNaBox :: GUICell -> IO ()
       updateNaBox GUICell { cellAction = act } = case act of
         Inert -> hideNa
@@ -144,18 +184,20 @@ clickHandling pieceArrRV board pieceBox = do
           mstate <- tryTakeMVar state
           when (fPos `elem` validArea && isJust mp) $ do
             let piece = snd $ fromJust mp
-            when (maybe False (== fPos) mstate) $ do
+            when (maybe False (== fPos) mstate) $
               boardSetPiece fPos (BF.second rotateGUICell (Player,piece)) board
             nmp <- boardGetPiece fPos board
             print nmp
             when (isJust nmp) $ do
               let nC = snd $ fromJust nmp
               reactiveValueWrite setRV (fPos,nC)
-              fromMaybeM_ $ reactiveValueWrite artComboRV <$>
-                naArt <$> getNAttr (cellAction nC)
-              fromMaybeM_ $ reactiveValueWrite slideComboRV <$>
-                ornSlide <$> naOrn <$> getNAttr (cellAction nC)
+              fromMaybeM_ $ reactiveValueWrite artComboRV . naArt <$>
+                getNAttr (cellAction nC)
+              fromMaybeM_ $
+                reactiveValueWrite slideComboRV . ornSlide . naOrn <$> getNAttr (cellAction nC)
               reactiveValueWrite rCountRV $ repeatCount nC
+              fromMaybeM_ $ reactiveValueWrite noteDurRV . naDur <$>
+                getNAttr (cellAction nC)
         return True
     )
 
