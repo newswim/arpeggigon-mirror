@@ -7,13 +7,12 @@
 
 module RMCA.Translator.SortMessage where
 
-import qualified Data.Bifunctor             as BF
-import           Data.Function              (on)
-import           Data.List                  (groupBy)
+import qualified Data.Bifunctor          as BF
+import           Data.Function           (on)
+import           Data.List               (groupBy)
 import           Data.Maybe
 import           FRP.Yampa
 import           RMCA.Semantics
-import           RMCA.Translator.Controller
 import           RMCA.Translator.Message
 import           RMCA.Translator.Note
 
@@ -47,9 +46,5 @@ sortNotes = sortNotes' ([],[])
           | otherwise = sortNotes' (n,c) xs
 
 -- Note messages are converted to PlayHeads
-convertMessages :: ([(Frames,Message)], [(Frames,Message)])
-                -> ([(Frames,Note)], [(Frames,Controller)])
-convertMessages = proc (notes, ctrl) -> do
-  notes' <- arr $ map (BF.second messageToNote)   -< notes
-  ctrl'  <- arr $ map (BF.second messageToController) -< ctrl
-  returnA -< (notes', ctrl')
+convertMessages :: [(Frames,Message)] -> [(Frames,Note)]
+convertMessages = map (BF.second messageToNote)

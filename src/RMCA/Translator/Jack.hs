@@ -5,7 +5,6 @@
 module RMCA.Translator.Jack ( jackSetup
                             ) where
 
-import           Control.Applicative                 ((<**>))
 import qualified Control.Monad.Exception.Synchronous as Sync
 import qualified Control.Monad.Trans.Class           as Trans
 import qualified Data.Bifunctor                      as BF
@@ -35,7 +34,7 @@ outPortName = "output"
 -- do anything as such.
 jackSetup :: ( ReactiveValueRead tempo LTempo IO
              , ReactiveValueRead channel Int IO
-             , ReactiveValueReadWrite board [Note] IO) =>
+             , ReactiveValueReadWrite board ([Note],[Message]) IO) =>
              tempo
           -> channel
           -> board
@@ -73,7 +72,7 @@ defaultTempo = 96
 jackCallBack :: ( ReactiveValueReadWrite toProcess [(Frames, RawMessage)] IO
                 , ReactiveValueRead tempo LTempo IO
                 , ReactiveValueRead channel Int IO
-                , ReactiveValueReadWrite board [Note] IO) =>
+                , ReactiveValueReadWrite board ([Note],[Message]) IO) =>
                 Jack.Client
              -> JMIDI.Port Jack.Input
              -> JMIDI.Port Jack.Output
@@ -100,9 +99,9 @@ jackCallBack client input output toProcessRV tempoRV chanRV outBoard
   Trans.lift (inMIDIRV =:> inRaw)
   tempo <- Trans.lift $ reactiveValueRead tempoRV
   chan <- Trans.lift $ reactiveValueRead chanRV
-  boardIn' <- Trans.lift $ reactiveValueRead outBoard
+  (notes,ctrl) <- Trans.lift $ reactiveValueRead outBoard
   Trans.lift $ emptyRW outBoard
-  let boardIn = (zip (repeat 0) boardIn',[],[])
+  let boardIn = (zip (repeat 0) notes, zip (repeat 0) ctrl, [])
   outMIDI <- Trans.lift $ reactiveValueRead outPure
   -- We translate all signals to be sent into low level signals and
   -- write them to the output buffer.
@@ -111,9 +110,7 @@ jackCallBack client input output toProcessRV tempoRV chanRV outBoard
   -- This should all go in its own IO action
   Trans.lift $ do
     reactiveValueWrite inPure (tempo, sr, chan, boardIn `mappend` outMIDI)
-    reactiveValueRead outRaw <**>
-      (mappend <$> reactiveValueRead toProcessRV) >>=
-      reactiveValueWrite toProcessRV
+    reactiveValueRead outRaw >>= reactiveValueAppend toProcessRV
     --map fst <$> reactiveValueRead toProcessRV >>= print . ("toProcess " ++) . show
     (go, old') <- schedule nframesInt <$> reactiveValueRead toProcessRV
     let old = map (BF.first (+ (- nframesInt))) old'

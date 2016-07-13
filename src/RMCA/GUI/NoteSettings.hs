@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables, TupleSections, FlexibleContexts #-}
 
 module RMCA.GUI.NoteSettings where
 
@@ -60,7 +60,8 @@ comboBoxIndexRV box = ReactiveFieldReadWrite setter getter notifier
         setter = comboBoxSetActive box
         notifier = void . on box changed
 
-clickHandling :: Array Pos (ReactiveFieldWrite IO GUICell)
+clickHandling :: (ReactiveValueWrite cell GUICell IO) =>
+                 Array Pos cell
               -> IOBoard -> VBox -> IO VBox
 clickHandling pieceArrRV board pieceBox = do
   naBox <- vBoxNew False 10
@@ -74,11 +75,11 @@ clickHandling pieceArrRV board pieceBox = do
   comboBoxSetActive artCombo 0
   boxPackStart naBox artCombo PackNatural 10
   let indexToArt i = case lookup i $ map swap artIndex of
-        Nothing -> error "In indexToArt: failed\
+        Nothing -> error "In indexToArt: failed \
                          \to find the selected articulation."
         Just art -> art
       artToIndex a = case lookup a artIndex of
-        Nothing -> error "In artToIndex: failed\
+        Nothing -> error "In artToIndex: failed \
                          \to find the correct index for the articulation."
         Just i -> i
       artComboRV = bijection (indexToArt,artToIndex) `liftRW`
@@ -126,7 +127,7 @@ clickHandling pieceArrRV board pieceBox = do
   boxPackStart noteDurBox noteDurLabel PackNatural 10
 
   -- Repeat count box
-  rCountAdj <- adjustmentNew 1 0 10 1 1 0
+  rCountAdj <- adjustmentNew 1 0 100 1 1 0
   rCount <- spinButtonNew rCountAdj 1 0
   boxPackStart pieceBox rCount PackNatural 10
   let rCountRV = spinButtonValueIntReactive rCount

@@ -12,11 +12,11 @@ leftSyncWith :: (ReactiveValueRead a b m, ReactiveValueWrite c d m) =>
                 (b -> d) -> a -> c -> m ()
 leftSyncWith f a c = reactiveValueOnCanRead a
   (reactiveValueRead a >>= reactiveValueWrite c . f)
-
+{-
 (=:$:>) :: (ReactiveValueRead a b m, ReactiveValueWrite c d m) =>
            (b -> d) -> a -> c -> m ()
 (=:$:>) = leftSyncWith
-
+-}
 newCBMVarRW :: forall a. a -> IO (ReactiveFieldReadWrite IO a)
 newCBMVarRW val = do
   mvar <- newCBMVar val
@@ -37,6 +37,11 @@ emptyRW rv = do
 emptyW :: (Monoid b, ReactiveValueWrite a b m) => a -> m ()
 emptyW rv = reactiveValueWrite rv mempty
 
+reactiveValueAppend :: (Monoid b, ReactiveValueReadWrite a b m) =>
+                       a -> b -> m ()
+reactiveValueAppend rv v = do ov <- reactiveValueRead rv
+                              reactiveValueWrite rv (ov `mappend` v)
+
 onTick :: (ReactiveValueRead a b m, ReactiveValueRead c d m) =>
           a -> c -> ReactiveFieldRead m d
 onTick notif rv = ReactiveFieldRead getter notifier
@@ -51,10 +56,7 @@ addHandlerR :: (ReactiveValueRead a b m) =>
                -> ReactiveFieldRead m b
 addHandlerR x h = ReactiveFieldRead (reactiveValueRead x)
                   (\p -> reactiveValueOnCanRead x p >> h p)
-{-
-notif ^:> rv =
-  reactiveValueOnCanRead notif (reactiveValueOnCanRead rv (return ()))
--}
+
 -- Update when the value is an Event. It would be nice to have that
 -- even for Maybe as well.
 (>:>) :: (ReactiveValueRead a (Event b) IO, ReactiveValueWrite c b IO) =>
@@ -63,26 +65,6 @@ eventRV >:> rv = reactiveValueOnCanRead eventRV syncOnEvent
   where  syncOnEvent = do
            erv <- reactiveValueRead eventRV
            when (isEvent erv) $ reactiveValueWrite rv $ fromEvent erv
-{-
-liftR3 :: ( Monad m
-          , ReactiveValueRead a b m
-          , ReactiveValueRead c d m
-          , ReactiveValueRead e f m) =>
-          ((b,d,f) -> i)
-       -> a
-       -> c
-       -> e
-       -> ReactiveFieldRead m i
-liftR3 f a b c = ReactiveFieldRead getter notifier
-  where getter = do
-          x1 <- reactiveValueRead a
-          x2 <- reactiveValueRead b
-          x3 <- reactiveValueRead c
-          return $ f (x1, x2, x3)
-        notifier p = reactiveValueOnCanRead a p >>
-                     reactiveValueOnCanRead b p >>
-                     reactiveValueOnCanRead c p
--}
 
 liftW3 :: ( Monad m
           , ReactiveValueWrite a b m

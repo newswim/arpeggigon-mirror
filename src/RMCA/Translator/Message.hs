@@ -25,6 +25,7 @@ type Frames = Int
 -- /!\ This is dangerous as it only treats unipolar control values.
 data Message = NoteOn  Channel Pitch Strength
              | NoteOff Channel Pitch Strength
+             | Instrument Channel Voice.Program
              | Control Channel ControllerIdx UCtrl
   deriving(Show)
 
@@ -32,9 +33,13 @@ getChannel :: Message -> Int
 getChannel (NoteOn c _ _) = Channel.fromChannel c
 getChannel (NoteOff c _ _) = Channel.fromChannel c
 getChannel (Control c _ _) = Channel.fromChannel c
+getChannel (Instrument c _ ) = Channel.fromChannel c
 
-makeChannel :: Int -> Channel
-makeChannel = Channel.toChannel
+mkChannel :: Int -> Channel
+mkChannel = Channel.toChannel
+
+mkProgram :: Int -> Channel.Program
+mkProgram = Channel.toProgram
 
 -- Function to go back and forth with the representations of pitches,
 -- as they are different in our model and in the Jack API model.
@@ -72,6 +77,9 @@ fromRawMessage (Message.Channel (Channel.Cons c
 fromRawMessage (Message.Channel (Channel.Cons c
                                  (Channel.Voice (Voice.Control n v)))) =
   Just $ Control c n (toUCtrl v)
+fromRawMessage (Message.Channel (Channel.Cons c
+                                 (Channel.Voice (Voice.ProgramChange p)))) =
+  Just $ Instrument c p
 fromRawMessage _ = Nothing
 
 toRawMessage :: Message -> RawMessage
@@ -84,3 +92,6 @@ toRawMessage (NoteOff c p v) =
 toRawMessage (Control c n v) =
   Message.Channel (Channel.Cons c
                     (Channel.Voice (Voice.Control n (fromUCtrl v))))
+toRawMessage (Instrument c p) =
+  Message.Channel (Channel.Cons c
+                    (Channel.Voice (Voice.ProgramChange p)))

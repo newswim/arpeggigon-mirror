@@ -36,4 +36,4 @@ noteToMessages layTempo sr chan =
 noteOnToMessage :: Int -> Note -> Message
 noteOnToMessage c Note { notePch = p
                        , noteStr = s
-                       } = NoteOn (makeChannel c) p s
+                       } = NoteOn (mkChannel c) p s
