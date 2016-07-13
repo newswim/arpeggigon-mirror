@@ -29,3 +29,4 @@ html/
 *.txt
 /.cabal-sandbox/
 /.ghci
+/lol.hs
