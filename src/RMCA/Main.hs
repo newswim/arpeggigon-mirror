@@ -10,6 +10,7 @@ import Graphics.UI.Gtk.Board.BoardLink
 import Graphics.UI.Gtk.Layout.BackgroundContainer
 import Hails.Yampa
 import RMCA.Auxiliary.RV
+import RMCA.Configuration
 import RMCA.GUI.Board
 import RMCA.GUI.Buttons
 import RMCA.GUI.LayerSettings

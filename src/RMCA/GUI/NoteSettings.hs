@@ -212,7 +212,7 @@ clickHandling pieceArrRV board pieceBox = do
   boardOnRelease board
     (\fPos -> do
         button <- eventButton
-        liftIO $ do
+        liftIO $
           postGUIAsync $ do
             mp <- boardGetPiece fPos board
             mstate <- tryTakeMVar state

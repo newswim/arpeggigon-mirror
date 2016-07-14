@@ -138,7 +138,7 @@ type MIDICV = Int
 
 -- MIDICVRnd gives the option to pick a control value at random.
 -- (Handled through subsequent translation to low-level MIDI events.)
-data MIDICVRnd = MIDICV MIDICV | MIDICVRnd deriving (Eq, Show)
+data MIDICVRnd = MIDICV MIDICV | MIDICVRnd deriving (Eq, Show, Read)
 
 --
 ------------------------------------------------------------------------------
@@ -185,7 +185,7 @@ data Articulation = NoAccent
                   | Accent13
                   | Accent14
                   | Accent24
-                  deriving (Eq, Show, Enum)
+                  deriving (Eq, Show, Read, Enum)
 
 accentStrength :: Strength
 accentStrength = 1.2
@@ -237,9 +237,9 @@ data Ornaments = Ornaments {
     ornPC    :: Maybe MIDIPN,
     ornCC    :: [(MIDICN, MIDICVRnd)],
     ornSlide :: SlideType
-} deriving Show
+} deriving (Show,Read)
 
-data SlideType = NoSlide | SlideUp | SlideDn deriving (Eq, Show, Enum)
+data SlideType = NoSlide | SlideUp | SlideDn deriving (Eq, Show, Enum, Read)
 
 noOrn :: Ornaments
 noOrn = Ornaments { ornPC = Nothing
@@ -257,7 +257,7 @@ data NoteAttr = NoteAttr {
     naArt :: Articulation,
     naDur :: Duration,
     naOrn :: Ornaments
-} deriving Show
+} deriving (Show,Read)
 
 
 -- High level note representation emitted form a layer
@@ -287,7 +287,7 @@ data Note = Note {
 -- Angle measured in multiples of 60 degrees.
 type Angle = Int
 
-data Dir = N | NE | SE | S | SW | NW deriving (Enum, Bounded, Eq, Show)
+data Dir = N | NE | SE | S | SW | NW deriving (Enum, Bounded, Eq, Show, Read)
 
 predDir :: Dir -> Dir
 predDir d | d == minBound =  maxBound
@@ -332,7 +332,7 @@ data Action = Inert                   -- No action, play heads move through.
             | Stop  NoteAttr          -- Play note then remove play head.
             | ChDir Bool NoteAttr Dir -- Play note then change direction.
             | Split NoteAttr          -- Play note then split head into five.
-            deriving (Show)
+            deriving (Show,Read)
 
 
 -- Cells
