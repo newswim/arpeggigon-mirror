@@ -1,6 +1,7 @@
 module RMCA.Translator.Message where
 
 import           RMCA.Semantics
+import           Sound.MIDI.Controller            (volume)
 import qualified Sound.MIDI.Message               as Message
 import qualified Sound.MIDI.Message.Channel       as Channel
 import qualified Sound.MIDI.Message.Channel.Voice as Voice
@@ -26,13 +27,15 @@ type Frames = Int
 data Message = NoteOn  Channel Pitch Strength
              | NoteOff Channel Pitch Strength
              | Instrument Channel Voice.Program
-             | Control Channel ControllerIdx UCtrl
+             | Volume Channel Int
+             -- | Control Channel ControllerIdx UCtrl
   deriving(Show)
 
 getChannel :: Message -> Int
 getChannel (NoteOn c _ _) = Channel.fromChannel c
 getChannel (NoteOff c _ _) = Channel.fromChannel c
-getChannel (Control c _ _) = Channel.fromChannel c
+getChannel (Volume c _) = Channel.fromChannel c
+--getChannel (Control c _) = Channel.fromChannel c
 getChannel (Instrument c _ ) = Channel.fromChannel c
 
 mkChannel :: Int -> Channel
@@ -49,7 +52,6 @@ fromRawPitch p = Pitch $ Voice.fromPitch p
 toRawPitch :: Pitch -> Voice.Pitch
 toRawPitch (Pitch p) = Voice.toPitch p
 
-
 isNoteOn :: Message -> Bool
 isNoteOn NoteOn {} = True
 isNoteOn _ = False
@@ -58,8 +60,9 @@ isNoteOff :: Message -> Bool
 isNoteOff NoteOff {} = True
 isNoteOff _ = False
 
+
 isControl :: Message -> Bool
-isControl Control {} = True
+isControl Volume {} = True
 isControl _ = False
 
 switchOnOff :: Message -> Message
@@ -75,11 +78,12 @@ fromRawMessage (Message.Channel (Channel.Cons c
                                  (Channel.Voice (Voice.NoteOff p v)))) =
   Just $ NoteOff c (fromRawPitch p) (toUCtrl $ Voice.fromVelocity v)
 fromRawMessage (Message.Channel (Channel.Cons c
-                                 (Channel.Voice (Voice.Control n v)))) =
-  Just $ Control c n (toUCtrl v)
-fromRawMessage (Message.Channel (Channel.Cons c
                                  (Channel.Voice (Voice.ProgramChange p)))) =
   Just $ Instrument c p
+fromRawMessage (Message.Channel (Channel.Cons c
+                                 (Channel.Voice (Voice.Control n v))))
+  | n == volume = Just $ Volume c v
+  | otherwise = Nothing
 fromRawMessage _ = Nothing
 
 toRawMessage :: Message -> RawMessage
@@ -89,9 +93,9 @@ toRawMessage (NoteOn  c p v) =
 toRawMessage (NoteOff c p v) =
   Message.Channel $ Channel.Cons c
   (Channel.Voice $ Voice.NoteOff (toRawPitch p) (Voice.toVelocity $ fromUCtrl v))
-toRawMessage (Control c n v) =
+toRawMessage (Volume c v) =
   Message.Channel (Channel.Cons c
-                    (Channel.Voice (Voice.Control n (fromUCtrl v))))
+                    (Channel.Voice (Voice.Control volume v)))
 toRawMessage (Instrument c p) =
   Message.Channel (Channel.Cons c
                     (Channel.Voice (Voice.ProgramChange p)))

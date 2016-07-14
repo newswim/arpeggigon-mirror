@@ -26,17 +26,17 @@ data GUICell = GUICell { cellAction  :: Action
                        , asPh        :: Bool
                        } deriving(Show)
 
-rotateGUICell :: GUICell -> GUICell
-rotateGUICell g = g { cellAction = rotateAction $ cellAction g }
-  where rotateAction (ChDir b na d) = ChDir b na (nextDir d)
-        rotateAction x = x
-
 newtype GUIBoard = GUIBoard { toGS :: GameState Int Tile Player GUICell }
 
 type IOBoard = BIO.Board Int Tile (Player,GUICell)
 
 data Tile = Tile
 data Player = Player deriving(Show)
+
+rotateGUICell :: GUICell -> GUICell
+rotateGUICell g = g { cellAction = rotateAction $ cellAction g }
+  where rotateAction (ChDir b na d) = ChDir b na (nextDir d)
+        rotateAction x = x
 
 -- Takes a GUI coordinate and give the corresponding coordinate on the
 -- internal board

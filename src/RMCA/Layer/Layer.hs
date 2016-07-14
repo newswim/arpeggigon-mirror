@@ -13,6 +13,7 @@ data Layer = Layer { relTempo    :: Double
                    , relPitch    :: RelPitch
                    , strength    :: Strength
                    , beatsPerBar :: BeatsPerBar
+                   , volume      :: Int
                    } deriving (Show)
 
 layerTempo :: SF (Tempo, Layer) LTempo
@@ -43,8 +44,9 @@ layerRV mvar = ReactiveFieldReadWrite setter getter notifier
 
 getDefaultLayerRV :: IO (ReactiveFieldReadWrite IO Layer)
 getDefaultLayerRV = layerRV <$> newCBMVar dl
-  where dl = Layer { relTempo = 1
-                   , relPitch = 0
-                   , strength = 1
+  where dl = Layer { relTempo    = 1
+                   , relPitch    = 0
+                   , strength    = 1
                    , beatsPerBar = 4
+                   , volume      = 127
                    }

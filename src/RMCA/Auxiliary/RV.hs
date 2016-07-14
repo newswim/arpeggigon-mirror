@@ -153,3 +153,70 @@ liftRW4 bij a b c d =
   where ReactiveFieldRead getter notifier = liftR4 f2 a b c d
         ReactiveFieldWrite setter = liftW4 f1 a b c d
         (f1, f2) = (direct bij, inverse bij)
+
+liftR5 :: ( ReactiveValueRead a b m
+          , ReactiveValueRead c d m
+          , ReactiveValueRead e f m
+          , ReactiveValueRead g h m
+          , ReactiveValueRead i j m) =>
+          ((b,d,f,h,j) -> k)
+       -> a
+       -> c
+       -> e
+       -> g
+       -> i
+       -> ReactiveFieldRead m k
+liftR5 f a b c d e = ReactiveFieldRead getter notifier
+  where getter = do
+          x1 <- reactiveValueRead a
+          x2 <- reactiveValueRead b
+          x3 <- reactiveValueRead c
+          x4 <- reactiveValueRead d
+          x5 <- reactiveValueRead e
+          return $ f (x1, x2, x3, x4, x5)
+        notifier p = do
+          reactiveValueOnCanRead a p
+          reactiveValueOnCanRead b p
+          reactiveValueOnCanRead c p
+          reactiveValueOnCanRead d p
+          reactiveValueOnCanRead e p
+
+liftW5 :: ( Monad m
+          , ReactiveValueWrite a b m
+          , ReactiveValueWrite c d m
+          , ReactiveValueWrite e f m
+          , ReactiveValueWrite g h m
+          , ReactiveValueWrite i j m) =>
+          (k -> (b,d,f,h,j))
+       -> a
+       -> c
+       -> e
+       -> g
+       -> i
+       -> ReactiveFieldWrite m k
+liftW5 f a b c d e = ReactiveFieldWrite setter
+  where setter x = do
+          let (x1,x2,x3,x4,x5) = f x
+          reactiveValueWrite a x1
+          reactiveValueWrite b x2
+          reactiveValueWrite c x3
+          reactiveValueWrite d x4
+          reactiveValueWrite e x5
+
+liftRW5 :: ( ReactiveValueReadWrite a b m
+           , ReactiveValueReadWrite c d m
+           , ReactiveValueReadWrite e f m
+           , ReactiveValueReadWrite g h m
+           , ReactiveValueReadWrite i j m) =>
+           BijectiveFunc k (b,d,f,h,j)
+        -> a
+        -> c
+        -> e
+        -> g
+        -> i
+        -> ReactiveFieldReadWrite m k
+liftRW5 bij a b c d e =
+  ReactiveFieldReadWrite setter getter notifier
+  where ReactiveFieldRead getter notifier = liftR5 f2 a b c d e
+        ReactiveFieldWrite setter = liftW5 f1 a b c d e
+        (f1, f2) = (direct bij, inverse bij)

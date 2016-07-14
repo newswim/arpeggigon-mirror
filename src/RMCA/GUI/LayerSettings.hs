@@ -2,6 +2,7 @@
 
 module RMCA.GUI.LayerSettings where
 
+import Data.Maybe
 import Data.ReactiveValue
 import Data.String
 import Data.Tuple
@@ -19,31 +20,37 @@ floatConv :: (ReactiveValueReadWrite a b m,
              a -> ReactiveFieldReadWrite m c
 floatConv = liftRW $ bijection (realToFrac, realToFrac)
 
+mkVScale :: String -> Adjustment -> IO (HBox,VScale)
+mkVScale s adj = do
+  hBox <- hBoxNew False 10
+  boxLabel <- labelNew (Just s)
+  labelSetAngle boxLabel 90
+  boxPackStart hBox boxLabel PackNatural 0
+  boxScale <- vScaleNew adj
+  boxPackStart hBox boxScale PackNatural 0
+  return (hBox,boxScale)
+
 layerSettings :: ( ReactiveValueReadWrite board ([Note],[Message]) IO
                  , ReactiveValueRead chan Int IO) =>
                  chan -> board -> IO (VBox, ReactiveFieldReadWrite IO Layer)
 layerSettings chanRV boardQueue = do
-  layerSettingsVBox <- vBoxNew True 10
+  layerSettingsVBox <- vBoxNew False 10
   layerSettingsBox <- hBoxNew True 10
   boxPackStart layerSettingsVBox layerSettingsBox PackNatural 0
 
-  layTempoBox <- hBoxNew False 10
-  boxPackStart layerSettingsBox layTempoBox PackNatural 0
-  layTempoLabel <- labelNew (Just "Layer tempo")
-  labelSetAngle layTempoLabel 90
-  boxPackStart layTempoBox layTempoLabel PackNatural 0
-  layTempoAdj <- adjustmentNew 1 0 2 1 1 1
-  layTempoScale <- vScaleNew layTempoAdj
-  boxPackStart layTempoBox layTempoScale PackNatural 0
+  layVolumeAdj <- adjustmentNew 100 0 100 1 1 1
+  (layVolumeBox,layVolumeScale) <- mkVScale "Volume" layVolumeAdj
+  boxPackStart layerSettingsBox layVolumeBox PackNatural 0
+  scaleSetDigits layVolumeScale 0
 
-  strBox <- hBoxNew False 10
+
+  layTempoAdj <- adjustmentNew 1 0 2 0.1 0.1 1
+  (layTempoBox, layTempoScale) <- mkVScale "Layer tempo" layTempoAdj
+  boxPackStart layerSettingsBox layTempoBox PackNatural 0
+
+  strAdj <- adjustmentNew 0.8 0 2 0.1 0.1 0
+  (strBox, layStrengthScale) <- mkVScale "Strength" strAdj
   boxPackStart layerSettingsBox strBox PackNatural 0
-  strLabel <- labelNew (Just "Strength")
-  labelSetAngle strLabel 90
-  boxPackStart strBox strLabel PackNatural 0
-  strAdj <- adjustmentNew 1 0 1 0.01 0.01 0
-  layStrengthScale <- vScaleNew strAdj
-  boxPackStart strBox layStrengthScale PackNatural 0
 
   bpbBox <- vBoxNew False 10
   boxPackStart layerSettingsBox bpbBox PackNatural 0
@@ -61,34 +68,46 @@ layerSettings chanRV boardQueue = do
                                 return (i, ind)) instrumentList
   comboBoxSetActive instrumentCombo 0
   boxPackStart layerSettingsVBox instrumentCombo PackNatural 10
-  let indexToInstr i = case (lookup i instrumentIndex) of
-        Nothing -> error "Can't get the selected instrument."
-        Just x -> x
-      instrToIndex ins = case (lookup ins $ map swap instrumentIndex) of
-        Nothing -> error "Can't retrieve the index for the instrument."
-        Just x -> x
+  let indexToInstr i = fromMaybe (error "Can't get the selected instrument.") $
+                       lookup i instrumentIndex
+      instrToIndex ins =
+        fromMaybe (error "Can't retrieve the index for the instrument.") $
+        lookup ins $ map swap instrumentIndex
       instrumentComboRV = bijection (indexToInstr, instrToIndex) `liftRW`
                           comboBoxIndexRV instrumentCombo
 
-  reactiveValueOnCanRead instrumentComboRV $ do
-    ins <- reactiveValueRead instrumentComboRV
-    chan <- reactiveValueRead chanRV
-    reactiveValueAppend boardQueue ([],[Instrument (mkChannel chan) (mkProgram ins)])
+      changeInst = do
+        ins <- reactiveValueRead instrumentComboRV
+        chan <- reactiveValueRead chanRV
+        reactiveValueAppend boardQueue
+          ([],[Instrument (mkChannel chan) (mkProgram ins)])
+  changeInst
+  reactiveValueOnCanRead instrumentComboRV changeInst
 
   layPitchRV <- newCBMVarRW 1
   let layTempoRV = floatConv $ scaleValueReactive layTempoScale
       strengthRV = floatConv $  scaleValueReactive layStrengthScale
       bpbRV = spinButtonValueIntReactive bpbButton
+      layVolumeRV = liftRW (bijection (floor, fromIntegral)) $
+                    scaleValueReactive layVolumeScale
       f1 Layer { relTempo = d
                , relPitch = p
                , strength = s
                , beatsPerBar = bpb
-               } = (d,p,s,bpb)
-      f2 (d,p,s,bpb) = Layer { relTempo = d
-                             , relPitch = p
-                             , strength = s
-                             , beatsPerBar = bpb
-                             }
-      layerRV =
-        liftRW4 (bijection (f1,f2)) layTempoRV layPitchRV strengthRV bpbRV
+               , volume = v
+               } = (d,p,s,bpb,v)
+      f2 (d,p,s,bpb,v) = Layer { relTempo = d
+                               , relPitch = p
+                               , strength = s
+                               , beatsPerBar = bpb
+                               , volume = v
+                               }
+      layerRV = liftRW5 (bijection (f1,f2))
+                layTempoRV layPitchRV strengthRV bpbRV layVolumeRV
+
+  reactiveValueOnCanRead layVolumeRV $ do
+    vol <- reactiveValueRead layVolumeRV
+    chan <- reactiveValueRead chanRV
+    let vol' = floor ((fromIntegral vol / 100) * 127)
+    reactiveValueAppend boardQueue ([],[Volume (mkChannel chan) vol'])
   return (layerSettingsVBox, layerRV)
