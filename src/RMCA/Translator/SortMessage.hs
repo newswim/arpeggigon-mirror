@@ -1,5 +1,3 @@
-{-# LANGUAGE Arrows #-}
-
 -- The idea is that the stream of data coming from the MIDI input port
 -- will be sorted in three categories: note on events, controller
 -- events and other events. The latter will be transmitted as is

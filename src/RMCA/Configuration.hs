@@ -63,7 +63,7 @@ loadConfiguration fp t l arr i = do
        reactiveValueWrite l layer
        mapM_ (\rv -> catch (reactiveValueWrite rv inertCell)
                      (\(_ :: ErrorCall) -> return ())) $ elems arr
-       mapM_ (\(p,(a,r)) -> reactiveValueWrite (arr ! (toGUICoords p)) $
+       mapM_ (\(p,(a,r)) -> reactiveValueWrite (arr ! toGUICoords p) $
                             inertCell { cellAction = a
                                       , repeatCount = r
                                       }) board

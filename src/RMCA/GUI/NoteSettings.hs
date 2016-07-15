@@ -75,14 +75,14 @@ clickHandling pieceArrRV board pieceBox = do
                                return (art,i)) [NoAccent ..]
   comboBoxSetActive artCombo 0
   boxPackStart naBox artCombo PackNatural 10
-  let indexToArt i = case lookup i $ map swap artIndex of
-        Nothing -> error "In indexToArt: failed \
-                         \to find the selected articulation."
-        Just art -> art
-      artToIndex a = case lookup a artIndex of
-        Nothing -> error "In artToIndex: failed \
-                         \to find the correct index for the articulation."
-        Just i -> i
+  let indexToArt i =
+        fromMaybe (error "In indexToArt: failed \
+                         \to find the selected \
+                         \articulation.") $ lookup i $ map swap artIndex
+      artToIndex a = fromMaybe (error "In artToIndex: failed \
+                                      \to find the correct index \
+                                      \for the \
+                                      \articulation.") $ lookup a artIndex
       artComboRV = bijection (indexToArt,artToIndex) `liftRW`
                    comboBoxIndexRV artCombo
 
@@ -93,14 +93,16 @@ clickHandling pieceArrRV board pieceBox = do
                                  return (sli,i)) [NoSlide ..]
   comboBoxSetActive slideCombo 0
   boxPackStart naBox slideCombo PackNatural 10
-  let indexToSlide i = case lookup i $ map swap slideIndex of
-        Nothing -> error "In indexToSlide: failed\
-                         \to find the correct slide for the selected index."
-        Just sli -> sli
-      slideToIndex s = case lookup s slideIndex of
-        Nothing -> error "In slideToIndex: failed\
-                         \to find the correct index for the slide."
-        Just i -> i
+  let indexToSlide i =
+        fromMaybe (error "In indexToSlide: failed \
+                         \to find the correct slide \
+                         \for the selected \
+                         \index.") $ lookup i $ map swap slideIndex
+      slideToIndex s =
+        fromMaybe (error "In slideToIndex: failed \
+                         \to find \
+                         \the correct index \
+                         \for the slide.") $ lookup s slideIndex
       slideComboRV = bijection (indexToSlide,slideToIndex) `liftRW`
                      comboBoxIndexRV slideCombo
 
@@ -111,17 +113,19 @@ clickHandling pieceArrRV board pieceBox = do
                                               (fromString str)
                                          return (dur,i)) noteList
   comboBoxSetActive noteDurCombo 0
-  let indexToDur i = case lookup i $ map swap noteDurIndex of
-        Nothing -> error "In indexToDur: failed\
-                         \to find the correct duration for the selected index."
-        Just dur -> dur
-      durToIndex d = case lookup d noteDurIndex of
-        Nothing -> error "In durToIndex: failed\
-                         \to find the correct index for the duration."
-        Just i -> i
+  let indexToDur i =
+        fromMaybe (error "In indexToDur: failed \
+                         \to find the correct \
+                         \ duration for the \
+                         \selected index.") $ lookup i $ map swap noteDurIndex
+      durToIndex d =
+        fromMaybe (error "In durToIndex: \
+                         \failed to find \
+                         \the correct index \
+                         \for the duration.") $ lookup d noteDurIndex
       noteDurRV = bijection (indexToDur, durToIndex) `liftRW`
                   comboBoxIndexRV noteDurCombo
-  noteDurLabel <- labelNew =<< (\d -> lookup d symbolString) <$> reactiveValueRead noteDurRV
+  noteDurLabel <- labelNew =<< (`lookup` symbolString) <$> reactiveValueRead noteDurRV
   let noteDurLabelRV = labelTextReactive noteDurLabel
   boxPackStart naBox noteDurBox PackNatural 10
   boxPackStart noteDurBox noteDurCombo PackNatural 10

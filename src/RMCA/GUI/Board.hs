@@ -261,14 +261,6 @@ initBoardRV board@BIO.Board { boardPieces = (GameBoard gArray) } = do
 
   return (b,arrW,ph)
 
-    {-
-  boardOnPress board
-    (\i -> do
-        mp <- boardGetPiece i board
-        when (i `elem` validArea && isJust mp && fromJust mp == Inert) $
--}
-
-
 fileToPixbuf :: IO [(FilePath,Pixbuf)]
 fileToPixbuf = mapM (\f -> let f' = ("img/" ++ f) in
                         uncurry (liftM2 (,))
