@@ -32,7 +32,11 @@ mkVScale s adj = do
 
 layerSettings :: ( ReactiveValueReadWrite board ([Note],[Message]) IO
                  , ReactiveValueRead chan Int IO) =>
-                 chan -> board -> IO (VBox, ReactiveFieldReadWrite IO Layer)
+                 chan -> board
+              -> IO ( VBox
+                    , ReactiveFieldReadWrite IO Layer
+                    , ReactiveFieldReadWrite IO Int
+                    )
 layerSettings chanRV boardQueue = do
   layerSettingsVBox <- vBoxNew False 10
   layerSettingsBox <- hBoxNew True 10
@@ -110,4 +114,4 @@ layerSettings chanRV boardQueue = do
     chan <- reactiveValueRead chanRV
     let vol' = floor ((fromIntegral vol / 100) * 127)
     reactiveValueAppend boardQueue ([],[Volume (mkChannel chan) vol'])
-  return (layerSettingsVBox, layerRV)
+  return (layerSettingsVBox, layerRV, instrumentComboRV)

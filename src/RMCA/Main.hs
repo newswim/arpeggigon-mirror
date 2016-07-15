@@ -43,12 +43,12 @@ main = do
   globalSep <- hSeparatorNew
   boxPackStart settingsBox globalSep PackNatural 0
 
-  (layerSettingsVBox, layerRV) <- layerSettings chanRV boardQueue
+  (layerSettingsVBox, layerRV, instrRV) <- layerSettings chanRV boardQueue
   boxPackStart settingsBox layerSettingsVBox PackNatural 0
   laySep <- hSeparatorNew
   boxPackStart settingsBox laySep PackNatural 0
 
-  (buttonBox, playRV, stopRV, pauseRV, recordRV) <- getButtons
+  (buttonBox, playRV, stopRV, pauseRV, recordRV, confSaveRV, confLoadRV) <- getButtons
   boxPackEnd settingsBox buttonBox PackNatural 0
 
   -- Board
@@ -65,6 +65,42 @@ main = do
   layer <- reactiveValueRead layerRV
   tempo <- reactiveValueRead tempoRV
   (boardRV, pieceArrRV, phRV) <- initBoardRV guiBoard
+
+  --fcsw <- windowNew
+  fcs <- fileChooserDialogNew (Just "Save configuration") Nothing
+         FileChooserActionSave [("Cancel",ResponseCancel),("Ok",ResponseOk)]
+  --containerAdd fcsw fcs
+  reactFilt <- fileFilterNew
+  fileFilterAddPattern reactFilt "*.react"
+  fileFilterSetName reactFilt "RMCA conf files."
+  fileChooserAddFilter fcs reactFilt
+
+  --fclw <- windowNew
+  fcl <- fileChooserDialogNew (Just "Load configuration") Nothing
+         FileChooserActionOpen [("Cancel",ResponseCancel),("Ok",ResponseOk)]
+  --containerAdd fclw fcl
+  fileChooserAddFilter fcl reactFilt
+
+  reactiveValueOnCanRead confSaveRV $ postGUIAsync $ do
+    widgetShowAll fcs
+    let respHandle ResponseOk =
+          fileChooserGetFilename fcs >>= fromMaybeM_ .
+          fmap (\f -> saveConfiguration f tempoRV layerRV boardRV instrRV)
+        respHandle _ = return ()
+
+    onResponse fcs (\r -> respHandle r >> widgetHide fcs)
+    return ()
+
+  reactiveValueOnCanRead confLoadRV $ postGUIAsync $ do
+    widgetShowAll fcl
+    let respHandle ResponseOk =
+          fileChooserGetFilename fcl >>= fromMaybeM_ .
+          fmap (\f -> loadConfiguration f tempoRV layerRV pieceArrRV instrRV)
+        respHandle _ = return ()
+
+    onResponse fcl (\r -> respHandle r >> widgetHide fcl)
+    return ()
+
   reactiveValueOnCanRead playRV
     (reactiveValueRead boardRV >>= reactiveValueWrite phRV . startHeads)
   reactiveValueOnCanRead stopRV $ reactiveValueWrite phRV []

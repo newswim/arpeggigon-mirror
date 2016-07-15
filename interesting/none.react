@@ -1,0 +1,1 @@
+BoardConf {confLayer = (Layer {relTempo = 1.0, relPitch = 1, strength = 0.800000011920929, beatsPerBar = 4, volume = 100},0), confBoard = BoardInit {toList = []}, confTempo = 120}

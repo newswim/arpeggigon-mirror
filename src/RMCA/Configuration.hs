@@ -1,10 +1,14 @@
-{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, ScopedTypeVariables #-}
 
 module RMCA.Configuration where
 
+import           Control.Exception
 import           Data.Array
 import qualified Data.Bifunctor     as BF
+import           Data.Maybe
 import           Data.ReactiveValue
+import           Graphics.UI.Gtk
+import           RMCA.GUI.Board
 import           RMCA.Layer.Layer
 import           RMCA.Semantics
 import           Text.Read
@@ -40,24 +44,35 @@ saveConfiguration fp t l b i = do
                      , confTempo = tempo
                      , confBoard = mkInit board
                      }
-  writeFile fp $ show bc
+  catch (writeFile fp $ show bc) (\(_ :: IOError) -> errorSave)
 
-loadConfiguration :: ( ReactiveValueRead tempo Tempo IO
-                     , ReactiveValueRead layer Layer IO
-                     , ReactiveValueRead board Board IO
-                     , ReactiveValueRead instr InstrumentNo IO) =>
-                     FilePath -> tempo -> layer -> board -> instr -> IO ()
-loadConfiguration fp t l b i = do
-  conf <- readMaybe <$> readFile
-  if isNothing conf then errorLoad else $ do
-    let BoardConf { confLayer = (layer,instr)
-                  , confTempo = tempo
-                  , confBoard = board
-                  } = fromJust conf
-    reactiveValueWrite t tempo
-    reactiveValueWrite l layer
-    reactiveValueWrite b $ boardInit board
-    reactiveValueWrite i instr
+loadConfiguration :: ( ReactiveValueWrite tempo Tempo IO
+                     , ReactiveValueWrite layer Layer IO
+                     , ReactiveValueWrite cell GUICell IO
+                     , ReactiveValueWrite instr InstrumentNo IO) =>
+                     FilePath -> tempo -> layer
+                  -> Array Pos cell -> instr -> IO ()
+loadConfiguration fp t l arr i = do
+  conf <- readMaybe <$> readFile fp
+  if isNothing conf then errorLoad else
+    do let BoardConf { confLayer = (layer,instr)
+                     , confTempo = tempo
+                     , confBoard = (BoardInit board)
+                     } = fromJust conf
+       reactiveValueWrite t tempo
+       reactiveValueWrite l layer
+       mapM_ (\rv -> catch (reactiveValueWrite rv inertCell)
+                     (\(_ :: ErrorCall) -> return ())) $ elems arr
+       mapM_ (\(p,(a,r)) -> reactiveValueWrite (arr ! (toGUICoords p)) $
+                            inertCell { cellAction = a
+                                      , repeatCount = r
+                                      }) board
+       reactiveValueWrite i instr
 
 errorLoad :: IO ()
-errorLoad = undefined
+errorLoad =  messageDialogNewWithMarkup Nothing [] MessageError ButtonsClose
+             "Error loading the configuration file!" >>= widgetShow
+
+errorSave :: IO ()
+errorSave =  messageDialogNewWithMarkup Nothing [] MessageError ButtonsClose
+             "Error saving the configuration file!" >>= widgetShow
