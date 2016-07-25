@@ -22,9 +22,6 @@ import           RMCA.Auxiliary
 import           RMCA.GUI.Board
 import           RMCA.Semantics
 
-fromMaybeM_ :: (Monad m) => Maybe (m ()) -> m ()
-fromMaybeM_ = fromMaybe (return ())
-
 setNAttr :: NoteAttr -> Action -> Action
 setNAttr _ Inert = Inert
 setNAttr _ Absorb = Absorb

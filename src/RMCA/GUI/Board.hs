@@ -205,7 +205,7 @@ initGame = do
 initBoardRV :: BIO.Board Int Tile (Player,GUICell)
             -> IO ( ReactiveFieldRead IO Board
                   , Array Pos (ReactiveFieldWrite IO GUICell)
-                  , ReactiveFieldReadWrite IO [PlayHead])
+                  , ReactiveFieldWrite IO [PlayHead])
 initBoardRV board@BIO.Board { boardPieces = (GameBoard gArray) } = do
   -- RV creation
   phMVar <- newCBMVar []
@@ -262,7 +262,7 @@ initBoardRV board@BIO.Board { boardPieces = (GameBoard gArray) } = do
              [(i, ReactiveFieldWrite (setterW i))
              | i <- validArea :: [(Int,Int)]]
 
-  return (b,arrW,ph)
+  return (b,arrW,writeOnly ph)
 
 fileToPixbuf :: IO [(FilePath,Pixbuf)]
 fileToPixbuf = mapM (\f -> let f' = ("img/" ++ f) in

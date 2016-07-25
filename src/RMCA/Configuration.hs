@@ -8,6 +8,7 @@ import qualified Data.Bifunctor     as BF
 import           Data.Maybe
 import           Data.ReactiveValue
 import           Graphics.UI.Gtk
+import           RMCA.Auxiliary
 import           RMCA.GUI.Board
 import           RMCA.Layer.Layer
 import           RMCA.Semantics
@@ -76,3 +77,44 @@ errorLoad =  messageDialogNewWithMarkup Nothing [] MessageError ButtonsClose
 errorSave :: IO ()
 errorSave =  messageDialogNewWithMarkup Nothing [] MessageError ButtonsClose
              "Error saving the configuration file!" >>= widgetShow
+
+handleSaveLoad :: ( ReactiveValueRead save () IO
+                  , ReactiveValueRead load () IO
+                  , ReactiveValueReadWrite instr InstrumentNo IO
+                  , ReactiveValueReadWrite layer Layer IO
+                  , ReactiveValueRead board Board IO
+                  , ReactiveValueReadWrite tempo Tempo IO
+                  , ReactiveValueWrite cell GUICell IO) =>
+                  tempo -> board -> layer -> instr
+               -> Array Pos cell -> save -> load -> IO ()
+handleSaveLoad tempoRV boardRV layerRV instrRV pieceArrRV confSaveRV confLoadRV = do
+  fcs <- fileChooserDialogNew (Just "Save configuration") Nothing
+         FileChooserActionSave [("Cancel",ResponseCancel),("Ok",ResponseOk)]
+  reactFilt <- fileFilterNew
+  fileFilterAddPattern reactFilt "*.react"
+  fileFilterSetName reactFilt "RMCA conf files."
+  fileChooserAddFilter fcs reactFilt
+
+  fcl <- fileChooserDialogNew (Just "Load configuration") Nothing
+         FileChooserActionOpen [("Cancel",ResponseCancel),("Ok",ResponseOk)]
+  fileChooserAddFilter fcl reactFilt
+
+  reactiveValueOnCanRead confSaveRV $ postGUIAsync $ do
+    widgetShowAll fcs
+    let respHandle ResponseOk =
+          fileChooserGetFilename fcs >>= fromMaybeM_ .
+          fmap (\f -> saveConfiguration f tempoRV layerRV boardRV instrRV)
+        respHandle _ = return ()
+
+    onResponse fcs (\r -> respHandle r >> widgetHide fcs)
+    return ()
+
+  reactiveValueOnCanRead confLoadRV $ postGUIAsync $ do
+    widgetShowAll fcl
+    let respHandle ResponseOk =
+          fileChooserGetFilename fcl >>= fromMaybeM_ .
+          fmap (\f -> loadConfiguration f tempoRV layerRV pieceArrRV instrRV)
+        respHandle _ = return ()
+
+    onResponse fcl (\r -> respHandle r >> widgetHide fcl)
+    return ()

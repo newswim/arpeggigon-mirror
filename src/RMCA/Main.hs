@@ -17,12 +17,13 @@ import RMCA.GUI.LayerSettings
 import RMCA.GUI.MainSettings
 import RMCA.GUI.NoteSettings
 import RMCA.Layer.Board
-import RMCA.Semantics
 import RMCA.Translator.Jack
 
 main :: IO ()
 main = do
-  -- GUI
+  ------------------------------------------------------------------------------
+  -- Main GUI
+  ------------------------------------------------------------------------------
   initGUI
   window <- windowNew
   -- Main box
@@ -33,9 +34,6 @@ main = do
              ]
   windowMaximize window
 
-  boardQueue <- newCBMVarRW mempty
-  chanRV <- newCBMVarRW 0
-
   settingsBox <- vBoxNew False 0
   boxPackEnd mainBox settingsBox PackNatural 0
   (globalSettingsBox, tempoRV) <- globalSettings
@@ -43,6 +41,8 @@ main = do
   globalSep <- hSeparatorNew
   boxPackStart settingsBox globalSep PackNatural 0
 
+  boardQueue <- newCBMVarRW mempty
+  chanRV <- newCBMVarRW 0
   (layerSettingsVBox, layerRV, instrRV) <- layerSettings chanRV boardQueue
   boxPackStart settingsBox layerSettingsVBox PackNatural 0
   laySep <- hSeparatorNew
@@ -53,53 +53,18 @@ main = do
 
   -- Board
   boardCont <- backgroundContainerNew
-  game <- initGame
-  guiBoard <- attachGameRules game
+  guiBoard <- attachGameRules =<< initGame
   centerBoard <- alignmentNew 0.5 0.5 0 0
   containerAdd centerBoard guiBoard
   containerAdd boardCont centerBoard
   boxPackStart mainBox boardCont PackNatural 0
-  --boxPackStart mainBox boardCont PackNatural 0
   ------------------------------------------------------------------------------
   -- Board setup
   layer <- reactiveValueRead layerRV
   tempo <- reactiveValueRead tempoRV
   (boardRV, pieceArrRV, phRV) <- initBoardRV guiBoard
 
-  --fcsw <- windowNew
-  fcs <- fileChooserDialogNew (Just "Save configuration") Nothing
-         FileChooserActionSave [("Cancel",ResponseCancel),("Ok",ResponseOk)]
-  --containerAdd fcsw fcs
-  reactFilt <- fileFilterNew
-  fileFilterAddPattern reactFilt "*.react"
-  fileFilterSetName reactFilt "RMCA conf files."
-  fileChooserAddFilter fcs reactFilt
-
-  --fclw <- windowNew
-  fcl <- fileChooserDialogNew (Just "Load configuration") Nothing
-         FileChooserActionOpen [("Cancel",ResponseCancel),("Ok",ResponseOk)]
-  --containerAdd fclw fcl
-  fileChooserAddFilter fcl reactFilt
-
-  reactiveValueOnCanRead confSaveRV $ postGUIAsync $ do
-    widgetShowAll fcs
-    let respHandle ResponseOk =
-          fileChooserGetFilename fcs >>= fromMaybeM_ .
-          fmap (\f -> saveConfiguration f tempoRV layerRV boardRV instrRV)
-        respHandle _ = return ()
-
-    onResponse fcs (\r -> respHandle r >> widgetHide fcs)
-    return ()
-
-  reactiveValueOnCanRead confLoadRV $ postGUIAsync $ do
-    widgetShowAll fcl
-    let respHandle ResponseOk =
-          fileChooserGetFilename fcl >>= fromMaybeM_ .
-          fmap (\f -> loadConfiguration f tempoRV layerRV pieceArrRV instrRV)
-        respHandle _ = return ()
-
-    onResponse fcl (\r -> respHandle r >> widgetHide fcl)
-    return ()
+  handleSaveLoad tempoRV boardRV layerRV instrRV pieceArrRV confSaveRV confLoadRV
 
   boardRunRV <- newCBMVarRW BoardStop
   reactiveValueOnCanRead playRV $ reactiveValueWrite boardRunRV BoardStart
@@ -123,8 +88,6 @@ main = do
   forkIO $ jackSetup tempoRV chanRV boardQueue
   widgetShowAll window
   pieceBox <- clickHandling pieceArrRV guiBoard =<< vBoxNew False 10
-  -- Piece characteristic
-  --pieceBox <- pieceButtons pieceArrRV guiBoard =<< vBoxNew False 10
   ------------------------------------------------------------
 
   boxPackStart settingsBox pieceBox PackNatural 10

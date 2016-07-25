@@ -44,6 +44,6 @@ boardSF = proc (board, l, t, br) -> do
 boardSwitch :: [PlayHead]
             -> SF ((Board, Layer,Event BeatNo), Event (BoardRun, [PlayHead]))
                (Event ([PlayHead],[Note]))
-boardSwitch rPh = dSwitch (singleBoard rPh *** identity) fnSwitch
+boardSwitch rPh = dSwitch (singleBoard rPh *** (identity >>> notYet)) fnSwitch
   where fnSwitch (BoardStart, iPh) = boardSwitch iPh
         fnSwitch (BoardStop, _) = boardSwitch []
