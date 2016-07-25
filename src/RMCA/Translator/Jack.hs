@@ -12,7 +12,7 @@ import           Data.CBMVar
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
 import           Hails.Yampa
-import           RMCA.Auxiliary.RV
+import           RMCA.Auxiliary
 import           RMCA.Semantics
 import           RMCA.Translator.Filter
 import           RMCA.Translator.Message

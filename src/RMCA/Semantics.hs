@@ -33,9 +33,9 @@
 module RMCA.Semantics where
 
 import Data.Array
-import Data.List                (intercalate, nub)
-import Data.Maybe               (catMaybes)
-import RMCA.Auxiliary.Auxiliary
+import Data.List      (intercalate, nub)
+import Data.Maybe     (catMaybes)
+import RMCA.Auxiliary
 
 
 ------------------------------------------------------------------------------

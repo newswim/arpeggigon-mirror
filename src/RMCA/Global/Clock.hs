@@ -5,11 +5,8 @@ import Control.Monad
 import Data.CBMVar
 import Data.ReactiveValue
 import FRP.Yampa
-import RMCA.Auxiliary.Auxiliary
+import RMCA.Auxiliary
 import RMCA.Semantics
-
-tempo :: Tempo -> SF () Tempo
-tempo = constant
 
 -- The initial value is arbitrary but never appears because the switch
 -- is immediate.

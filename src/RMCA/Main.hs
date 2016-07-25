@@ -9,7 +9,7 @@ import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Board.BoardLink
 import Graphics.UI.Gtk.Layout.BackgroundContainer
 import Hails.Yampa
-import RMCA.Auxiliary.RV
+import RMCA.Auxiliary
 import RMCA.Configuration
 import RMCA.GUI.Board
 import RMCA.GUI.Buttons
@@ -101,15 +101,14 @@ main = do
     onResponse fcl (\r -> respHandle r >> widgetHide fcl)
     return ()
 
-  reactiveValueOnCanRead playRV
-    (reactiveValueRead boardRV >>= reactiveValueWrite phRV . startHeads)
-  reactiveValueOnCanRead stopRV $ reactiveValueWrite phRV []
+  boardRunRV <- newCBMVarRW BoardStop
+  reactiveValueOnCanRead playRV $ reactiveValueWrite boardRunRV BoardStart
+  reactiveValueOnCanRead stopRV $ reactiveValueWrite boardRunRV BoardStop
   board <- reactiveValueRead boardRV
-  ph <- reactiveValueRead phRV
-  (inBoard, outBoard) <- yampaReactiveDual (board, layer, ph, tempo) boardSF
+  (inBoard, outBoard) <- yampaReactiveDual (board, layer, tempo, BoardStop) boardSF
   let tempoRV' = liftR2 (\bool t -> t * fromEnum (not bool)) pauseRV tempoRV
-      inRV = liftR4 id
-             boardRV layerRV phRV tempoRV'
+      inRV = liftR4 (,,,)
+             boardRV layerRV tempoRV' boardRunRV
   --let inRV = onTick clock inRV
   inRV =:> inBoard
   reactiveValueOnCanRead outBoard $

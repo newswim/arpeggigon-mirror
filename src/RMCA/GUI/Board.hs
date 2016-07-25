@@ -21,6 +21,8 @@ import           Paths_RMCA
 import           RMCA.Global.Clock
 import           RMCA.Semantics
 
+import           Debug.Trace
+
 data GUICell = GUICell { cellAction  :: Action
                        , repeatCount :: Int
                        , asPh        :: Bool
@@ -207,7 +209,7 @@ initBoardRV :: BIO.Board Int Tile (Player,GUICell)
 initBoardRV board@BIO.Board { boardPieces = (GameBoard gArray) } = do
   -- RV creation
   phMVar <- newCBMVar []
-  notBMVar <- mkClockRV 100
+  notBMVar <- mkClockRV 10
   let getterB :: IO Board
       getterB = do
         (boardArray :: [((Int,Int),Maybe (Player,GUICell))]) <- getAssocs gArray
@@ -253,6 +255,7 @@ initBoardRV board@BIO.Board { boardPieces = (GameBoard gArray) } = do
 
       setterW :: (Int,Int) -> GUICell -> IO ()
       setterW i g = postGUIAsync $ boardSetPiece i (Player,g) board
+
 
       arrW :: Array Pos (ReactiveFieldWrite IO GUICell)
       arrW = array (minimum validArea, maximum validArea)

@@ -18,7 +18,7 @@ import           Data.Tuple
 import           Graphics.UI.Gtk                  hiding (Action)
 import           Graphics.UI.Gtk.Board.TiledBoard hiding (Board)
 import           Graphics.UI.Gtk.Reactive
-import           RMCA.Auxiliary.RV
+import           RMCA.Auxiliary
 import           RMCA.GUI.Board
 import           RMCA.Semantics
 

@@ -8,7 +8,7 @@ import Data.String
 import Data.Tuple
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Reactive
-import RMCA.Auxiliary.RV
+import RMCA.Auxiliary
 import RMCA.GUI.NoteSettings
 import RMCA.Layer.Layer
 import RMCA.Semantics

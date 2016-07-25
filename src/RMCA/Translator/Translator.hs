@@ -6,7 +6,7 @@ module RMCA.Translator.Translator ( readMessages
 
 import qualified Data.Bifunctor              as BF
 import           FRP.Yampa
-import           RMCA.Auxiliary.Curry
+import           RMCA.Auxiliary
 import           RMCA.Semantics
 import           RMCA.Translator.Message
 import           RMCA.Translator.Note
