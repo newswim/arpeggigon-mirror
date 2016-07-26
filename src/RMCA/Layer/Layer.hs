@@ -1,4 +1,4 @@
-{-# LANGUAGE Arrows #-}
+{-# LANGUAGE Arrows, TupleSections #-}
 
 module RMCA.Layer.Layer where
 
@@ -20,16 +20,11 @@ layerTempo :: SF (Tempo, Layer) LTempo
 layerTempo = proc (t, Layer { relTempo = r }) ->
   returnA -< floor $ r * fromIntegral t
 
--- The layer is modified after the beat as been
-layerMetronome' :: BeatNo -> SF (Tempo, Layer) (Event BeatNo)
-layerMetronome' b = proc (t, l@Layer { beatsPerBar = bpb }) -> do
-  eb <- metronome <<< layerTempo -< (t, l)
-  returnA -< eb `tag` nextBeatNo bpb b
-
+-- /!\ To be changed in the initialization of the bpb /!\
 layerMetronome :: SF (Tempo, Layer) (Event BeatNo)
-layerMetronome = layerMetronome'' 0
-  where layerMetronome'' no = dSwitch (layerMetronome' no >>^ dup)
-                              layerMetronome''
+layerMetronome = proc (t,l@Layer { beatsPerBar = bpb }) -> do
+  eb <- metronome <<< layerTempo -< (t,l)
+  accumBy (\bn bpb -> nextBeatNo bpb bn) 1 -< eb `tag` bpb
 
 layerRV :: CBMVar Layer -> ReactiveFieldReadWrite IO Layer
 layerRV mvar = ReactiveFieldReadWrite setter getter notifier

@@ -8,6 +8,7 @@ import FRP.Yampa
 import RMCA.Auxiliary
 import RMCA.Semantics
 
+{-
 -- The initial value is arbitrary but never appears because the switch
 -- is immediate.
 metronome :: SF Tempo (Event Beat)
@@ -18,6 +19,9 @@ metronome = switch (repeatedly (tempoToQNoteIvl 120) ()
         metronome' t = switch (repeatedly (tempoToQNoteIvl t) ()
                                &&&
                                onChange) metronome'
+-}
+metronome :: SF Tempo (Event Beat)
+metronome = repeatedlyS () <<^ tempoToQNoteIvl
 
 -- Tempo is the number of quarter notes per minute.
 tempoToQNoteIvl :: Tempo -> DTime

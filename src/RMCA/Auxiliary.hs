@@ -30,7 +30,7 @@ fromMaybeM_ = fromMaybe (return ())
 stepBack :: SF a (Maybe a)
 stepBack = sscan f (Nothing, Nothing) >>^ snd
   where f :: (Maybe a, Maybe a) -> a -> (Maybe a, Maybe a)
-        f (Nothing,Nothing) x' = (Just x', Nothing)
+        f (Nothing,_) x' = (Just x', Nothing)
         f (Just x, _) x' = (Just x', Just x)
 
 -- Just like stepBack but the output value is always defined and is
@@ -47,9 +47,17 @@ onChange = proc x -> do
   x' <- stepBack -< x
   let makeEvent x x'
         | isNothing x' = NoEvent
-        | isJust x' = let x'' = fromJust x' in
+        | otherwise = let x'' = fromJust x' in
             if x'' == x then NoEvent else Event x
   returnA -< makeEvent x x'
+
+varFreqSine :: SF DTime Double
+varFreqSine = sin ^<< (2*pi*) ^<< integral <<^ (1/)
+
+repeatedlyS :: a -> SF DTime (Event a)
+repeatedlyS x = proc dt -> do
+  (sw,sw') <- (identity &&& stepBack) <<< varFreqSine -< 2*dt
+  edgeTag x <<^ maybe True (< 0) -< (*) <$> return sw <*> sw'
 
 -- Similar to onChange but contains its initial value in the first
 -- event.
@@ -59,7 +67,7 @@ onChange' = proc x -> do
   -- If it's the first value, throw an Event, else behave like onChange.
   let makeEvent x x'
         | isNothing x' = Event x
-        | isJust x' = let x'' = fromJust x' in
+        | otherwise = let x'' = fromJust x' in
             if x'' == x then NoEvent else Event x
   returnA -< makeEvent x x'
 

@@ -19,7 +19,7 @@ data-files:          img/*.png, img/*.svg
 
 executable RMCA
   main-is:             RMCA/Main.hs
-  -- other-modules:
+  other-modules:       Paths_RMCA
   other-extensions:    MultiParamTypeClasses
                      , ScopedTypeVariables
                      , Arrows
@@ -48,3 +48,40 @@ executable RMCA
   build-tools:         hsc2hs
   default-language:    Haskell2010
   ghc-options:         -O2 -threaded -W
+
+-- executable RMCA.prof
+--   main-is:             RMCA/Main.hs
+--   other-modules:       Paths_RMCA
+--   other-extensions:    MultiParamTypeClasses
+--                      , ScopedTypeVariables
+--                      , Arrows
+--                      , FlexibleInstances
+--                      , TypeSynonymInstances
+--                      , FlexibleContexts
+--                      , GeneralizedNewtypeDeriving
+--   build-depends:       base >=4.8 && <4.10
+--                      , array >=0.5 && <0.6
+--                      , cairo >=0.13 && <0.14
+--                      , keera-hails-reactivevalues >=0.2 && <0.3
+--                      , Yampa >=0.10 && <0.11
+--                      , gtk-helpers >=0.0 && <0.1
+--                      , gtk >=0.14 && <0.15
+--                      , keera-hails-reactive-gtk >=0.3 && <0.4
+--                      , keera-hails-reactive-yampa >=0.0 && <0.1
+--                      , containers >=0.5 && <0.6
+--                      , jack >=0.7 && <0.8
+--                      , midi >=0.2 && <0.3
+--                      , explicit-exception >=0.1 && <0.2
+--                      , transformers >=0.4 && <0.6
+--                      , event-list >=0.1 && <0.2
+--                      , keera-callbacks >=0.1 && <0.2
+--                      , glib >=0.13 && <0.14
+--   hs-source-dirs:      src
+--   build-tools:         hsc2hs
+--   default-language:    Haskell2010
+--   ghc-options:         -O2
+--                        -threaded
+--                        -W
+--                        -fprof-auto
+--                        -prof
+--                        "-with-rtsopts=-p -s -h -i0.1"
