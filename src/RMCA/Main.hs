@@ -15,6 +15,7 @@ import RMCA.GUI.Board
 import RMCA.GUI.Buttons
 import RMCA.GUI.LayerSettings
 import RMCA.GUI.MainSettings
+import RMCA.GUI.MultiBoard
 import RMCA.GUI.NoteSettings
 import RMCA.Layer.Board
 import RMCA.Translator.Jack
@@ -48,21 +49,16 @@ main = do
   laySep <- hSeparatorNew
   boxPackStart settingsBox laySep PackNatural 0
 
-  (buttonBox, playRV, stopRV, pauseRV, recordRV, confSaveRV, confLoadRV) <- getButtons
+  (   buttonBox
+    , playRV, stopRV, pauseRV, recordRV
+    , confSaveRV, confLoadRV
+    , addLayerRV, rmLayerRV ) <- getButtons
   boxPackEnd settingsBox buttonBox PackNatural 0
 
-  -- Board
-  boardCont <- backgroundContainerNew
-  guiBoard <- attachGameRules =<< initGame
-  centerBoard <- alignmentNew 0.5 0.5 0 0
-  containerAdd centerBoard guiBoard
-  containerAdd boardCont centerBoard
+  (   boardCont, pieceBox
+    , boardRV, pieceArrRV, phRV) <- createNotebook addLayerRV rmLayerRV layerRV tempoRV
   boxPackStart mainBox boardCont PackNatural 0
-  ------------------------------------------------------------------------------
-  -- Board setup
-  layer <- reactiveValueRead layerRV
-  tempo <- reactiveValueRead tempoRV
-  (boardRV, pieceArrRV, phRV) <- initBoardRV guiBoard
+
 
   handleSaveLoad tempoRV boardRV layerRV instrRV pieceArrRV confSaveRV confLoadRV
 
@@ -70,6 +66,8 @@ main = do
   reactiveValueOnCanRead playRV $ reactiveValueWrite boardRunRV BoardStart
   reactiveValueOnCanRead stopRV $ reactiveValueWrite boardRunRV BoardStop
   board <- reactiveValueRead boardRV
+  layer <- reactiveValueRead layerRV
+  tempo <- reactiveValueRead tempoRV
   (inBoard, outBoard) <- yampaReactiveDual (board, layer, tempo, BoardStop) boardSF
   let tempoRV' = liftR2 (\bool t -> t * fromEnum (not bool)) pauseRV tempoRV
       inRV = liftR4 (,,,)
@@ -87,7 +85,6 @@ main = do
   -- Jack setup
   forkIO $ jackSetup tempoRV chanRV boardQueue
   widgetShowAll window
-  pieceBox <- clickHandling pieceArrRV guiBoard =<< vBoxNew False 10
   ------------------------------------------------------------
 
   boxPackStart settingsBox pieceBox PackNatural 10

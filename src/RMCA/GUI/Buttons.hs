@@ -5,25 +5,7 @@ module RMCA.GUI.Buttons where
 import Data.ReactiveValue
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Reactive
-import System.Glib
-
-gtkMediaPlay :: DefaultGlibString
-gtkMediaPlay = stringToGlib "gtk-media-play"
-
-gtkMediaStop :: DefaultGlibString
-gtkMediaStop = stringToGlib "gtk-media-stop"
-
-gtkMediaPause :: DefaultGlibString
-gtkMediaPause = stringToGlib "gtk-media-pause"
-
-gtkMediaRecord :: DefaultGlibString
-gtkMediaRecord = stringToGlib "gtk-media-record"
-
-gtkMediaSave :: DefaultGlibString
-gtkMediaSave = stringToGlib "gtk-save"
-
-gtkMediaOpen :: DefaultGlibString
-gtkMediaOpen = stringToGlib "gtk-open"
+import RMCA.GUI.StockId
 
 buttonNewFromStockWithLabel :: StockId -> String -> IO Button
 buttonNewFromStockWithLabel s l = do
@@ -57,20 +39,33 @@ getButtons :: IO ( VBox
                  , ReactiveFieldRead IO Bool
                  , ReactiveFieldRead IO ()
                  , ReactiveFieldRead IO ()
+                 , ReactiveFieldRead IO ()
+                 , ReactiveFieldRead IO ()
                  )
 getButtons = do
   buttonBox <- vBoxNew False 10
 
-  buttonBoxTop <- hBoxNew True 10
-  boxPackStart buttonBox buttonBoxTop PackNatural 0
+  buttonBoxAddRmLayers <- hBoxNew True 10
+  boxPackStart buttonBox buttonBoxAddRmLayers PackNatural 0
+
+  buttonAddLayer <- buttonNewFromStockWithLabel gtkMediaAdd "Add layer"
+  let addLayerRV = buttonActivateField buttonAddLayer
+  boxPackStart buttonBoxAddRmLayers buttonAddLayer PackGrow 0
+
+  buttonRmLayer <- buttonNewFromStockWithLabel gtkMediaRemove "Remove layer"
+  let rmLayerRV = buttonActivateField buttonRmLayer
+  boxPackStart buttonBoxAddRmLayers buttonRmLayer PackGrow 0
+
+  buttonBoxSaveLoad <- hBoxNew True 10
+  boxPackStart buttonBox buttonBoxSaveLoad PackNatural 0
 
   buttonSave <- buttonNewFromStockWithLabel gtkMediaSave "_Save configuration"
   let confSaveRV = buttonActivateField buttonSave
-  boxPackStart buttonBoxTop buttonSave PackGrow 0
+  boxPackStart buttonBoxSaveLoad buttonSave PackGrow 0
 
   buttonLoad <- buttonNewFromStockWithLabel gtkMediaOpen "_Load configuration"
   let confLoadRV = buttonActivateField buttonLoad
-  boxPackStart buttonBoxTop buttonLoad PackGrow 0
+  boxPackStart buttonBoxSaveLoad buttonLoad PackGrow 0
 
 
   buttonBoxBot <- hBoxNew True 10
@@ -98,4 +93,6 @@ getButtons = do
          , recordRV
          , confSaveRV
          , confLoadRV
+         , addLayerRV
+         , rmLayerRV
          )

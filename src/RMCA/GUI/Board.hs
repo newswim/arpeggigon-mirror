@@ -21,8 +21,6 @@ import           Paths_RMCA
 import           RMCA.Global.Clock
 import           RMCA.Semantics
 
-import           Debug.Trace
-
 data GUICell = GUICell { cellAction  :: Action
                        , repeatCount :: Int
                        , asPh        :: Bool

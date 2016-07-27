@@ -24,7 +24,7 @@ layerTempo = proc (t, Layer { relTempo = r }) ->
 layerMetronome :: SF (Tempo, Layer) (Event BeatNo)
 layerMetronome = proc (t,l@Layer { beatsPerBar = bpb }) -> do
   eb <- metronome <<< layerTempo -< (t,l)
-  accumBy (\bn bpb -> nextBeatNo bpb bn) 1 -< eb `tag` bpb
+  accumBy (flip nextBeatNo) 1 -< eb `tag` bpb
 
 layerRV :: CBMVar Layer -> ReactiveFieldReadWrite IO Layer
 layerRV mvar = ReactiveFieldReadWrite setter getter notifier

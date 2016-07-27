@@ -4,6 +4,7 @@ module RMCA.Auxiliary where
 
 import Control.Monad
 import Data.CBMVar
+import Data.Fixed
 import Data.Maybe
 import Data.ReactiveValue
 import FRP.Yampa
@@ -20,6 +21,22 @@ bound (min, max) x
 
 fromMaybeM_ :: (Monad m) => Maybe (m ()) -> m ()
 fromMaybeM_ = fromMaybe (return ())
+
+safeHead :: [a] -> Maybe a
+safeHead [] = Nothing
+safeHead (x:_) = Just x
+
+safeTail :: [a] -> [a]
+safeTail [] = []
+safeTail (_:xs) = xs
+
+maybeToEvent :: Maybe a -> Event a
+maybeToEvent Nothing = NoEvent
+maybeToEvent (Just x) = Event x
+
+eventToMaybe :: Event a -> Maybe a
+eventToMaybe NoEvent = Nothing
+eventToMaybe (Event x) = Just x
 
 --------------------------------------------------------------------------------
 -- FRP
@@ -52,12 +69,11 @@ onChange = proc x -> do
   returnA -< makeEvent x x'
 
 varFreqSine :: SF DTime Double
-varFreqSine = sin ^<< (2*pi*) ^<< integral <<^ (1/)
+varFreqSine = sin ^<< (2*pi*) ^<< (`mod'` 1) ^<< integral <<^ (1/)
 
 repeatedlyS :: a -> SF DTime (Event a)
-repeatedlyS x = proc dt -> do
-  (sw,sw') <- (identity &&& stepBack) <<< varFreqSine -< 2*dt
-  edgeTag x <<^ maybe True (< 0) -< (*) <$> return sw <*> sw'
+repeatedlyS x = edgeBy (\a b -> if a * b < 0 then Just x else Nothing) 0
+                <<< varFreqSine <<^ (2*)
 
 -- Similar to onChange but contains its initial value in the first
 -- event.
