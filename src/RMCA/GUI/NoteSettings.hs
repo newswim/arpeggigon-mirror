@@ -3,24 +3,20 @@
 
 module RMCA.GUI.NoteSettings where
 
-import           Control.Concurrent.MVar
-import           Control.Monad
-import           Control.Monad.IO.Class
-import           Data.Array
-import qualified Data.Bifunctor                   as BF
-import           Data.List
-import           Data.Maybe
-import           Data.Ord
-import           Data.Ratio
-import           Data.ReactiveValue
-import           Data.String
-import           Data.Tuple
-import           Graphics.UI.Gtk                  hiding (Action)
-import           Graphics.UI.Gtk.Board.TiledBoard hiding (Board)
-import           Graphics.UI.Gtk.Reactive
-import           RMCA.Auxiliary
-import           RMCA.GUI.Board
-import           RMCA.Semantics
+import Control.Monad
+import Data.List
+import Data.Maybe
+import Data.Ord
+import Data.Ratio
+import Data.ReactiveValue
+import Data.String
+import Data.Tuple
+import Graphics.UI.Gtk          hiding (Action)
+import Graphics.UI.Gtk.Reactive
+import RMCA.Auxiliary
+import RMCA.GUI.Board
+import RMCA.MCBMVar
+import RMCA.Semantics
 
 setNAttr :: NoteAttr -> Action -> Action
 setNAttr _ Inert = Inert
@@ -58,10 +54,9 @@ comboBoxIndexRV box = ReactiveFieldReadWrite setter getter notifier
         setter = comboBoxSetActive box
         notifier = void . on box changed
 
-clickHandling :: (ReactiveValueWrite cell GUICell IO) =>
-                 Array Pos cell
-              -> IOBoard -> VBox -> IO VBox
-clickHandling pieceArrRV board pieceBox = do
+noteSettingsBox :: IO (VBox, MCBMVar GUICell)
+noteSettingsBox = do
+  pieceBox <- vBoxNew False 10
   naBox <- vBoxNew False 10
   boxPackStart pieceBox naBox PackNatural 10
 
@@ -136,11 +131,11 @@ clickHandling pieceArrRV board pieceBox = do
 
   -- Side RV
   -- Carries the index of the tile to display and what to display.
-  setRV <- newCBMVarRW ((0,0),inertCell)
+  setRV <- newCBMVarRW inertCell
 
   reactiveValueOnCanRead noteDurRV $ do
     nDur <- reactiveValueRead noteDurRV
-    (i,oCell) <- reactiveValueRead setRV
+    oCell <- reactiveValueRead setRV
     let nCa :: Maybe NoteAttr
         nCa = (\na -> na { naDur = nDur }) <$> getNAttr (cellAction oCell)
         nCell :: GUICell
@@ -148,21 +143,19 @@ clickHandling pieceArrRV board pieceBox = do
                 then oCell { cellAction =
                              setNAttr (fromJust nCa) (cellAction oCell) }
                 else oCell
-    reactiveValueWrite setRV (i,nCell)
+    reactiveValueWrite setRV nCell
     fromMaybeM_ $ reactiveValueWrite noteDurLabelRV <$> lookup nDur symbolString
-    reactiveValueWrite (pieceArrRV ! i) nCell
 
 
   reactiveValueOnCanRead rCountRV $ do
     nRCount <- reactiveValueRead rCountRV
-    (i,oCell) <- reactiveValueRead setRV
+    oCell <- reactiveValueRead setRV
     let nCell = oCell { repeatCount = nRCount }
-    reactiveValueWrite setRV (i,nCell)
-    reactiveValueWrite (pieceArrRV ! i) nCell
+    reactiveValueWrite setRV nCell
 
   reactiveValueOnCanRead slideComboRV $ do
     nSlide <- reactiveValueRead slideComboRV
-    (i,oCell) <- reactiveValueRead setRV
+    oCell <- reactiveValueRead setRV
     let nCa :: Maybe NoteAttr
         nCa = (\na -> na { naOrn = (naOrn na) { ornSlide = nSlide } }) <$>
               getNAttr (cellAction oCell)
@@ -172,12 +165,11 @@ clickHandling pieceArrRV board pieceBox = do
                              setNAttr (fromJust nCa) (cellAction oCell)
                            }
                 else oCell
-    reactiveValueWrite setRV (i,nCell)
-    reactiveValueWrite (pieceArrRV ! i) nCell
+    reactiveValueWrite setRV nCell
 
   reactiveValueOnCanRead artComboRV $ do
     nArt <- reactiveValueRead artComboRV
-    (i,oCell) <- reactiveValueRead setRV
+    oCell <- reactiveValueRead setRV
     let nCa :: Maybe NoteAttr
         nCa = (\na -> na { naArt = nArt }) <$> getNAttr (cellAction oCell)
         nCell :: GUICell
@@ -185,8 +177,7 @@ clickHandling pieceArrRV board pieceBox = do
                 then oCell { cellAction =
                              setNAttr (fromJust nCa) (cellAction oCell) }
                 else oCell
-    reactiveValueWrite setRV (i,nCell)
-    reactiveValueWrite (pieceArrRV ! i) nCell
+    reactiveValueWrite setRV nCell
 
   let hideNa :: IO ()
       hideNa = do widgetHide slideCombo
@@ -204,6 +195,8 @@ clickHandling pieceArrRV board pieceBox = do
         Absorb -> hideNa
         _ -> showNa
 
+  reactiveValueOnCanRead setRV $ reactiveValueRead setRV >>= updateNaBox
+{-
   state <- newEmptyMVar
   boardOnPress board
     (\iPos -> liftIO $ do
@@ -222,7 +215,6 @@ clickHandling pieceArrRV board pieceBox = do
               when (button == RightButton && maybe False (== fPos) mstate) $
                 boardSetPiece fPos (BF.second rotateGUICell (Player,piece)) board
               nmp <- boardGetPiece fPos board
-              --print nmp
               when (button == LeftButton && isJust nmp) $ do
                 let nC = snd $ fromJust nmp
                 reactiveValueWrite setRV (fPos,nC)
@@ -240,4 +232,8 @@ clickHandling pieceArrRV board pieceBox = do
 
   widgetShow pieceBox
   widgetShow naBox
-  return pieceBox
+-}
+
+  setMCBMVar <- newMCBMVar =<< reactiveValueRead setRV
+  setMCBMVar =:= setRV
+  return (pieceBox,setMCBMVar)

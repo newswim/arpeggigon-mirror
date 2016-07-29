@@ -11,6 +11,7 @@ import Graphics.UI.Gtk.Reactive
 import RMCA.Auxiliary
 import RMCA.GUI.NoteSettings
 import RMCA.Layer.Layer
+import RMCA.MCBMVar
 import RMCA.Semantics
 import RMCA.Translator.Instruments
 import RMCA.Translator.Message
@@ -30,14 +31,15 @@ mkVScale s adj = do
   boxPackStart hBox boxScale PackNatural 0
   return (hBox,boxScale)
 
-layerSettings :: ( ReactiveValueReadWrite board ([Note],[Message]) IO
-                 , ReactiveValueRead chan Int IO) =>
-                 chan -> board
-              -> IO ( VBox
-                    , ReactiveFieldReadWrite IO Layer
-                    , ReactiveFieldReadWrite IO Int
-                    )
-layerSettings chanRV boardQueue = do
+layerSettings :: (ReactiveValueReadWrite board ([Note],[Message]) IO) =>
+                 board -> IO ( VBox
+                             , MCBMVar Layer
+                             , MCBMVar Int
+                             )
+layerSettings boardQueue = do
+  ------------------------------------------------------------------------------
+  -- GUI Boxes
+  ------------------------------------------------------------------------------
   layerSettingsVBox <- vBoxNew False 10
   layerSettingsBox <- hBoxNew True 10
   boxPackStart layerSettingsVBox layerSettingsBox PackNatural 0
@@ -46,7 +48,6 @@ layerSettings chanRV boardQueue = do
   (layVolumeBox,layVolumeScale) <- mkVScale "Volume" layVolumeAdj
   boxPackStart layerSettingsBox layVolumeBox PackNatural 0
   scaleSetDigits layVolumeScale 0
-
 
   layTempoAdj <- adjustmentNew 1 0 2 0.1 0.1 1
   (layTempoBox, layTempoScale) <- mkVScale "Layer tempo" layTempoAdj
@@ -72,6 +73,10 @@ layerSettings chanRV boardQueue = do
                                 return (i, ind)) instrumentList
   comboBoxSetActive instrumentCombo 0
   boxPackStart layerSettingsVBox instrumentCombo PackNatural 10
+
+  ------------------------------------------------------------------------------
+  -- RVs
+  ------------------------------------------------------------------------------
   let indexToInstr i = fromMaybe (error "Can't get the selected instrument.") $
                        lookup i instrumentIndex
       instrToIndex ins =
@@ -80,14 +85,14 @@ layerSettings chanRV boardQueue = do
       instrumentComboRV = bijection (indexToInstr, instrToIndex) `liftRW`
                           comboBoxIndexRV instrumentCombo
 
-      changeInst = do
-        ins <- reactiveValueRead instrumentComboRV
-        chan <- reactiveValueRead chanRV
-        reactiveValueAppend boardQueue
-          ([],[Instrument (mkChannel chan) (mkProgram ins)])
-  changeInst
-  reactiveValueOnCanRead instrumentComboRV changeInst
+  {-
+  ins <- reactiveValueRead instrumentComboRV
+  chan <- reactiveValueRead chanRV
+  reactiveValueAppend boardQueue ([],[Instrument (mkChannel chan)
+(mkProgram ins)])
 
+  reactiveValueOnCanRead instrumentComboRV changeInst
+-}
   layPitchRV <- newCBMVarRW 1
   let layTempoRV = floatConv $ scaleValueReactive layTempoScale
       strengthRV = floatConv $  scaleValueReactive layStrengthScale
@@ -100,18 +105,32 @@ layerSettings chanRV boardQueue = do
                , beatsPerBar = bpb
                , volume = v
                } = (d,p,s,bpb,v)
-      f2 (d,p,s,bpb,v) = Layer { relTempo = d
-                               , relPitch = p
-                               , strength = s
-                               , beatsPerBar = bpb
-                               , volume = v
-                               }
+      f2 (d,p,s,bpb,v)  = Layer { relTempo = d
+                                , relPitch = p
+                                , strength = s
+                                , beatsPerBar = bpb
+                                , volume = v
+                                }
       layerRV = liftRW5 (bijection (f1,f2))
                 layTempoRV layPitchRV strengthRV bpbRV layVolumeRV
 
+
+  layerMMVar <- newMCBMVar =<< reactiveValueRead layerRV
+  reactiveValueOnCanRead layerRV $
+    reactiveValueRead layerRV >>= writeMCBMVar layerMMVar
+  installCallbackMCBMVar layerMMVar $
+    readMCBMVar layerMMVar >>= reactiveValueWrite layerRV
+
+  instrMMVar <- newMCBMVar =<< reactiveValueRead instrumentComboRV
+  reactiveValueOnCanRead instrumentComboRV $
+    reactiveValueRead instrumentComboRV >>= writeMCBMVar instrMMVar
+  installCallbackMCBMVar instrMMVar $
+    readMCBMVar instrMMVar >>= reactiveValueWrite instrumentComboRV
+{-
   reactiveValueOnCanRead layVolumeRV $ do
     vol <- reactiveValueRead layVolumeRV
     chan <- reactiveValueRead chanRV
     let vol' = floor ((fromIntegral vol / 100) * 127)
     reactiveValueAppend boardQueue ([],[Volume (mkChannel chan) vol'])
-  return (layerSettingsVBox, layerRV, instrumentComboRV)
+-}
+  return (layerSettingsVBox, layerMMVar, instrMMVar)
