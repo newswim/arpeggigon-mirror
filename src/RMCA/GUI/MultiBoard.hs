@@ -86,14 +86,12 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
                 when (button == LeftButton && isJust nmp) $ do
                   let nCell = snd $ fromJust nmp
                   mOHid <- tryTakeMVar guiCellHidMVar
-                  when (isJust mOHid) $ do
-                    print "Removing."
+                  when (isJust mOHid) $
                     removeCallbackMCBMVar guiCellMCBMVar $ fromJust mOHid
                   reactiveValueWrite guiCellMCBMVar nCell
                   nHid <- installCallbackMCBMVar guiCellMCBMVar $ do
                     cp <- reactiveValueRead curChanRV
                     guiVal <- reactiveValueRead guiCellMCBMVar
-                    print guiVal
                     mChanRV <- M.lookup cp <$> reactiveValueRead chanMapRV
                     when (isNothing mChanRV) $ error "Can't get piece array!"
                     let (_,pieceArrRV,_) = fromJust mChanRV
@@ -149,7 +147,6 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
       newP <- notebookAppendPage n nBoardCont $ show np
       pChan <- reactiveValueRead pageChanRV
       let newCP = foundHole pChan
-      print ("newP" ++ " " ++ show newP)
       (nBoardRV, nPieceArrRV, nPhRV) <- initBoardRV nGuiBoard
 
       reactiveValueRead chanMapRV >>=
@@ -188,12 +185,9 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
 
   reactiveValueOnCanRead curChanRV $ do
     cp <- reactiveValueRead curChanRV
-    print cp
     when (cp >= 0) $ do
-      reactiveValueRead pageChanRV >>= print
       takeMVar layerHidMVar >>= removeCallbackMCBMVar layerMCBMVar
       layerMap <- reactiveValueRead layerMapRV
-      --print $ M.keys layerMap
       let mSelLayer = M.lookup cp layerMap
       when (isNothing mSelLayer) $ error "Not found selected layer!"
       let selLayer = fromJust mSelLayer
