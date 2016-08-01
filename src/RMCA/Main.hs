@@ -42,26 +42,25 @@ main = do
   globalSep <- hSeparatorNew
   boxPackStart settingsBox globalSep PackNatural 0
 
-  boardQueue <- newCBMVarRW mempty
-  chanRV <- newCBMVarRW 0
-  (layerSettingsVBox, layerRV, instrRV) <- layerSettings chanRV boardQueue
-  boxPackStart settingsBox layerSettingsVBox PackNatural 0
-  laySep <- hSeparatorNew
-  boxPackStart settingsBox laySep PackNatural 0
-
   (   buttonBox
     , playRV, stopRV, pauseRV, recordRV
     , confSaveRV, confLoadRV
     , addLayerRV, rmLayerRV ) <- getButtons
   boxPackEnd settingsBox buttonBox PackNatural 0
 
-  (   boardCont, pieceBox
-    , boardRV, pieceArrRV, phRV) <- createNotebook addLayerRV rmLayerRV layerRV tempoRV
+  boardQueue <- newCBMVarRW mempty
+  (layerSettingsVBox, layerMCBMVar, instrMCBMVar) <- layerSettings boardQueue
+  boxPackStart settingsBox layerSettingsVBox PackNatural 0
+  laySep <- hSeparatorNew
+  boxPackStart settingsBox laySep PackNatural 0
+
+  (noteSettingsBox, guiCellMCBMVar) <- noteSettingsBox
+  (boardCont, chanMapRV, _{-curPageRV-}) <- createNotebook addLayerRV rmLayerRV
+                                       layerMCBMVar guiCellMCBMVar
   boxPackStart mainBox boardCont PackNatural 0
 
-
-  handleSaveLoad tempoRV boardRV layerRV instrRV pieceArrRV confSaveRV confLoadRV
-
+  --handleSaveLoad tempoRV boardRV layerRV instrRV pieceArrRV confSaveRV confLoadRV
+{-
   boardRunRV <- newCBMVarRW BoardStop
   reactiveValueOnCanRead playRV $ reactiveValueWrite boardRunRV BoardStart
   reactiveValueOnCanRead stopRV $ reactiveValueWrite boardRunRV BoardStop
@@ -72,7 +71,6 @@ main = do
   let tempoRV' = liftR2 (\bool t -> t * fromEnum (not bool)) pauseRV tempoRV
       inRV = liftR4 (,,,)
              boardRV layerRV tempoRV' boardRunRV
-  --let inRV = onTick clock inRV
   inRV =:> inBoard
   reactiveValueOnCanRead outBoard $
     reactiveValueRead (liftR (event mempty (,[]) <<< snd <<< splitE) outBoard) >>=
@@ -84,9 +82,10 @@ main = do
   putStrLn "Board started."
   -- Jack setup
   forkIO $ jackSetup tempoRV chanRV boardQueue
+-}
   widgetShowAll window
   ------------------------------------------------------------
 
-  boxPackStart settingsBox pieceBox PackNatural 10
+  boxPackStart settingsBox noteSettingsBox PackNatural 10
   onDestroy window mainQuit
   mainGUI

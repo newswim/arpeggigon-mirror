@@ -7,6 +7,7 @@ import           Control.Concurrent.MVar
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Array
+import           Data.List
 import qualified Data.Map                                   as M
 import           Data.Maybe
 import           Data.ReactiveValue
@@ -21,7 +22,7 @@ import           RMCA.Layer.Layer
 import           RMCA.MCBMVar
 import           RMCA.Semantics
 
--- In GTk, a “thing with tabs” has the I think very confusing name
+-- In GTk, a “thing with tabs” has the, I think, very confusing name
 -- Notebook.
 
 createNotebook :: ( ReactiveValueRead addLayer () IO
@@ -35,15 +36,28 @@ createNotebook :: ( ReactiveValueRead addLayer () IO
                      , ReactiveFieldReadWrite IO
                        (M.Map Int ( ReactiveFieldRead IO Board
                                   , Array Pos (ReactiveFieldWrite IO GUICell)
-                                  , ReactiveFieldWrite IO [PlayHead])
-                       )
+                                  , ReactiveFieldWrite IO [PlayHead]
+                                  ))
                      , ReactiveFieldReadWrite IO Int
                      )
 createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
   n <- notebookNew
   let curPageRV = ReactiveFieldReadWrite setter getter notifier
-      (ReactiveFieldRead getter notifier) = notebookGetCurrentPagePassive n
-      (ReactiveFieldWrite setter) = notebookSetCurrentPageReactive n
+        where (ReactiveFieldRead getter _) = notebookGetCurrentPagePassive n
+              -- afterSwitchPage is deprecated but switchPage gets us
+              -- the old page number and not the new one and using
+              -- afterSwitchPage doesn't trigger a warning.
+              setter = postGUIAsync . notebookSetCurrentPage n
+              notifier io = void $ afterSwitchPage n (const io)
+
+  pageChanRV <- newCBMVarRW []
+  let foundHole = let foundHole' [] = 0
+                      foundHole' (x:[]) = x + 1
+                      foundHole' (x:y:xs) = if x + 1 /= y then x + 1 else foundHole (y:xs)
+                  in foundHole' . sort
+
+
+  let curChanRV = liftR2 (!!) pageChanRV curPageRV
   ------------------------------------------------------------------------------
   -- First board
   ------------------------------------------------------------------------------
@@ -75,7 +89,7 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
                   when (isJust mOHid) $
                     removeCallbackMCBMVar guiCellMCBMVar $ fromJust mOHid
                   nHid <- installCallbackMCBMVar guiCellMCBMVar $ do
-                    cp <- reactiveValueRead curPageRV
+                    cp <- reactiveValueRead curChanRV
                     guiVal <- reactiveValueRead guiCellMCBMVar
                     mChanRV <- M.lookup cp <$> reactiveValueRead chanMapRV
                     when (isNothing mChanRV) $ error "Can't get piece array!"
@@ -92,13 +106,15 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
   containerAdd centerBoard guiBoard
   containerAdd boardCont centerBoard
 
-  fstP <- notebookPrependPage n boardCont "Lol first"
+  fstP <- notebookAppendPage n boardCont "Lol first"
   notebookPageNumber <- newCBMVarRW 1
 
   initBoardRV guiBoard >>=
     \(boardRV, pieceArrRV, phRV) -> reactiveValueRead chanMapRV >>=
     reactiveValueWrite chanMapRV . M.insert fstP (boardRV,pieceArrRV,phRV)
 
+  reactiveValueRead pageChanRV >>=
+    reactiveValueWrite pageChanRV . (\pc -> pc ++ [foundHole pc])
   layerMapRV <- newCBMVarRW $ M.insert fstP defaultLayer M.empty
 
   let updateLayer cp = do
@@ -109,7 +125,7 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
   layerHidMVar <- newEmptyMVar
 
   installCallbackMCBMVar layerMCBMVar
-    (reactiveValueRead curPageRV >>= updateLayer) >>= putMVar layerHidMVar
+    (reactiveValueRead curChanRV >>= updateLayer) >>= putMVar layerHidMVar
 
   ------------------------------------------------------------------------------
   -- Following boards
@@ -123,47 +139,65 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
 
       nGuiBoard <- attachGameRules =<< initGame
       clickHandler nGuiBoard
-      centerBoard <- alignmentNew 0.5 0.5 0 0
-      containerAdd centerBoard nGuiBoard
-      containerAdd nBoardCont centerBoard
+      nCenterBoard <- alignmentNew 0.5 0.5 0 0
+      containerAdd nCenterBoard nGuiBoard
+      containerAdd nBoardCont nCenterBoard
 
-      newP <- notebookAppendPage n boardCont "sdlkfhd"
+      newP <- notebookAppendPage n nBoardCont $ show np
+      pChan <- reactiveValueRead pageChanRV
+      let newCP = foundHole pChan
+      print ("newP" ++ " " ++ show newP)
       (nBoardRV, nPieceArrRV, nPhRV) <- initBoardRV nGuiBoard
 
       reactiveValueRead chanMapRV >>=
-        reactiveValueWrite chanMapRV . M.insert newP (nBoardRV,nPieceArrRV,nPhRV)
+        reactiveValueWrite chanMapRV . M.insert newCP (nBoardRV,nPieceArrRV,nPhRV)
+      reactiveValueRead layerMapRV >>=
+        reactiveValueWrite layerMapRV . M.insert newCP defaultLayer
 
-      reactiveValueWrite curPageRV newP
-
+      --reactiveValueWrite curPageRV newP
+      reactiveValueWrite pageChanRV (pChan ++ [newCP])
       widgetShowAll n
 
   reactiveValueOnCanRead rmLayerRV $ postGUIAsync $ do
     np <- reactiveValueRead notebookPageNumber
     when (np > 1) $ do
-      cp <- notebookGetCurrentPage n
+      cp <- reactiveValueRead curPageRV
+      oldCP <- reactiveValueRead curChanRV
+      let rmIndex :: Int -> [a] -> [a]
+          rmIndex n l = take n l ++ drop (n + 1) l
       notebookRemovePage n cp
+
+      reactiveValueRead pageChanRV >>=
+        reactiveValueWrite pageChanRV . rmIndex cp
 
       reactiveValueRead notebookPageNumber >>=
         reactiveValueWrite notebookPageNumber . subtract 1
 
       reactiveValueRead chanMapRV >>=
-        reactiveValueWrite chanMapRV . M.delete cp
+        reactiveValueWrite chanMapRV . M.delete oldCP
       reactiveValueRead layerMapRV >>=
-        reactiveValueWrite layerMapRV . M.delete cp
+        reactiveValueWrite layerMapRV . M.delete oldCP
+
+      --updateRV curPageRV
 
     widgetShowAll n
     return ()
 
-  reactiveValueOnCanRead curPageRV $ do
-    takeMVar layerHidMVar >>= removeCallbackMCBMVar layerMCBMVar
-    cp <- reactiveValueRead curPageRV
-    layerMap <- reactiveValueRead layerMapRV
-    let mSelLayer = M.lookup cp layerMap
-    when (isNothing mSelLayer) $ error "Not found selected layer!"
-    let selLayer = fromJust mSelLayer
-    reactiveValueWrite layerMCBMVar selLayer
-    installCallbackMCBMVar layerMCBMVar (updateLayer cp) >>= putMVar layerHidMVar
-    return ()
+  reactiveValueOnCanRead curChanRV $ do
+    cp <- reactiveValueRead curChanRV
+    print cp
+    when (cp >= 0) $ do
+      reactiveValueRead pageChanRV >>= print
+      takeMVar layerHidMVar >>= removeCallbackMCBMVar layerMCBMVar
+      layerMap <- reactiveValueRead layerMapRV
+      --print $ M.keys layerMap
+      let mSelLayer = M.lookup cp layerMap
+      when (isNothing mSelLayer) $ error "Not found selected layer!"
+      let selLayer = fromJust mSelLayer
+      reactiveValueWrite layerMCBMVar selLayer
+      installCallbackMCBMVar layerMCBMVar (updateLayer cp) >>=
+        putMVar layerHidMVar
+      return ()
 
   ------------------------------------------------------------------------------
   -- Handle clicks

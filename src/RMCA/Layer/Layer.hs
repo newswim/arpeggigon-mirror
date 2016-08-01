@@ -14,7 +14,7 @@ data Layer = Layer { relTempo    :: Double
                    , strength    :: Strength
                    , beatsPerBar :: BeatsPerBar
                    , volume      :: Int
-                   } deriving (Show,Read)
+                   } deriving (Show,Read, Eq)
 
 layerTempo :: SF (Tempo, Layer) LTempo
 layerTempo = proc (t, Layer { relTempo = r }) ->

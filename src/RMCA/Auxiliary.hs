@@ -87,6 +87,9 @@ onChange' = proc x -> do
             if x'' == x then NoEvent else Event x
   returnA -< makeEvent x x'
 
+updateRV :: (ReactiveValueReadWrite a b m) => a -> m ()
+updateRV rv = reactiveValueRead rv >>= reactiveValueWrite rv
+
 --------------------------------------------------------------------------------
 -- Reactive Values
 --------------------------------------------------------------------------------
@@ -104,6 +107,13 @@ reactiveValueAppend :: (Monoid b, ReactiveValueReadWrite a b m) =>
 reactiveValueAppend rv v = do ov <- reactiveValueRead rv
                               reactiveValueWrite rv (ov `mappend` v)
 
+reactiveValueWriteOnNotEq :: ( Eq b
+                             , ReactiveValueReadWrite a b m) =>
+                             a -> b -> m ()
+reactiveValueWriteOnNotEq rv nv = do
+  ov <- reactiveValueRead rv
+  when (ov /= nv) $ reactiveValueWrite rv nv
+
 emptyRW :: (Monoid b, ReactiveValueReadWrite a b m) => a -> m b
 emptyRW rv = do
   val <- reactiveValueRead rv
@@ -118,6 +128,14 @@ eventRV >:> rv = reactiveValueOnCanRead eventRV syncOnEvent
   where  syncOnEvent = do
            erv <- reactiveValueRead eventRV
            when (isEvent erv) $ reactiveValueWrite rv $ fromEvent erv
+
+syncRightOnLeftWithBoth :: ( ReactiveValueRead a b m
+                           , ReactiveValueReadWrite c d m
+                           ) => (b -> d -> d) -> a -> c -> m ()
+syncRightOnLeftWithBoth f l r = reactiveValueOnCanRead l $ do
+  nl <- reactiveValueRead l
+  or <- reactiveValueRead r
+  reactiveValueWrite r (f nl or)
 
 liftW3 :: ( Monad m
           , ReactiveValueWrite a b m

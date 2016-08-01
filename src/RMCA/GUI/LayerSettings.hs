@@ -85,6 +85,7 @@ layerSettings boardQueue = do
       instrumentComboRV = bijection (indexToInstr, instrToIndex) `liftRW`
                           comboBoxIndexRV instrumentCombo
 
+  instrMCBMVar <- newMCBMVar =<< reactiveValueRead instrumentComboRV
   {-
   ins <- reactiveValueRead instrumentComboRV
   chan <- reactiveValueRead chanRV
@@ -99,33 +100,41 @@ layerSettings boardQueue = do
       bpbRV = spinButtonValueIntReactive bpbButton
       layVolumeRV = liftRW (bijection (floor, fromIntegral)) $
                     scaleValueReactive layVolumeScale
+                    {-
       f1 Layer { relTempo = d
                , relPitch = p
                , strength = s
                , beatsPerBar = bpb
                , volume = v
-               } = (d,p,s,bpb,v)
-      f2 (d,p,s,bpb,v)  = Layer { relTempo = d
-                                , relPitch = p
-                                , strength = s
-                                , beatsPerBar = bpb
-                                , volume = v
-                                }
+               } = (d,p,s,bpb,v)-}
+      f2 d p s bpb v  = Layer { relTempo = d
+                              , relPitch = p
+                              , strength = s
+                              , beatsPerBar = bpb
+                              , volume = v
+                              }
+
+                         {-
       layerRV = liftRW5 (bijection (f1,f2))
                 layTempoRV layPitchRV strengthRV bpbRV layVolumeRV
+-}
 
+  layerMCBMVar <- newMCBMVar =<< reactiveValueRead (liftR5 f2 layTempoRV layPitchRV strengthRV bpbRV layVolumeRV)
 
-  layerMMVar <- newMCBMVar =<< reactiveValueRead layerRV
-  reactiveValueOnCanRead layerRV $
-    reactiveValueRead layerRV >>= writeMCBMVar layerMMVar
-  installCallbackMCBMVar layerMMVar $
-    readMCBMVar layerMMVar >>= reactiveValueWrite layerRV
+  reactiveValueOnCanRead layerMCBMVar $ do
+    nLayer <- reactiveValueRead layerMCBMVar
+    reactiveValueWriteOnNotEq layTempoRV $ relTempo nLayer
+    reactiveValueWriteOnNotEq layPitchRV $ relPitch nLayer
+    reactiveValueWriteOnNotEq strengthRV $ strength nLayer
+    reactiveValueWriteOnNotEq bpbRV $ beatsPerBar nLayer
+    reactiveValueWriteOnNotEq layVolumeRV $ volume nLayer
 
-  instrMMVar <- newMCBMVar =<< reactiveValueRead instrumentComboRV
-  reactiveValueOnCanRead instrumentComboRV $
-    reactiveValueRead instrumentComboRV >>= writeMCBMVar instrMMVar
-  installCallbackMCBMVar instrMMVar $
-    readMCBMVar instrMMVar >>= reactiveValueWrite instrumentComboRV
+  syncRightOnLeftWithBoth (\nt ol -> ol { relTempo = nt }) layTempoRV layerMCBMVar
+  syncRightOnLeftWithBoth (\np ol -> ol { relPitch = np }) layPitchRV layerMCBMVar
+  syncRightOnLeftWithBoth (\ns ol -> ol { strength = ns }) strengthRV layerMCBMVar
+  syncRightOnLeftWithBoth (\nb ol -> ol { beatsPerBar = nb}) bpbRV layerMCBMVar
+  syncRightOnLeftWithBoth (\nv ol -> ol { volume = nv }) layVolumeRV layerMCBMVar
+
 {-
   reactiveValueOnCanRead layVolumeRV $ do
     vol <- reactiveValueRead layVolumeRV
@@ -133,4 +142,4 @@ layerSettings boardQueue = do
     let vol' = floor ((fromIntegral vol / 100) * 127)
     reactiveValueAppend boardQueue ([],[Volume (mkChannel chan) vol'])
 -}
-  return (layerSettingsVBox, layerMMVar, instrMMVar)
+  return (layerSettingsVBox, layerMCBMVar, instrMCBMVar)
