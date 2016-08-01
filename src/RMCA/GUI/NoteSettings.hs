@@ -131,7 +131,7 @@ noteSettingsBox = do
 
   -- Side RV
   -- Carries the index of the tile to display and what to display.
-  setRV <- newCBMVarRW inertCell
+  setRV <- newMCBMVar inertCell
 
   reactiveValueOnCanRead noteDurRV $ do
     nDur <- reactiveValueRead noteDurRV
@@ -143,7 +143,7 @@ noteSettingsBox = do
                 then oCell { cellAction =
                              setNAttr (fromJust nCa) (cellAction oCell) }
                 else oCell
-    reactiveValueWrite setRV nCell
+    reactiveValueWriteOnNotEq setRV nCell
     fromMaybeM_ $ reactiveValueWrite noteDurLabelRV <$> lookup nDur symbolString
 
 
@@ -195,7 +195,14 @@ noteSettingsBox = do
         Absorb -> hideNa
         _ -> showNa
 
-  reactiveValueOnCanRead setRV $ reactiveValueRead setRV >>= updateNaBox
+  reactiveValueOnCanRead setRV $ do
+    nCell <- reactiveValueRead setRV
+    fromMaybeM_ (reactiveValueWriteOnNotEq artComboRV <$> naArt <$> getNAttr (cellAction nCell))
+    fromMaybeM_ (reactiveValueWriteOnNotEq slideComboRV <$> ornSlide <$> naOrn <$> getNAttr (cellAction nCell))
+    reactiveValueWriteOnNotEq rCountRV $ repeatCount nCell
+    fromMaybeM_ (reactiveValueWriteOnNotEq noteDurRV <$> naDur <$> getNAttr (cellAction nCell))
+    updateNaBox nCell
+
 {-
   state <- newEmptyMVar
   boardOnPress board
@@ -234,6 +241,8 @@ noteSettingsBox = do
   widgetShow naBox
 -}
 
-  setMCBMVar <- newMCBMVar =<< reactiveValueRead setRV
-  setMCBMVar =:= setRV
-  return (pieceBox,setMCBMVar)
+  --setMCBMVar <- newMCBMVar =<< reactiveValueRead setRV
+  --setMCBMVar =:= setRV
+  widgetShow pieceBox
+  widgetShow naBox
+  return (pieceBox,setRV)

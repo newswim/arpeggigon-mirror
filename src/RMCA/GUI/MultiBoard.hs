@@ -2,7 +2,6 @@
 
 module RMCA.GUI.MultiBoard where
 
-import           Control.Arrow
 import           Control.Concurrent.MVar
 import           Control.Monad
 import           Control.Monad.IO.Class
@@ -79,18 +78,22 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
               mstate <- tryTakeMVar state
               when (fPos `elem` validArea && isJust mp) $ do
                 let piece = snd $ fromJust mp
-                when (button == RightButton && maybe False (== fPos) mstate) $
-                  boardSetPiece fPos (second rotateGUICell (Player,piece)) ioBoard
+                when (button == RightButton && maybe False (== fPos) mstate) $ do
+                  let nCell = rotateGUICell piece
+                  --boardSetPiece fPos nPiece ioBoard
+                  reactiveValueWrite guiCellMCBMVar nCell
                 nmp <- boardGetPiece fPos ioBoard
                 when (button == LeftButton && isJust nmp) $ do
                   let nCell = snd $ fromJust nmp
-                  reactiveValueWrite guiCellMCBMVar nCell
                   mOHid <- tryTakeMVar guiCellHidMVar
-                  when (isJust mOHid) $
+                  when (isJust mOHid) $ do
+                    print "Removing."
                     removeCallbackMCBMVar guiCellMCBMVar $ fromJust mOHid
+                  reactiveValueWrite guiCellMCBMVar nCell
                   nHid <- installCallbackMCBMVar guiCellMCBMVar $ do
                     cp <- reactiveValueRead curChanRV
                     guiVal <- reactiveValueRead guiCellMCBMVar
+                    print guiVal
                     mChanRV <- M.lookup cp <$> reactiveValueRead chanMapRV
                     when (isNothing mChanRV) $ error "Can't get piece array!"
                     let (_,pieceArrRV,_) = fromJust mChanRV
@@ -200,15 +203,6 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
       return ()
 
   ------------------------------------------------------------------------------
-  -- Handle clicks
-  ------------------------------------------------------------------------------
-
-
-
-
-
-  ------------------------------------------------------------------------------
   -- For good measure
   ------------------------------------------------------------------------------
   return (n, chanMapRV, curPageRV)
-  --return ()

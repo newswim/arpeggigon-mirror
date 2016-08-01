@@ -24,7 +24,7 @@ import           RMCA.Semantics
 data GUICell = GUICell { cellAction  :: Action
                        , repeatCount :: Int
                        , asPh        :: Bool
-                       } deriving(Show)
+                       } deriving(Show,Eq)
 
 newtype GUIBoard = GUIBoard { toGS :: GameState Int Tile Player GUICell }
 

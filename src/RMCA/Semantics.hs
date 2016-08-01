@@ -237,7 +237,7 @@ data Ornaments = Ornaments {
     ornPC    :: Maybe MIDIPN,
     ornCC    :: [(MIDICN, MIDICVRnd)],
     ornSlide :: SlideType
-} deriving (Show,Read)
+} deriving (Show,Read,Eq)
 
 data SlideType = NoSlide | SlideUp | SlideDn deriving (Eq, Show, Enum, Read)
 
@@ -257,7 +257,7 @@ data NoteAttr = NoteAttr {
     naArt :: Articulation,
     naDur :: Duration,
     naOrn :: Ornaments
-} deriving (Show,Read)
+} deriving (Show,Read,Eq)
 
 
 -- High level note representation emitted form a layer
@@ -266,7 +266,7 @@ data Note = Note {
     noteStr :: Strength,
     noteDur :: Duration,
     noteOrn :: Ornaments
-} deriving Show
+} deriving (Show,Eq)
 
 
 ------------------------------------------------------------------------------
@@ -332,7 +332,7 @@ data Action = Inert                   -- No action, play heads move through.
             | Stop  NoteAttr          -- Play note then remove play head.
             | ChDir Bool NoteAttr Dir -- Play note then change direction.
             | Split NoteAttr          -- Play note then split head into five.
-            deriving (Show,Read)
+            deriving (Show,Read,Eq)
 
 
 -- Cells
