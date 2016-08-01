@@ -144,7 +144,7 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
       containerAdd nCenterBoard nGuiBoard
       containerAdd nBoardCont nCenterBoard
 
-      newP <- notebookAppendPage n nBoardCont $ show np
+      notebookAppendPage n nBoardCont $ show np
       pChan <- reactiveValueRead pageChanRV
       let newCP = foundHole pChan
       (nBoardRV, nPieceArrRV, nPhRV) <- initBoardRV nGuiBoard
@@ -195,6 +195,16 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
       installCallbackMCBMVar layerMCBMVar (updateLayer cp) >>=
         putMVar layerHidMVar
       return ()
+
+    oldCurChanRV <- newCBMVarRW =<< reactiveValueRead curChanRV
+    reactiveValueOnCanRead curChanRV $ do
+      oldC <- reactiveValueRead oldCurChanRV
+      newC <- reactiveValueRead curChanRV
+      when (oldC /= newC) $ do
+        reactiveValueWrite oldCurChanRV newC
+        tryTakeMVar guiCellHidMVar >>=
+          fromMaybeM_ . fmap (removeCallbackMCBMVar guiCellMCBMVar)
+        reactiveValueWrite guiCellMCBMVar inertCell
 
   ------------------------------------------------------------------------------
   -- For good measure
