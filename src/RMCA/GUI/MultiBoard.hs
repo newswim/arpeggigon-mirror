@@ -6,8 +6,8 @@ import           Control.Concurrent.MVar
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Array
+import qualified Data.IntMap                                as M
 import           Data.List
-import qualified Data.Map                                   as M
 import           Data.Maybe
 import           Data.ReactiveValue
 import           Graphics.UI.Gtk
@@ -21,9 +21,6 @@ import           RMCA.Layer.Layer
 import           RMCA.MCBMVar
 import           RMCA.Semantics
 
--- In GTk, a “thing with tabs” has the, I think, very confusing name
--- Notebook.
-
 createNotebook :: ( ReactiveValueRead addLayer () IO
                   , ReactiveValueRead rmLayer () IO
                   ) =>
@@ -32,12 +29,10 @@ createNotebook :: ( ReactiveValueRead addLayer () IO
                -> MCBMVar Layer
                -> MCBMVar GUICell
                -> IO ( Notebook
-                     , ReactiveFieldReadWrite IO
-                       (M.Map Int ( ReactiveFieldRead IO Board
-                                  , Array Pos (ReactiveFieldWrite IO GUICell)
-                                  , ReactiveFieldWrite IO [PlayHead]
-                                  ))
-                     , ReactiveFieldReadWrite IO Int
+                     , ReactiveFieldRead IO (M.IntMap Board)
+                     , ReactiveFieldReadWrite IO (M.IntMap Layer)
+                     , ReactiveFieldRead IO
+                       (M.IntMap (ReactiveFieldWrite IO [PlayHead]))
                      )
 createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
   n <- notebookNew
@@ -51,7 +46,7 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
 
   pageChanRV <- newCBMVarRW []
   let foundHole = let foundHole' [] = 0
-                      foundHole' (x:[]) = x + 1
+                      foundHole' [x] = x + 1
                       foundHole' (x:y:xs) = if x + 1 /= y then x + 1 else foundHole (y:xs)
                   in foundHole' . sort
 
@@ -86,8 +81,7 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
                 when (button == LeftButton && isJust nmp) $ do
                   let nCell = snd $ fromJust nmp
                   mOHid <- tryTakeMVar guiCellHidMVar
-                  when (isJust mOHid) $
-                    removeCallbackMCBMVar guiCellMCBMVar $ fromJust mOHid
+                  forM_ mOHid $ removeCallbackMCBMVar guiCellMCBMVar
                   reactiveValueWrite guiCellMCBMVar nCell
                   nHid <- installCallbackMCBMVar guiCellMCBMVar $ do
                     cp <- reactiveValueRead curChanRV
@@ -207,6 +201,27 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
         reactiveValueWrite guiCellMCBMVar inertCell
 
   ------------------------------------------------------------------------------
-  -- For good measure
+  -- Flatten maps
   ------------------------------------------------------------------------------
-  return (n, chanMapRV, curPageRV)
+  let {-phMapRV :: ReactiveFieldWrite IO (M.IntMap [PlayHead])
+      phMapRV = ReactiveFieldWrite setter
+        where setter phM = sequence_ $ M.mapWithKey writePhs phM
+              writePhs :: Int -> [PlayHead] -> IO ()
+              writePhs k phs = do chanMap <- reactiveValueRead chanMapRV
+                                  let mselChan = M.lookup k chanMap
+                                  when (isNothing mselChan) $
+                                    error "Can't find layer!"
+                                  let (_,_,phsRV) = fromJust mselChan
+                                  reactiveValueWrite phsRV phs
+-}
+      phMapRV :: ReactiveFieldRead IO (M.IntMap (ReactiveFieldWrite IO [PlayHead]))
+      phMapRV = liftR (M.map (\(_,_,b) -> b)) chanMapRV
+
+      boardMapRV :: ReactiveFieldRead IO (M.IntMap Board)
+      boardMapRV = ReactiveFieldRead getter notifier
+        where notifier = reactiveValueOnCanRead chanMapRV
+              getter = do
+                chanMap <- reactiveValueRead chanMapRV
+                sequence (M.map (reactiveValueRead . \(b,_,_) -> b) chanMap)
+
+  return (n, boardMapRV, layerMapRV, phMapRV)

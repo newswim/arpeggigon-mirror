@@ -1,11 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module RMCA.GUI.Buttons where
+module RMCA.GUI.Buttons ( buttonNewFromStockWithLabel
+                        , toggleButtonNewFromStock
+                        , getButtons
+                        ) where
 
 import Data.ReactiveValue
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Reactive
 import RMCA.GUI.StockId
+
+packButton :: (BoxClass a, ButtonClass b, ImageClass i, LabelClass l) =>
+              b -> a -> l -> i -> IO b
+packButton button buttonBox buttonLabel buttonImg = do
+  containerAdd button buttonBox
+  boxPackStart buttonBox buttonImg PackRepel 0
+  boxPackStart buttonBox buttonLabel PackRepel 0
+  return button
 
 buttonNewFromStockWithLabel :: StockId -> String -> IO Button
 buttonNewFromStockWithLabel s l = do
@@ -14,10 +25,7 @@ buttonNewFromStockWithLabel s l = do
   buttonImg <- imageNewFromStock s IconSizeButton
   buttonLabel <- labelNew (Just l)
   labelSetUseUnderline buttonLabel True
-  containerAdd button buttonBox
-  boxPackStart buttonBox buttonImg PackRepel 0
-  boxPackStart buttonBox buttonLabel PackRepel 0
-  return button
+  packButton button buttonBox buttonLabel buttonImg
 
 toggleButtonNewFromStock :: StockId -> IO ToggleButton
 toggleButtonNewFromStock s = do
@@ -27,10 +35,7 @@ toggleButtonNewFromStock s = do
   stockTxt <- stockLookupItem s
   buttonLabel <- labelNew (siLabel <$> stockTxt)
   labelSetUseUnderline buttonLabel True
-  containerAdd button buttonBox
-  boxPackStart buttonBox buttonImg PackRepel 0
-  boxPackStart buttonBox buttonLabel PackRepel 0
-  return button
+  packButton button buttonBox buttonLabel buttonImg
 
 getButtons :: IO ( VBox
                  , ReactiveFieldRead IO ()

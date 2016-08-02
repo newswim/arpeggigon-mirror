@@ -1,11 +1,15 @@
 {-# LANGUAGE Arrows #-}
 
-module RMCA.Layer.Board where
+module RMCA.Layer.Board ( boardRun
+                        , BoardRun (..)
+                        ) where
 
-import FRP.Yampa
-import RMCA.Auxiliary
-import RMCA.Layer.Layer
-import RMCA.Semantics
+import qualified Data.IntMap      as M
+import           Data.List        ((\\))
+import           FRP.Yampa
+import           RMCA.Auxiliary
+import           RMCA.Layer.Layer
+import           RMCA.Semantics
 
 data BoardRun = BoardStart | BoardStop deriving Eq
 
@@ -29,3 +33,35 @@ boardSwitch :: [PlayHead]
 boardSwitch rPh = dSwitch (singleBoard rPh *** (identity >>> notYet)) fnSwitch
   where fnSwitch (BoardStart, iPh) = boardSwitch iPh
         fnSwitch (BoardStop, _) = boardSwitch []
+
+routeBoard :: M.IntMap a -> M.IntMap sf -> M.IntMap (a,sf)
+routeBoard = M.intersectionWith (,)
+
+-- On the left are the disappearing signals, on the right the
+-- appearing one.
+lengthChange :: M.IntMap b -> SF (M.IntMap a, M.IntMap sf) (Event ([Int],[Int]))
+lengthChange iSig = proc (mapSig, _) -> do
+  kSig <- arr M.keys -< mapSig
+  --kSF <- arr M.keys -< mapSF
+  edgeBy diffSig ik -< kSig
+  where ik = M.keys iSig
+        -- Old elements removed in nL are on the left, new elements added to
+        -- nL are on the right.
+        diffSig :: [Int] -> [Int] -> Maybe ([Int],[Int])
+        diffSig oL nL
+          | oL == nL = Nothing
+          | otherwise = Just (oL \\ nL, nL \\ oL)
+
+boardRun' :: M.IntMap (SF (Board,Layer,Tempo,BoardRun)
+                          (Event ([PlayHead],[Note])))
+          -> SF (M.IntMap (Board,Layer,Tempo,BoardRun))
+                (M.IntMap (Event ([PlayHead],[Note])))
+boardRun' iSF = pSwitch routeBoard iSF (lengthChange iSF) contSwitch
+  where contSwitch contSig (newSig, oldSig) = boardRun' newSF
+          where newSF = foldr (\k m -> M.insert k boardSF m)
+                        (foldr M.delete contSig oldSig) newSig
+
+boardRun :: M.IntMap (Board,Layer,Tempo,BoardRun)
+         -> SF (M.IntMap (Board,Layer,Tempo,BoardRun))
+               (M.IntMap (Event ([PlayHead],[Note])))
+boardRun iSig = boardRun' (iSig $> boardSF)

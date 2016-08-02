@@ -13,6 +13,9 @@ import FRP.Yampa
 -- General functions
 --------------------------------------------------------------------------------
 
+($>) :: (Functor f) => f a -> b -> f b
+($>) = flip (<$)
+
 bound :: (Ord a) => (a, a) -> a -> a
 bound (min, max) x
   | x < min = min

@@ -2,23 +2,27 @@
 
 module Main where
 
-import Control.Concurrent
-import Data.ReactiveValue
-import FRP.Yampa
-import Graphics.UI.Gtk
-import Graphics.UI.Gtk.Board.BoardLink
-import Graphics.UI.Gtk.Layout.BackgroundContainer
-import Hails.Yampa
-import RMCA.Auxiliary
-import RMCA.Configuration
-import RMCA.GUI.Board
-import RMCA.GUI.Buttons
-import RMCA.GUI.LayerSettings
-import RMCA.GUI.MainSettings
-import RMCA.GUI.MultiBoard
-import RMCA.GUI.NoteSettings
-import RMCA.Layer.Board
-import RMCA.Translator.Jack
+import           Control.Concurrent
+import qualified Data.IntMap                                as M
+import           Data.ReactiveValue
+import           FRP.Yampa
+import           Graphics.UI.Gtk
+import           Graphics.UI.Gtk.Board.BoardLink
+import           Graphics.UI.Gtk.Layout.BackgroundContainer
+import           Hails.Yampa
+import           RMCA.Auxiliary
+import           RMCA.Auxiliary
+import           RMCA.Configuration
+import           RMCA.GUI.Board
+import           RMCA.GUI.Buttons
+import           RMCA.GUI.LayerSettings
+import           RMCA.GUI.MainSettings
+import           RMCA.GUI.MultiBoard
+import           RMCA.GUI.NoteSettings
+import           RMCA.Layer.Board
+import           RMCA.Layer.Layer
+import           RMCA.Semantics
+import           RMCA.Translator.Jack
 
 main :: IO ()
 main = do
@@ -42,10 +46,10 @@ main = do
   globalSep <- hSeparatorNew
   boxPackStart settingsBox globalSep PackNatural 0
 
-  (   buttonBox
-    , playRV, stopRV, pauseRV, recordRV
-    , confSaveRV, confLoadRV
-    , addLayerRV, rmLayerRV ) <- getButtons
+  (buttonBox,
+   playRV,stopRV,pauseRV,recordRV,
+   confSaveRV,confLoadRV,
+   addLayerRV,rmLayerRV) <- getButtons
   boxPackEnd settingsBox buttonBox PackNatural 0
 
   boardQueue <- newCBMVarRW mempty
@@ -55,34 +59,52 @@ main = do
   boxPackStart settingsBox laySep PackNatural 0
 
   (noteSettingsBox, guiCellMCBMVar) <- noteSettingsBox
-  (boardCont, chanMapRV, _{-curPageRV-}) <- createNotebook addLayerRV rmLayerRV
-                                       layerMCBMVar guiCellMCBMVar
+  (boardCont, boardMapRV, layerMapRV, phRVMapRV) <- createNotebook
+                                                    addLayerRV rmLayerRV
+                                                    layerMCBMVar guiCellMCBMVar
   boxPackStart mainBox boardCont PackNatural 0
 
   --handleSaveLoad tempoRV boardRV layerRV instrRV pieceArrRV confSaveRV confLoadRV
-{-
+
   boardRunRV <- newCBMVarRW BoardStop
   reactiveValueOnCanRead playRV $ reactiveValueWrite boardRunRV BoardStart
   reactiveValueOnCanRead stopRV $ reactiveValueWrite boardRunRV BoardStop
-  board <- reactiveValueRead boardRV
-  layer <- reactiveValueRead layerRV
+  boardMap <- reactiveValueRead boardMapRV
+  layerMap <- reactiveValueRead layerMapRV
   tempo <- reactiveValueRead tempoRV
-  (inBoard, outBoard) <- yampaReactiveDual (board, layer, tempo, BoardStop) boardSF
   let tempoRV' = liftR2 (\bool t -> t * fromEnum (not bool)) pauseRV tempoRV
-      inRV = liftR4 (,,,)
-             boardRV layerRV tempoRV' boardRunRV
+      inRV :: ReactiveFieldRead IO (M.IntMap (Board,Layer,Tempo,BoardRun))
+      inRV = liftR4 (\bm lm t br -> M.map (\(b,l) -> (b,l,t,br)) $
+                      M.intersectionWith (,) bm lm)
+             boardMapRV layerMapRV tempoRV' boardRunRV
+  initSF <- reactiveValueRead inRV
+  (inBoard, outBoard) <- yampaReactiveDual initSF (boardRun initSF)
   inRV =:> inBoard
-  reactiveValueOnCanRead outBoard $
+  reactiveValueOnCanRead outBoard $ do
+    out <- reactiveValueRead outBoard
+    phRVMap <- reactiveValueRead phRVMapRV
+
+    let eventsMap = M.filter isEvent out
+        writePh chan val =
+          fromMaybeM_ $ fmap (\ph -> reactiveValueWrite ph val) $
+          M.lookup chan phRVMap
+        noteMap = M.map ((\ev -> if isEvent ev then fromEvent ev else []) . snd . splitE) out
+    sequence_ $ M.mapWithKey writePh $
+      M.map (fst . fromEvent) $ M.filter isEvent out
+
+    --reactiveValueAppend boardQueue $ M.map (,[]) noteMap
+
+
+{-
     reactiveValueRead (liftR (event mempty (,[]) <<< snd <<< splitE) outBoard) >>=
-    reactiveValueAppend boardQueue
+      reactiveValueAppend boardQueue-}
   -- This needs to be set last otherwise phRV is written to, so
   -- inBoard is written to and the notes don't get played. There
   -- supposedly is no guaranty of order but apparently there is…
-  fmap fst <^> outBoard >:> phRV
   putStrLn "Board started."
   -- Jack setup
-  forkIO $ jackSetup tempoRV chanRV boardQueue
--}
+  --forkIO $ jackSetup tempoRV boardQueue
+
   widgetShowAll window
   ------------------------------------------------------------
 
