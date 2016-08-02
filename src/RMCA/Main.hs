@@ -79,9 +79,11 @@ main = do
              boardMapRV layerMapRV tempoRV' boardRunRV
   initSF <- reactiveValueRead inRV
   (inBoard, outBoard) <- yampaReactiveDual initSF (boardRun initSF)
+  --reactiveValueOnCanRead inRV (reactiveValueRead inRV >>= print . M.keys)
   inRV =:> inBoard
   reactiveValueOnCanRead outBoard $ do
     out <- reactiveValueRead outBoard
+    --print out
     phRVMap <- reactiveValueRead phRVMapRV
 
     let eventsMap = M.filter isEvent out

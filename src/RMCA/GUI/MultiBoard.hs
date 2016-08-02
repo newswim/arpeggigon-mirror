@@ -219,9 +219,11 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
 
       boardMapRV :: ReactiveFieldRead IO (M.IntMap Board)
       boardMapRV = ReactiveFieldRead getter notifier
-        where notifier = reactiveValueOnCanRead chanMapRV
+        where notifier io = do
+                chanMap <- reactiveValueRead chanMapRV
+                mapM_ ((\val -> reactiveValueOnCanRead val io) . \(b,_,_) -> b) chanMap
               getter = do
                 chanMap <- reactiveValueRead chanMapRV
-                sequence (M.map (reactiveValueRead . \(b,_,_) -> b) chanMap)
+                mapM (reactiveValueRead . \(b,_,_) -> b) chanMap
 
   return (n, boardMapRV, layerMapRV, phMapRV)
