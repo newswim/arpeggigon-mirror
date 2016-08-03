@@ -195,12 +195,15 @@ noteSettingsBox = do
         Absorb -> hideNa
         _ -> showNa
 
-  reactiveValueOnCanRead setRV $ do
+  reactiveValueOnCanRead setRV $ postGUIAsync $ do
     nCell <- reactiveValueRead setRV
-    fromMaybeM_ (reactiveValueWriteOnNotEq artComboRV . naArt <$> getNAttr (cellAction nCell))
-    fromMaybeM_ (reactiveValueWriteOnNotEq slideComboRV . ornSlide . naOrn <$> getNAttr (cellAction nCell))
+    fromMaybeM_ (reactiveValueWriteOnNotEq artComboRV . naArt <$>
+                  getNAttr (cellAction nCell))
+    fromMaybeM_ (reactiveValueWriteOnNotEq slideComboRV . ornSlide . naOrn <$>
+                  getNAttr (cellAction nCell))
     reactiveValueWriteOnNotEq rCountRV $ repeatCount nCell
-    fromMaybeM_ (reactiveValueWriteOnNotEq noteDurRV . naDur <$> getNAttr (cellAction nCell))
+    fromMaybeM_ (reactiveValueWriteOnNotEq noteDurRV . naDur <$>
+                  getNAttr (cellAction nCell))
     updateNaBox nCell
 
 {-

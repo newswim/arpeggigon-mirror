@@ -90,7 +90,7 @@ main = do
         writePh chan val =
           fromMaybeM_ $ fmap (\ph -> reactiveValueWrite ph val) $
           M.lookup chan phRVMap
-        noteMap = M.map ((\ev -> if isEvent ev then fromEvent ev else []) . snd . splitE) out
+        noteMap = M.map (eventToList . snd . splitE) out
     sequence_ $ M.mapWithKey writePh $
       M.map (fst . fromEvent) $ M.filter isEvent out
 

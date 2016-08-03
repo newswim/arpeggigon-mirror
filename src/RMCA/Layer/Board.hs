@@ -11,7 +11,7 @@ import           RMCA.Auxiliary
 import           RMCA.Layer.Layer
 import           RMCA.Semantics
 
-data BoardRun = BoardStart | BoardStop deriving Eq
+data BoardRun = BoardStart | BoardStop deriving (Eq, Show)
 
 singleBoard :: [PlayHead]
             -> SF (Board, Layer, Event BeatNo) (Event ([PlayHead], [Note]))
@@ -34,16 +34,17 @@ boardSwitch rPh = dSwitch (singleBoard rPh *** (identity >>> notYet)) fnSwitch
   where fnSwitch (BoardStart, iPh) = boardSwitch iPh
         fnSwitch (BoardStop, _) = boardSwitch []
 
+--------------------------------------------------------------------------------
+-- Machinery to make parallel boards run
+--------------------------------------------------------------------------------
+
 routeBoard :: M.IntMap a -> M.IntMap sf -> M.IntMap (a,sf)
 routeBoard = M.intersectionWith (,)
 
 -- On the left are the disappearing signals, on the right the
 -- appearing one.
 lengthChange :: M.IntMap b -> SF (M.IntMap a, M.IntMap sf) (Event ([Int],[Int]))
-lengthChange iSig = proc (mapSig, _) -> do
-  kSig <- arr M.keys -< mapSig
-  --kSF <- arr M.keys -< mapSF
-  edgeBy diffSig ik -< kSig
+lengthChange iSig = edgeBy diffSig ik <<^ M.keys <<^ fst
   where ik = M.keys iSig
         -- Old elements removed in nL are on the left, new elements added to
         -- nL are on the right.
@@ -56,8 +57,10 @@ boardRun' :: M.IntMap (SF (Board,Layer,Tempo,BoardRun)
                           (Event ([PlayHead],[Note])))
           -> SF (M.IntMap (Board,Layer,Tempo,BoardRun))
                 (M.IntMap (Event ([PlayHead],[Note])))
-boardRun' iSF = pSwitch routeBoard iSF (lengthChange iSF) contSwitch
-  where contSwitch contSig (newSig, oldSig) = boardRun' newSF
+boardRun' iSF = boardRun'' iSF (lengthChange iSF)
+  where boardRun'' iSF swSF = pSwitch routeBoard iSF swSF contSwitch
+        contSwitch contSig (oldSig, newSig) = boardRun'' newSF
+                                              (lengthChange newSF >>> notYet)
           where newSF = foldr (\k m -> M.insert k boardSF m)
                         (foldr M.delete contSig oldSig) newSig
 

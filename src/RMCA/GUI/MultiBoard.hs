@@ -102,7 +102,7 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
   containerAdd boardCont centerBoard
 
   fstP <- notebookAppendPage n boardCont "Lol first"
-  notebookPageNumber <- newCBMVarRW 1
+  notebookPageNumber <- newCBMVarRW (1 :: Int)
 
   initBoardRV guiBoard >>=
     \(boardRV, pieceArrRV, phRV) -> reactiveValueRead chanMapRV >>=

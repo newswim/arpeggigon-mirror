@@ -96,7 +96,7 @@ layerSettings boardQueue = do
 -}
   layPitchRV <- newCBMVarRW 1
   let layTempoRV = floatConv $ scaleValueReactive layTempoScale
-      strengthRV = floatConv $  scaleValueReactive layStrengthScale
+      strengthRV = floatConv $ scaleValueReactive layStrengthScale
       bpbRV = spinButtonValueIntReactive bpbButton
       layVolumeRV = liftRW (bijection (floor, fromIntegral)) $
                     scaleValueReactive layVolumeScale
@@ -121,7 +121,7 @@ layerSettings boardQueue = do
 
   layerMCBMVar <- newMCBMVar =<< reactiveValueRead (liftR5 f2 layTempoRV layPitchRV strengthRV bpbRV layVolumeRV)
 
-  reactiveValueOnCanRead layerMCBMVar $ do
+  reactiveValueOnCanRead layerMCBMVar $ postGUIAsync $ do
     nLayer <- reactiveValueRead layerMCBMVar
     reactiveValueWriteOnNotEq layTempoRV $ relTempo nLayer
     reactiveValueWriteOnNotEq layPitchRV $ relPitch nLayer
