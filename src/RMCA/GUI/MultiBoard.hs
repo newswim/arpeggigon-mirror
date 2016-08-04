@@ -30,7 +30,7 @@ createNotebook :: ( ReactiveValueRead addLayer () IO
                -> MCBMVar GUICell
                -> IO ( Notebook
                      , ReactiveFieldRead IO (M.IntMap Board)
-                     , ReactiveFieldReadWrite IO (M.IntMap Layer)
+                     , ReactiveFieldRead IO (M.IntMap Layer)
                      , ReactiveFieldRead IO
                        (M.IntMap (ReactiveFieldWrite IO [PlayHead]))
                      )
@@ -226,4 +226,4 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
                 chanMap <- reactiveValueRead chanMapRV
                 mapM (reactiveValueRead . \(b,_,_) -> b) chanMap
 
-  return (n, boardMapRV, layerMapRV, phMapRV)
+  return (n, boardMapRV, readOnly layerMapRV, phMapRV)

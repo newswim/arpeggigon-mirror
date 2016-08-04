@@ -52,13 +52,3 @@ outMIDIEvent output nframes@(Jack.NFrames nframesInt') =
                     map (BF.first (Jack.NFrames . fromIntegral)) .
                     takeWhile ((< nframesInt) . fst) . L.sortBy (comparing fst)
         nframesInt = fromIntegral nframesInt'
-
-toProcess :: CBMVar [(Frames, RawMessage)]
-          -> ReactiveFieldReadWrite IO [(Frames, RawMessage)]
-toProcess mvar = ReactiveFieldReadWrite setter getter notifier
-  where setter :: [(Frames, RawMessage)] -> IO ()
-        setter = writeCBMVar mvar
-        getter :: IO [(Frames, RawMessage)]
-        getter = readCBMVar mvar
-        notifier :: IO () -> IO ()
-        notifier = installCallbackCBMVar mvar

@@ -13,6 +13,9 @@ import FRP.Yampa
 -- General functions
 --------------------------------------------------------------------------------
 
+(<$$>) :: (Functor f) => f a -> (a -> b) -> f b
+(<$$>) = flip (<$>)
+
 ($>) :: (Functor f) => f a -> b -> f b
 ($>) = flip (<$)
 
@@ -114,18 +117,16 @@ reactiveValueAppend :: (Monoid b, ReactiveValueReadWrite a b m) =>
 reactiveValueAppend rv v = do ov <- reactiveValueRead rv
                               reactiveValueWrite rv (ov `mappend` v)
 
+reactiveValueEmpty :: (Monoid b, ReactiveValueReadWrite a b m) =>
+                      a -> m ()
+reactiveValueEmpty rv = reactiveValueWrite rv mempty
+
 reactiveValueWriteOnNotEq :: ( Eq b
                              , ReactiveValueReadWrite a b m) =>
                              a -> b -> m ()
 reactiveValueWriteOnNotEq rv nv = do
   ov <- reactiveValueRead rv
   when (ov /= nv) $ reactiveValueWrite rv nv
-
-emptyRW :: (Monoid b, ReactiveValueReadWrite a b m) => a -> m b
-emptyRW rv = do
-  val <- reactiveValueRead rv
-  reactiveValueWrite rv mempty
-  return val
 
 -- Update when the value is an Event. It would be nice to have that
 -- even for Maybe as well.

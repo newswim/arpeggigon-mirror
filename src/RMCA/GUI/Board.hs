@@ -207,7 +207,7 @@ initBoardRV :: BIO.Board Int Tile (Player,GUICell)
 initBoardRV board@BIO.Board { boardPieces = (GameBoard gArray) } = do
   -- RV creation
   phMVar <- newCBMVar []
-  notBMVar <- mkClockRV 10
+  notBMVar <- mkClockRV 50
   let getterB :: IO Board
       getterB = do
         (boardArray :: [((Int,Int),Maybe (Player,GUICell))]) <- getAssocs gArray

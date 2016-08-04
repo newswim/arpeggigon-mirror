@@ -93,8 +93,7 @@ main = do
         noteMap = M.map (eventToList . snd . splitE) out
     sequence_ $ M.mapWithKey writePh $
       M.map (fst . fromEvent) $ M.filter isEvent out
-
-    --reactiveValueAppend boardQueue $ M.map (,[]) noteMap
+    reactiveValueAppend boardQueue $ M.map (,[]) noteMap
 
 
 {-
@@ -105,7 +104,7 @@ main = do
   -- supposedly is no guaranty of order but apparently there is…
   putStrLn "Board started."
   -- Jack setup
-  --forkIO $ jackSetup tempoRV boardQueue
+  forkIO $ jackSetup boardQueue
 
   widgetShowAll window
   ------------------------------------------------------------

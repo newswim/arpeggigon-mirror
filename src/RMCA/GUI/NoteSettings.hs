@@ -206,46 +206,6 @@ noteSettingsBox = do
                   getNAttr (cellAction nCell))
     updateNaBox nCell
 
-{-
-  state <- newEmptyMVar
-  boardOnPress board
-    (\iPos -> liftIO $ do
-        postGUIAsync $ void $ tryPutMVar state iPos
-        return True
-    )
-  boardOnRelease board
-    (\fPos -> do
-        button <- eventButton
-        liftIO $
-          postGUIAsync $ do
-            mp <- boardGetPiece fPos board
-            mstate <- tryTakeMVar state
-            when (fPos `elem` validArea && isJust mp) $ do
-              let piece = snd $ fromJust mp
-              when (button == RightButton && maybe False (== fPos) mstate) $
-                boardSetPiece fPos (BF.second rotateGUICell (Player,piece)) board
-              nmp <- boardGetPiece fPos board
-              when (button == LeftButton && isJust nmp) $ do
-                let nC = snd $ fromJust nmp
-                reactiveValueWrite setRV (fPos,nC)
-                fromMaybeM_ $ reactiveValueWrite artComboRV . naArt <$>
-                  getNAttr (cellAction nC)
-                fromMaybeM_ $
-                  reactiveValueWrite slideComboRV . ornSlide . naOrn <$> getNAttr (cellAction nC)
-                reactiveValueWrite rCountRV $ repeatCount nC
-                fromMaybeM_ $ reactiveValueWrite noteDurRV . naDur <$>
-                  getNAttr (cellAction nC)
-        return True
-    )
-
-  reactiveValueOnCanRead setRV (reactiveValueRead setRV >>=  updateNaBox . snd)
-
-  widgetShow pieceBox
-  widgetShow naBox
--}
-
-  --setMCBMVar <- newMCBMVar =<< reactiveValueRead setRV
-  --setMCBMVar =:= setRV
   widgetShow pieceBox
   widgetShow naBox
   return (pieceBox,setRV)

@@ -21,11 +21,14 @@ singleBoard iPh = proc (board, Layer { relPitch = rp
   accumBy advanceHeads' (iPh,[]) -< ebno `tag` (board, fromEvent ebno, rp, s)
   where advanceHeads' (ph,_) (board,bno,rp,s) = uncurry5 advanceHeads (board,bno,rp,s,ph)
 
-boardSF :: SF (Board, Layer, Tempo, BoardRun) (Event ([PlayHead], [Note]))
+boardSF :: SF (Board, Layer, Tempo, BoardRun)
+              (Event ([PlayHead], [(LTempo,Note)]))
 boardSF = proc (board, l, t, br) -> do
+  lt <- layerTempo -< (t,l)
   ebno <- layerMetronome -< (t,l)
   ess <- onChange -< br
-  boardSwitch [] -< ((board, l, ebno), ess `tag` (br, startHeads board))
+  ephn <- boardSwitch [] -< ((board, l, ebno), ess `tag` (br, startHeads board))
+  returnA -< fmap (second (zip (repeat lt))) ephn
 
 boardSwitch :: [PlayHead]
             -> SF ((Board, Layer,Event BeatNo), Event (BoardRun, [PlayHead]))
@@ -54,9 +57,9 @@ lengthChange iSig = edgeBy diffSig ik <<^ M.keys <<^ fst
           | otherwise = Just (oL \\ nL, nL \\ oL)
 
 boardRun' :: M.IntMap (SF (Board,Layer,Tempo,BoardRun)
-                          (Event ([PlayHead],[Note])))
+                          (Event ([PlayHead],[(LTempo,Note)])))
           -> SF (M.IntMap (Board,Layer,Tempo,BoardRun))
-                (M.IntMap (Event ([PlayHead],[Note])))
+                (M.IntMap (Event ([PlayHead],[(LTempo,Note)])))
 boardRun' iSF = boardRun'' iSF (lengthChange iSF)
   where boardRun'' iSF swSF = pSwitch routeBoard iSF swSF contSwitch
         contSwitch contSig (oldSig, newSig) = boardRun'' newSF
@@ -66,5 +69,5 @@ boardRun' iSF = boardRun'' iSF (lengthChange iSF)
 
 boardRun :: M.IntMap (Board,Layer,Tempo,BoardRun)
          -> SF (M.IntMap (Board,Layer,Tempo,BoardRun))
-               (M.IntMap (Event ([PlayHead],[Note])))
+               (M.IntMap (Event ([PlayHead],[(LTempo,Note)])))
 boardRun iSig = boardRun' (iSig $> boardSF)
