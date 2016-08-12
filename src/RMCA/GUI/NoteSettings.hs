@@ -38,6 +38,9 @@ symbolString = map (\(_,y,z) -> (z,y)) noteSymbList
 noteList :: [(String,Duration)]
 noteList = map (\(x,_,y) -> (x,y)) noteSymbList
 
+noteList' :: [(String,Duration)]
+noteList' = map (\(x,y,z) -> (x ++ " " ++ y,z)) noteSymbList
+
 noteSymbList :: [(String, String, Duration)]
 noteSymbList = sortBy (comparing (\(_,_,x) -> x))
                [ ("♩", "Quarter note", 1 % 4)

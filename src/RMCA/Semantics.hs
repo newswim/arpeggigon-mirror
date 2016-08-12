@@ -83,9 +83,6 @@ type LTempo = Tempo
 
 -- Beats and Bars
 
--- A beat as such is nothing.
-type Beat = ()
-
 -- Beats per Bar: number of beats per bar in the time signature of a layer.
 -- Non-negative.
 type BeatsPerBar = Int

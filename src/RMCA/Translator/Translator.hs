@@ -1,4 +1,4 @@
-{-# LANGUAGE Arrows #-}
+{-# LANGUAGE Arrows, TupleSections #-}
 
 module RMCA.Translator.Translator where
 
@@ -108,14 +108,17 @@ gatherMessages = arr $ uncurry4 gatherMessages'
 -}
 
 gatherMessages :: SampleRate
-               -> M.IntMap ([(LTempo,Note)],[Message])
+               -> Tempo
+               -> M.IntMap ([Note],[Message])
                -> M.IntMap [(Frames,RawMessage)]
-gatherMessages sr = M.map (map (second toRawMessage)) . M.mapWithKey gatherMessages'
-  where gatherMessages' :: Int -> ([(LTempo,Note)],[Message])
+gatherMessages sr t = M.map (map (second toRawMessage)) .
+                      M.mapWithKey gatherMessages'
+  where gatherMessages' :: Int
+                        -> ([Note],[Message])
                         -> [(Frames,Message)]
         gatherMessages' chan (notes,messages) =
           zip (repeat 0) messages ++
-          concatMap (\(lt,n) -> noteToMessages sr chan lt (0,n)) notes
+          concatMap (noteToMessages sr chan t . (0,)) notes
 
 -- Takes a list of time stamped "things", a sample rate and a buffer
 -- size. The function argument is a function that needs to tell which

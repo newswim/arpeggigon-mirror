@@ -75,8 +75,7 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
                 let piece = snd $ fromJust mp
                 when (button == RightButton && maybe False (== fPos) mstate) $ do
                   let nCell = rotateGUICell piece
-                  --boardSetPiece fPos nPiece ioBoard
-                  reactiveValueWrite guiCellMCBMVar nCell
+                  boardSetPiece fPos (Player,nCell) ioBoard
                 nmp <- boardGetPiece fPos ioBoard
                 when (button == LeftButton && isJust nmp) $ do
                   let nCell = snd $ fromJust nmp
@@ -221,7 +220,7 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
       boardMapRV = ReactiveFieldRead getter notifier
         where notifier io = do
                 chanMap <- reactiveValueRead chanMapRV
-                mapM_ ((\val -> reactiveValueOnCanRead val io) . \(b,_,_) -> b) chanMap
+                mapM_ ((`reactiveValueOnCanRead` io) . \(b,_,_) -> b) chanMap
               getter = do
                 chanMap <- reactiveValueRead chanMapRV
                 mapM (reactiveValueRead . \(b,_,_) -> b) chanMap

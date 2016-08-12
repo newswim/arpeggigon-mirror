@@ -48,6 +48,12 @@ eventToList :: Event [a] -> [a]
 eventToList NoEvent = []
 eventToList (Event x) = x
 
+eventIf :: Bool -> Event ()
+eventIf b = if b then Event () else NoEvent
+
+maybeIf :: Bool -> Maybe ()
+maybeIf b = if b then Just () else Nothing
+
 --------------------------------------------------------------------------------
 -- FRP
 --------------------------------------------------------------------------------
@@ -97,9 +103,6 @@ onChange' = proc x -> do
             if x'' == x then NoEvent else Event x
   returnA -< makeEvent x x'
 
-updateRV :: (ReactiveValueReadWrite a b m) => a -> m ()
-updateRV rv = reactiveValueRead rv >>= reactiveValueWrite rv
-
 --------------------------------------------------------------------------------
 -- Reactive Values
 --------------------------------------------------------------------------------
@@ -144,6 +147,9 @@ syncRightOnLeftWithBoth f l r = reactiveValueOnCanRead l $ do
   nl <- reactiveValueRead l
   or <- reactiveValueRead r
   reactiveValueWrite r (f nl or)
+
+updateRV :: (ReactiveValueReadWrite a b m) => a -> m ()
+updateRV rv = reactiveValueRead rv >>= reactiveValueWrite rv
 
 liftW3 :: ( Monad m
           , ReactiveValueWrite a b m

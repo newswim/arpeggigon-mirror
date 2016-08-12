@@ -17,8 +17,6 @@ import           RMCA.Semantics
 import           RMCA.Translator.Instruments
 import           RMCA.Translator.Message
 
-import           Debug.Trace
-
 floatConv :: (ReactiveValueReadWrite a b m,
               Real c, Real b, Fractional c, Fractional b) =>
              a -> ReactiveFieldReadWrite m c
@@ -34,7 +32,8 @@ mkVScale s adj = do
   boxPackStart hBox boxScale PackNatural 0
   return (hBox,boxScale)
 
-layerSettings :: (ReactiveValueReadWrite board (M.IntMap ([(LTempo,Note)],[Message])) IO) =>
+layerSettings :: (ReactiveValueReadWrite board
+                  (M.IntMap ([Note],[Message])) IO) =>
                  board
               -> IO ( VBox
                     , MCBMVar Layer
@@ -44,31 +43,67 @@ layerSettings boardQueue = do
   ------------------------------------------------------------------------------
   -- GUI Boxes
   ------------------------------------------------------------------------------
-  layerSettingsVBox <- vBoxNew False 10
+  layerSettingsVBox <- vBoxNew True 10
   layerSettingsBox <- hBoxNew True 10
   boxPackStart layerSettingsVBox layerSettingsBox PackNatural 0
+
+
+  layBeatBox <- hBoxNew False 10
+  layBeatCombo <- comboBoxNewText
+  layBeatIndex <- mapM (\(str,dur) -> do i <- comboBoxAppendText layBeatCombo
+                                              (fromString str)
+                                         return (dur,i)) noteList'
+  comboBoxSetActive layBeatCombo 0
+  let indexToDur i =
+        fromMaybe (error "In indexToDur: failed \
+                         \to find the correct \
+                         \ duration for the \
+                         \selected index.") $ lookup i $ map swap layBeatIndex
+      durToIndex d =
+        fromMaybe (error "In durToIndex: \
+                         \failed to find \
+                         \the correct index \
+                         \for the duration.") $ lookup d layBeatIndex
+      layBeatRV = bijection (indexToDur, durToIndex) `liftRW`
+                  comboBoxIndexRV layBeatCombo
+  layBeatLabel <- labelNew (Just "Layer beat"){-=<<
+                  (`lookup` symbolString) <$> reactiveValueRead layBeatRV-}
+  --labelSetAngle layBeatLabel 90
+  labelSetLineWrap layBeatLabel True
+  let layBeatLabelRV = labelTextReactive layBeatLabel
+  boxPackStart layerSettingsBox layBeatBox PackNatural 0
+  auxLayBeatBox <- vBoxNew False 0
+  boxPackEnd layBeatBox auxLayBeatBox PackRepel 0
+  boxPackStart auxLayBeatBox layBeatLabel PackRepel 0
+  boxPackStart auxLayBeatBox layBeatCombo PackNatural 0
 
   layVolumeAdj <- adjustmentNew 100 0 100 1 1 1
   (layVolumeBox,layVolumeScale) <- mkVScale "Volume" layVolumeAdj
   boxPackStart layerSettingsBox layVolumeBox PackNatural 0
+  (Requisition layVolW layVolH) <- widgetSizeRequest layVolumeScale
+  widgetSetSizeRequest layerSettingsBox layVolW (max layVolH 100)
   scaleSetDigits layVolumeScale 0
-
+  {-
   layTempoAdj <- adjustmentNew 1 0 2 0.1 0.1 1
   (layTempoBox, layTempoScale) <- mkVScale "Layer tempo" layTempoAdj
   boxPackStart layerSettingsBox layTempoBox PackNatural 0
-
+-}
   strAdj <- adjustmentNew 0.8 0 2 0.1 0.1 0
   (strBox, layStrengthScale) <- mkVScale "Strength" strAdj
   boxPackStart layerSettingsBox strBox PackNatural 0
 
-  bpbBox <- vBoxNew False 10
+  bpbBox <- vBoxNew False 0
   boxPackStart layerSettingsBox bpbBox PackNatural 0
   bpbLabel <- labelNew (Just "Beat per bar")
   labelSetLineWrap bpbLabel True
-  boxPackStart bpbBox bpbLabel PackNatural 0
   bpbAdj <- adjustmentNew 4 1 16 1 1 0
   bpbButton <- spinButtonNew bpbAdj 1 0
-  boxPackStart bpbBox bpbButton PackNatural 0
+  auxBpbBox <- vBoxNew False 0
+  centerAl <- alignmentNew 0.5 0.5 0 0
+  containerAdd auxBpbBox centerAl
+  boxPackStart bpbBox auxBpbBox PackRepel 0
+  boxPackStart auxBpbBox bpbLabel PackGrow 0
+  boxPackStart auxBpbBox bpbButton PackGrow 0
 
   instrumentCombo <- comboBoxNewText
   instrumentIndex <- mapM (\(ind,ins) ->
@@ -77,7 +112,6 @@ layerSettings boardQueue = do
                                 return (i, ind)) instrumentList
   comboBoxSetActive instrumentCombo 0
   boxPackStart layerSettingsVBox instrumentCombo PackNatural 10
-
   ------------------------------------------------------------------------------
   -- RVs
   ------------------------------------------------------------------------------
@@ -92,12 +126,11 @@ layerSettings boardQueue = do
   instrMCBMVar <- newMCBMVar =<< reactiveValueRead instrumentComboRV
   layPitchRV <- newCBMVarRW 1
 
-  let layTempoRV = floatConv $ scaleValueReactive layTempoScale
-      strengthRV = floatConv $ scaleValueReactive layStrengthScale
+  let strengthRV = floatConv $ scaleValueReactive layStrengthScale
       bpbRV = spinButtonValueIntReactive bpbButton
       layVolumeRV = liftRW (bijection (floor, fromIntegral)) $
                     scaleValueReactive layVolumeScale
-      f2 d p s bpb v  = Layer { relTempo = d
+      f2 d p s bpb v  = Layer { layerBeat = d
                               , relPitch = p
                               , strength = s
                               , beatsPerBar = bpb
@@ -105,18 +138,18 @@ layerSettings boardQueue = do
                               }
 
   layerMCBMVar <- newMCBMVar =<< reactiveValueRead
-    (liftR5 f2 layTempoRV layPitchRV strengthRV bpbRV layVolumeRV)
+    (liftR5 f2 layBeatRV layPitchRV strengthRV bpbRV layVolumeRV)
 
   reactiveValueOnCanRead layerMCBMVar $ postGUIAsync $ do
     nLayer <- reactiveValueRead layerMCBMVar
-    reactiveValueWriteOnNotEq layTempoRV $ relTempo nLayer
+    reactiveValueWriteOnNotEq layBeatRV $ layerBeat nLayer
     reactiveValueWriteOnNotEq layPitchRV $ relPitch nLayer
     reactiveValueWriteOnNotEq strengthRV $ strength nLayer
     reactiveValueWriteOnNotEq bpbRV $ beatsPerBar nLayer
     reactiveValueWriteOnNotEq layVolumeRV $ volume nLayer
 
-  syncRightOnLeftWithBoth (\nt ol -> ol { relTempo = nt })
-    layTempoRV layerMCBMVar
+  syncRightOnLeftWithBoth (\nt ol -> ol { layerBeat = nt })
+    layBeatRV layerMCBMVar
   syncRightOnLeftWithBoth (\np ol -> ol { relPitch = np })
     layPitchRV layerMCBMVar
   syncRightOnLeftWithBoth (\ns ol -> ol { strength = ns })

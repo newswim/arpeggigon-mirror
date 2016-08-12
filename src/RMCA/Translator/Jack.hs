@@ -5,15 +5,13 @@
 module RMCA.Translator.Jack ( jackSetup
                             ) where
 
+import           Control.Arrow
 import qualified Control.Monad.Exception.Synchronous as Sync
 import qualified Control.Monad.Trans.Class           as Trans
-import qualified Data.Bifunctor                      as BF
-import           Data.CBMVar
 import           Data.Foldable
 import qualified Data.IntMap                         as M
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
-import           Hails.Yampa
 import           RMCA.Auxiliary
 import           RMCA.Semantics
 import           RMCA.Translator.Message
@@ -21,9 +19,6 @@ import           RMCA.Translator.RV
 import           RMCA.Translator.Translator
 import qualified Sound.JACK                          as Jack
 import qualified Sound.JACK.MIDI                     as JMIDI
-
-import           Control.Arrow
-import           Debug.Trace
 
 rmcaName :: String
 rmcaName = "RMCA"
@@ -37,22 +32,21 @@ outPortName = "output"
 -- Starts a default client with an input and an output port. Doesn't
 -- do anything as such.
 jackSetup :: (ReactiveValueReadWrite board
-              (M.IntMap ([(LTempo,Note)],[Message])) IO) =>
+              (M.IntMap ([Note],[Message])) IO
+             , ReactiveValueRead tempo Tempo IO) =>
              board
+          -> tempo
           -> IO ()
-jackSetup boardQueue = Jack.handleExceptions $ do
+jackSetup boardQueue tempoRV = Jack.handleExceptions $ do
   toProcessRV <- Trans.lift $ newCBMVarRW []
   Jack.withClientDefault rmcaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
-    Jack.withProcess client (jackCallBack client input output
-                              toProcessRV boardQueue) $
+    Jack.withProcess client (jackCallBack input output
+                              toProcessRV boardQueue tempoRV) $
     Jack.withActivation client $ Trans.lift $ do
     putStrLn $ "Started " ++ rmcaName ++ " JACK client."
     Jack.waitForBreak
-
-defaultTempo :: Tempo
-defaultTempo = 120
 
 -- The callback function. It pumps value out of the input port, mix
 -- them with value coming from the machine itself and stuff them into
@@ -60,26 +54,29 @@ defaultTempo = 120
 -- processed.
 jackCallBack :: ( ReactiveValueReadWrite toProcess [(Frames, RawMessage)] IO
                 , ReactiveValueReadWrite board
-                  (M.IntMap ([(LTempo,Note)],[Message])) IO) =>
-                Jack.Client
-             -> JMIDI.Port Jack.Input
+                  (M.IntMap ([Note],[Message])) IO
+                , ReactiveValueRead tempo Tempo IO) =>
+                JMIDI.Port Jack.Input
              -> JMIDI.Port Jack.Output
              -> toProcess
              -> board
+             -> tempo
              -> Jack.NFrames
              -> Sync.ExceptionalT E.Errno IO ()
-jackCallBack client input output toProcessRV boardQueue nframes@(Jack.NFrames nframesInt') = do
+jackCallBack input output toProcessRV boardQueue tempoRV
+  nframes@(Jack.NFrames nframesInt') = do
   let inMIDIRV = inMIDIEvent input nframes
       outMIDIRV = outMIDIEvent output nframes
       nframesInt = fromIntegral nframesInt' :: Int
   Trans.lift $ do
-    concat . toList . gatherMessages nframesInt <$>
-      reactiveValueRead boardQueue >>=
-      reactiveValueAppend toProcessRV
+    tempo <- reactiveValueRead tempoRV
+    concat . toList . gatherMessages tempo nframesInt <$>
+      reactiveValueRead boardQueue >>= \bq ->
+      reactiveValueAppend toProcessRV bq >> putStrLn ("BoardQueue: " ++ show (map fst bq))
     reactiveValueEmpty  boardQueue
     (go, old') <- schedule nframesInt <$> reactiveValueRead toProcessRV
-    let old = map (BF.first (+ (- nframesInt))) old'
-    print $ map fst go
+    let old = map (first (+ (- nframesInt))) old'
+    putStrLn ("Out: " ++ show (map fst go))
     reactiveValueWrite outMIDIRV go
     reactiveValueWrite toProcessRV old
   --------------

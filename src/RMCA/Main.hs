@@ -11,7 +11,6 @@ import           Graphics.UI.Gtk.Board.BoardLink
 import           Graphics.UI.Gtk.Layout.BackgroundContainer
 import           Hails.Yampa
 import           RMCA.Auxiliary
-import           RMCA.Auxiliary
 import           RMCA.Configuration
 import           RMCA.GUI.Board
 import           RMCA.GUI.Buttons
@@ -44,7 +43,7 @@ main = do
   (globalSettingsBox, tempoRV) <- globalSettings
   boxPackStart settingsBox globalSettingsBox PackNatural 0
   globalSep <- hSeparatorNew
-  boxPackStart settingsBox globalSep PackNatural 0
+  boxPackStart settingsBox globalSep PackNatural 10
 
   (buttonBox,
    playRV,stopRV,pauseRV,recordRV,
@@ -73,12 +72,10 @@ main = do
   layerMap <- reactiveValueRead layerMapRV
   tempo <- reactiveValueRead tempoRV
   let tempoRV' = liftR2 (\bool t -> t * fromEnum (not bool)) pauseRV tempoRV
-      inRV :: ReactiveFieldRead IO (M.IntMap (Board,Layer,Tempo,BoardRun))
-      inRV = liftR4 (\bm lm t br -> M.map (\(b,l) -> (b,l,t,br)) $
-                      M.intersectionWith (,) bm lm)
+      inRV = liftR4 (\bm lm t br -> (t,br,M.intersectionWith (,) bm lm))
              boardMapRV layerMapRV tempoRV' boardRunRV
-  initSF <- reactiveValueRead inRV
-  (inBoard, outBoard) <- yampaReactiveDual initSF (boardRun initSF)
+  initSig <- reactiveValueRead inRV
+  (inBoard, outBoard) <- yampaReactiveDual initSig (boardRun initSig)
   --reactiveValueOnCanRead inRV (reactiveValueRead inRV >>= print . M.keys)
   inRV =:> inBoard
   reactiveValueOnCanRead outBoard $ do
@@ -88,7 +85,7 @@ main = do
 
     let eventsMap = M.filter isEvent out
         writePh chan val =
-          fromMaybeM_ $ fmap (\ph -> reactiveValueWrite ph val) $
+          fromMaybeM_ $ fmap (`reactiveValueWrite` val) $
           M.lookup chan phRVMap
         noteMap = M.map (eventToList . snd . splitE) out
     sequence_ $ M.mapWithKey writePh $
@@ -104,7 +101,7 @@ main = do
   -- supposedly is no guaranty of order but apparently there is…
   putStrLn "Board started."
   -- Jack setup
-  forkIO $ jackSetup boardQueue
+  forkIO $ jackSetup boardQueue tempoRV
 
   widgetShowAll window
   ------------------------------------------------------------
