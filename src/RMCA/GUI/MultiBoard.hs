@@ -11,7 +11,6 @@ import           Data.List
 import           Data.Maybe
 import           Data.ReactiveValue
 import           Graphics.UI.Gtk
-import           Graphics.UI.Gtk.Board.BoardLink
 import           Graphics.UI.Gtk.Board.TiledBoard           hiding (Board)
 import           Graphics.UI.Gtk.Layout.BackgroundContainer
 import           Graphics.UI.Gtk.Reactive.Gtk2
