@@ -85,7 +85,7 @@ main = do
 
     let eventsMap = M.filter isEvent out
         writePh chan val =
-          fromMaybeM_ $ fmap (`reactiveValueWrite` val) $
+          fromMaybeM_ $ (`reactiveValueWrite` val) <$>
           M.lookup chan phRVMap
         noteMap = M.map (eventToList . snd . splitE) out
     sequence_ $ M.mapWithKey writePh $

@@ -39,17 +39,13 @@ boardSwitch rPh = dSwitch (singleBoard rPh *** (identity >>> notYet)) fnSwitch
 --------------------------------------------------------------------------------
 -- Machinery to make boards run in parallel
 --------------------------------------------------------------------------------
-{-
-routeBoard :: (a -> b -> c) -> (a, M.IntMap b) -> M.IntMap sf -> M.IntMap (c,sf)
-routeBoard formInput (glob, locs) sfs =
-  M.intersectionWith (,) (formInput glob <$> locs) sfs
--}
+
 boardRun' :: M.IntMap (SF (Event AbsBeat,Board,Layer,BoardRun)
                           (Event ([PlayHead],[Note])))
-          -> SF (Event AbsBeat, BoardRun, (M.IntMap (Board,Layer)))
+          -> SF (Event AbsBeat, BoardRun, M.IntMap (Board,Layer))
                 (M.IntMap (Event ([PlayHead],[Note])))
 boardRun' iSF = boardRun'' iSF (lengthChange iSF)
-  where boardRun'' iSF swSF = pSwitch (routeBoard) iSF swSF contSwitch
+  where boardRun'' iSF swSF = pSwitch routeBoard iSF swSF contSwitch
         contSwitch contSig (oldSig, newSig) = boardRun'' newSF
                                               (lengthChange newSF >>> notYet)
           where newSF = foldr (\k m -> M.insert k boardSF m)
@@ -65,8 +61,8 @@ boardRun' iSF = boardRun'' iSF (lengthChange iSF)
         routeBoard :: (Event AbsBeat,BoardRun,M.IntMap (Board,Layer))
                    -> M.IntMap sf
                    -> M.IntMap ((Event AbsBeat,Board,Layer,BoardRun),sf)
-        routeBoard (evs,br,map) sfs =
-          M.intersectionWith (,) ((\(b,l) -> (evs,b,l,br)) <$> map) sfs
+        routeBoard (evs,br,map) =
+          M.intersectionWith (,) ((\(b,l) -> (evs,b,l,br)) <$> map)
 
 boardRun :: (Tempo, BoardRun, M.IntMap (Board,Layer))
          -> SF (Tempo, BoardRun, M.IntMap (Board,Layer))

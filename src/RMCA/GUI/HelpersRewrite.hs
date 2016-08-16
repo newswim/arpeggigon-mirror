@@ -2,6 +2,8 @@
 
 -- This module contains function that allow the particular geometry of
 -- the board to not cause too much problems.
+--
+-- They are stolen from the gtk-helpers library.
 
 module RMCA.GUI.HelpersRewrite where
 
@@ -130,7 +132,7 @@ boardOnPieceDragDrop :: Ix index =>
                      -> ((index, index) -> (index, index) -> IO ()) -> IO()
 boardOnPieceDragDrop board f = void $ do
   widgetAddEvents (boardDrawingArea board) [ButtonPressMask, ButtonReleaseMask]
-  (boardDrawingArea board) `on` buttonReleaseEvent $ returning False $ liftIO $ do
+  boardDrawingArea board `on` buttonReleaseEvent $ returning False $ liftIO $ do
     drag  <- readIORef (dragEnabled board)
     origM <- readIORef (draggingFrom board)
     destM <- readIORef (draggingTo board)
@@ -168,7 +170,7 @@ attachGameRules game = do
   vgRef <- newIORef game
 
   -- Set the initial board state
-  mapM_ (\(x,y) -> boardSetPiece x y board) $
+  mapM_ (\(x,y) -> boardSetPiece x y board)
     [((x,y),(pl,pc)) | (x,y,pl,pc) <- allPieces (gameS game)]
 
   board `boardOnPieceDragStart` \pos' -> do
