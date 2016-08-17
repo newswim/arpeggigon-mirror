@@ -60,36 +60,38 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
   let clickHandler ioBoard = do
         state <- newEmptyMVar
         boardOnPress ioBoard
-          (\iPos -> liftIO $ do
+          (\iPos' -> liftIO $ do
+              let iPos = actualTile iPos'
               postGUIAsync $ void $ tryPutMVar state iPos
               return True
           )
         boardOnRelease ioBoard
-          (\fPos -> do
-            button <- eventButton
-            liftIO $ postGUIAsync $ do
-              mp <- boardGetPiece fPos ioBoard
-              mstate <- tryTakeMVar state
-              when (fPos `elem` validArea && isJust mp) $ do
-                let piece = snd $ fromJust mp
-                when (button == RightButton && maybe False (== fPos) mstate) $ do
-                  let nCell = rotateGUICell piece
-                  boardSetPiece fPos (Player,nCell) ioBoard
-                nmp <- boardGetPiece fPos ioBoard
-                when (button == LeftButton && isJust nmp) $ do
-                  let nCell = snd $ fromJust nmp
-                  mOHid <- tryTakeMVar guiCellHidMVar
-                  forM_ mOHid $ removeCallbackMCBMVar guiCellMCBMVar
-                  reactiveValueWrite guiCellMCBMVar nCell
-                  nHid <- installCallbackMCBMVar guiCellMCBMVar $ do
-                    cp <- reactiveValueRead curChanRV
-                    guiVal <- reactiveValueRead guiCellMCBMVar
-                    mChanRV <- M.lookup cp <$> reactiveValueRead chanMapRV
-                    when (isNothing mChanRV) $ error "Can't get piece array!"
-                    let (_,pieceArrRV,_) = fromJust mChanRV
-                    reactiveValueWrite (pieceArrRV ! fPos) guiVal
-                  putMVar guiCellHidMVar nHid
-            return True
+          (\fPos' -> do
+              let fPos = actualTile fPos'
+              button <- eventButton
+              liftIO $ postGUIAsync $ do
+                mp <- boardGetPiece fPos ioBoard
+                mstate <- tryTakeMVar state
+                when (fPos `elem` validArea && isJust mp) $ do
+                  let piece = snd $ fromJust mp
+                  when (button == RightButton && maybe False (== fPos) mstate) $ do
+                    let nCell = rotateGUICell piece
+                    boardSetPiece fPos (Player,nCell) ioBoard
+                  nmp <- boardGetPiece fPos ioBoard
+                  when (button == LeftButton && isJust nmp) $ do
+                    let nCell = snd $ fromJust nmp
+                    mOHid <- tryTakeMVar guiCellHidMVar
+                    forM_ mOHid $ removeCallbackMCBMVar guiCellMCBMVar
+                    reactiveValueWrite guiCellMCBMVar nCell
+                    nHid <- installCallbackMCBMVar guiCellMCBMVar $ do
+                      cp <- reactiveValueRead curChanRV
+                      guiVal <- reactiveValueRead guiCellMCBMVar
+                      mChanRV <- M.lookup cp <$> reactiveValueRead chanMapRV
+                      when (isNothing mChanRV) $ error "Can't get piece array!"
+                      let (_,pieceArrRV,_) = fromJust mChanRV
+                      reactiveValueWrite (pieceArrRV ! fPos) guiVal
+                    putMVar guiCellHidMVar nHid
+              return True
           )
 
   boardCont <- backgroundContainerNew

@@ -11,6 +11,7 @@ module RMCA.GUI.Board ( GUICell (..)
                       , fromGUICoords
                       , validArea
                       , Player(..)
+                      , actualTile
                       ) where
 
 import           Control.Monad

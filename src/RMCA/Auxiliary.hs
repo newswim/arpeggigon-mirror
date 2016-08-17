@@ -88,7 +88,7 @@ varFreqSine :: SF DTime Double
 varFreqSine = sin ^<< (2*pi*) ^<< (`mod'` 1) ^<< integral <<^ (1/)
 
 repeatedlyS :: a -> SF DTime (Event a)
-repeatedlyS x = edgeBy (\a b -> if a * b < 0 then Just x else Nothing) 0
+repeatedlyS x = edgeBy (\a b -> maybeIf (a * b > 0) $> x) 0
                 <<< varFreqSine <<^ (2*)
 
 -- Similar to onChange but contains its initial value in the first

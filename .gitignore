@@ -34,3 +34,5 @@ html/
 *.hp
 *.prof
 *.ps
+*.html
+*.folded
