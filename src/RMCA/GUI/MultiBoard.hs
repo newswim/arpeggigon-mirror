@@ -15,6 +15,7 @@ import           Graphics.UI.Gtk.Board.TiledBoard           hiding (Board)
 import           Graphics.UI.Gtk.Layout.BackgroundContainer
 import           Graphics.UI.Gtk.Reactive.Gtk2
 import           RMCA.Auxiliary
+import           RMCA.Global.Clock
 import           RMCA.GUI.Board
 import           RMCA.Layer.Layer
 import           RMCA.MCBMVar
@@ -23,7 +24,8 @@ import           RMCA.Semantics
 createNotebook :: ( ReactiveValueRead addLayer () IO
                   , ReactiveValueRead rmLayer () IO
                   ) =>
-                  addLayer
+                  TickableClock
+               -> addLayer
                -> rmLayer
                -> MCBMVar Layer
                -> MCBMVar GUICell
@@ -33,7 +35,7 @@ createNotebook :: ( ReactiveValueRead addLayer () IO
                      , ReactiveFieldRead IO
                        (M.IntMap (ReactiveFieldWrite IO [PlayHead]))
                      )
-createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
+createNotebook tc addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
   n <- notebookNew
   let curPageRV = ReactiveFieldReadWrite setter getter notifier
         where (ReactiveFieldRead getter _) = notebookGetCurrentPagePassive n
@@ -104,7 +106,7 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
   fstP <- notebookAppendPage n boardCont "Lol first"
   notebookPageNumber <- newCBMVarRW (1 :: Int)
 
-  initBoardRV guiBoard >>=
+  initBoardRV tc guiBoard >>=
     \(boardRV, pieceArrRV, phRV) -> reactiveValueRead chanMapRV >>=
     reactiveValueWrite chanMapRV . M.insert fstP (boardRV,pieceArrRV,phRV)
 
@@ -141,7 +143,7 @@ createNotebook addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
       notebookAppendPage n nBoardCont $ show np
       pChan <- reactiveValueRead pageChanRV
       let newCP = foundHole pChan
-      (nBoardRV, nPieceArrRV, nPhRV) <- initBoardRV nGuiBoard
+      (nBoardRV, nPieceArrRV, nPhRV) <- initBoardRV tc nGuiBoard
 
       reactiveValueRead chanMapRV >>=
         reactiveValueWrite chanMapRV . M.insert newCP (nBoardRV,nPieceArrRV,nPhRV)

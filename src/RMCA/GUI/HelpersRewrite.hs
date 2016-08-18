@@ -175,7 +175,6 @@ attachGameRules game = do
 
   board `boardOnPieceDragStart` \pos' -> do
     let pos = actualTile pos'
-    putStrLn ("dragStart: " ++ show pos' ++ show pos)
     visualGame <- readIORef vgRef
     let game' = gameS visualGame
     return (moveEnabled game' && canMove game' (curPlayer game') pos)
@@ -183,7 +182,6 @@ attachGameRules game = do
   board `boardOnPieceDragOver` \posF' posT' -> do
     let posF = actualTile posF'
         posT = actualTile posT'
-    putStrLn ("dragOver: " ++ show posF ++ show posT)
     visualGame <- readIORef vgRef
     let game' = gameS visualGame
     return (moveEnabled game' && canMoveTo game' (curPlayer game') posF posT)

@@ -1,4 +1,13 @@
-module RMCA.Global.Clock where
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+module RMCA.Global.Clock ( AbsBeat
+                         , maxAbsBeat
+                         , metronome
+                         , tempoToQNoteIvl
+                         , TickableClock
+                         , newTickableClock
+                         , tickClock
+                         ) where
 
 import Control.Concurrent
 import Control.Monad
@@ -56,3 +65,16 @@ mkClockRV d = clockRV <$> mkClock d
 
 stopClock :: TickingClock -> IO ()
 stopClock (_,t) = killThread t
+
+-- | A clock that can be written to.
+newtype TickableClock = TickableClock (CBMVar ())
+
+tickClock :: TickableClock -> IO ()
+tickClock (TickableClock cl) = writeCBMVar cl ()
+
+newTickableClock :: IO TickableClock
+newTickableClock = TickableClock <$> newCBMVar ()
+
+instance ReactiveValueRead TickableClock () IO where
+  reactiveValueRead _ = return ()
+  reactiveValueOnCanRead (TickableClock tc) = installCallbackCBMVar tc

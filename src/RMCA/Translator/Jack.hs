@@ -6,6 +6,7 @@ module RMCA.Translator.Jack ( jackSetup
                             ) where
 
 import           Control.Arrow
+import           Control.Concurrent.MVar
 import qualified Control.Monad.Exception.Synchronous as Sync
 import qualified Control.Monad.Trans.Class           as Trans
 import           Data.Foldable
@@ -13,6 +14,7 @@ import qualified Data.IntMap                         as M
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
 import           RMCA.Auxiliary
+import           RMCA.Global.Clock
 import           RMCA.Semantics
 import           RMCA.Translator.Message
 import           RMCA.Translator.RV
@@ -34,19 +36,22 @@ outPortName = "output"
 jackSetup :: (ReactiveValueReadWrite board
               (M.IntMap ([Note],[Message])) IO
              , ReactiveValueRead tempo Tempo IO) =>
-             board
+             TickableClock
+          -> board
           -> tempo
           -> IO ()
-jackSetup boardQueue tempoRV = Jack.handleExceptions $ do
+jackSetup tc boardQueue tempoRV = Jack.handleExceptions $ do
   toProcessRV <- Trans.lift $ newCBMVarRW []
   Jack.withClientDefault rmcaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
-    Jack.withProcess client (jackCallBack input output
+    Jack.withProcess client (jackCallBack tc input output
                               toProcessRV boardQueue tempoRV) $
     Jack.withActivation client $ Trans.lift $ do
     putStrLn $ "Started " ++ rmcaName ++ " JACK client."
+    --newEmptyMVar >>= takeMVar
     Jack.waitForBreak
+    return ()
 
 -- The callback function. It pumps value out of the input port, mix
 -- them with value coming from the machine itself and stuff them into
@@ -56,14 +61,15 @@ jackCallBack :: ( ReactiveValueReadWrite toProcess [(Frames, RawMessage)] IO
                 , ReactiveValueReadWrite board
                   (M.IntMap ([Note],[Message])) IO
                 , ReactiveValueRead tempo Tempo IO) =>
-                JMIDI.Port Jack.Input
+                TickableClock
+             -> JMIDI.Port Jack.Input
              -> JMIDI.Port Jack.Output
              -> toProcess
              -> board
              -> tempo
              -> Jack.NFrames
              -> Sync.ExceptionalT E.Errno IO ()
-jackCallBack input output toProcessRV boardQueue tempoRV
+jackCallBack tc input output toProcessRV boardQueue tempoRV
   nframes@(Jack.NFrames nframesInt') = do
   let inMIDIRV = inMIDIEvent input nframes
       outMIDIRV = outMIDIEvent output nframes
@@ -79,4 +85,5 @@ jackCallBack input output toProcessRV boardQueue tempoRV
     putStrLn ("Out: " ++ show (map fst go))
     reactiveValueWrite outMIDIRV go
     reactiveValueWrite toProcessRV old
+    tickClock tc
   --------------

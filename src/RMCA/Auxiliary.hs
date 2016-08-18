@@ -1,5 +1,6 @@
 {-# LANGUAGE Arrows, FlexibleContexts, MultiParamTypeClasses #-}
 
+-- | Auxiliary functions used throughout the code.
 module RMCA.Auxiliary where
 
 import Control.Monad
@@ -9,16 +10,20 @@ import Data.Maybe
 import Data.ReactiveValue
 import FRP.Yampa
 
---------------------------------------------------------------------------------
--- General functions
---------------------------------------------------------------------------------
+import Debug.Trace
 
+-- |= General functions
+
+
+-- | Reversed version of '(\<$\>)'.
 (<$$>) :: (Functor f) => f a -> (a -> b) -> f b
 (<$$>) = flip (<$>)
 
+-- | Reversed version of '(<$)'.
 ($>) :: (Functor f) => f a -> b -> f b
 ($>) = flip (<$)
 
+-- | @bound (min,max)@ behaves like identity if the supplied value is between @min@ and @max@, otherwise it is replaced either by @min@ or by @max@.
 bound :: (Ord a) => (a, a) -> a -> a
 bound (min, max) x
   | x < min = min
@@ -48,33 +53,30 @@ eventToList :: Event [a] -> [a]
 eventToList NoEvent = []
 eventToList (Event x) = x
 
+-- | Generates an 'Event' if the given condition is 'True'.
 eventIf :: Bool -> Event ()
 eventIf b = if b then Event () else NoEvent
 
+-- | Generates a 'Just' value if the given condition is 'True'.
 maybeIf :: Bool -> Maybe ()
 maybeIf b = if b then Just () else Nothing
 
---------------------------------------------------------------------------------
--- FRP
---------------------------------------------------------------------------------
+-- | = Yampa
 
--- stepBack contains its previous argument as its output. Because it's
--- hard to define it at time 0, it's wrapped up in a Maybe.
+-- | 'stepBack' contains its previous argument as its output. Because it's hard to define it at time 0, it's wrapped up in a 'Maybe'.
 stepBack :: SF a (Maybe a)
 stepBack = sscan f (Nothing, Nothing) >>^ snd
   where f :: (Maybe a, Maybe a) -> a -> (Maybe a, Maybe a)
         f (Nothing,_) x' = (Just x', Nothing)
         f (Just x, _) x' = (Just x', Just x)
 
--- Just like stepBack but the output value is always defined and is
--- equal to the input at time 0.
+-- | Like 'stepBack' but the output value is always defined and is equal to the input at time 0.
 stepBack' :: SF a a
 stepBack' = proc x -> do
   x' <- stepBack -< x
   returnA -< fromMaybe x x'
 
--- Throws an Event when the incoming signal change. The Event is
--- tagged with the new value.
+-- | Throws an 'Event' when the incoming signal change. The 'Event' is tagged with the new value.
 onChange :: (Eq a) => SF a (Event a)
 onChange = proc x -> do
   x' <- stepBack -< x
@@ -84,14 +86,7 @@ onChange = proc x -> do
             if x'' == x then NoEvent else Event x
   returnA -< makeEvent x x'
 
-varFreqSine :: SF DTime Double
-varFreqSine = sin ^<< (2*pi*) ^<< (`mod'` 1) ^<< integral <<^ (1/)
-
-repeatedlyS :: a -> SF DTime (Event a)
-repeatedlyS x = edgeBy (\a b -> maybeIf (a * b > 0) $> x) 0
-                <<< varFreqSine <<^ (2*)
-
--- Similar to onChange but contains its initial value in the first
+-- | Similar to 'onChange' but contains its initial value in the first
 -- event.
 onChange' :: (Eq a) => SF a (Event a)
 onChange' = proc x -> do
@@ -103,10 +98,19 @@ onChange' = proc x -> do
             if x'' == x then NoEvent else Event x
   returnA -< makeEvent x x'
 
---------------------------------------------------------------------------------
--- Reactive Values
---------------------------------------------------------------------------------
+-- | Generates a sine function whose period is given as a varying input.
+varFreqSine :: SF DTime Double
+varFreqSine = sin ^<< (2*pi*) ^<< integral <<^ (1/)
 
+-- | Generates an 'Event' at a regular frequency, which is given as an input to the signal function.
+repeatedlyS :: a -> SF DTime (Event a)
+repeatedlyS x = edgeBy (\a b -> traceShow (a,b) (maybeIf (a * b < 0) $> x)) 0
+                <<< varFreqSine <<^ (2*)
+
+-- |
+-- = Auxiliary functions for manipulating reactive values
+
+-- | Creates a new 'CBMVar' wrapped into a reactive field.
 newCBMVarRW :: a -> IO (ReactiveFieldReadWrite IO a)
 newCBMVarRW val = do
   mvar <- newCBMVar val
@@ -115,15 +119,18 @@ newCBMVarRW val = do
       notifier = installCallbackCBMVar mvar
   return $ ReactiveFieldReadWrite setter getter notifier
 
+-- | Appends a value to a reactive value.
 reactiveValueAppend :: (Monoid b, ReactiveValueReadWrite a b m) =>
                        a -> b -> m ()
 reactiveValueAppend rv v = do ov <- reactiveValueRead rv
                               reactiveValueWrite rv (ov `mappend` v)
 
+-- | Writes 'mempty' to a reactive value containing a 'Monoid'.
 reactiveValueEmpty :: (Monoid b, ReactiveValueReadWrite a b m) =>
                       a -> m ()
 reactiveValueEmpty rv = reactiveValueWrite rv mempty
 
+-- | Writes a value to a reactive value if the value is different from the one already in the reactive value.
 reactiveValueWriteOnNotEq :: ( Eq b
                              , ReactiveValueReadWrite a b m) =>
                              a -> b -> m ()
@@ -131,8 +138,7 @@ reactiveValueWriteOnNotEq rv nv = do
   ov <- reactiveValueRead rv
   when (ov /= nv) $ reactiveValueWrite rv nv
 
--- Update when the value is an Event. It would be nice to have that
--- even for Maybe as well.
+-- | Relation that will update when the value is an 'Event'.
 (>:>) :: (ReactiveValueRead a (Event b) IO, ReactiveValueWrite c b IO) =>
          a -> c -> IO ()
 eventRV >:> rv = reactiveValueOnCanRead eventRV syncOnEvent
@@ -140,6 +146,7 @@ eventRV >:> rv = reactiveValueOnCanRead eventRV syncOnEvent
            erv <- reactiveValueRead eventRV
            when (isEvent erv) $ reactiveValueWrite rv $ fromEvent erv
 
+-- | When the reactive value on the left changes, the value on the right is updated using the value it contains and the value on the left with the provided function.
 syncRightOnLeftWithBoth :: ( ReactiveValueRead a b m
                            , ReactiveValueReadWrite c d m
                            ) => (b -> d -> d) -> a -> c -> m ()
@@ -148,6 +155,7 @@ syncRightOnLeftWithBoth f l r = reactiveValueOnCanRead l $ do
   or <- reactiveValueRead r
   reactiveValueWrite r (f nl or)
 
+-- | Forces to update an reactive value by writing to it with the value it contains.
 updateRV :: (ReactiveValueReadWrite a b m) => a -> m ()
 updateRV rv = reactiveValueRead rv >>= reactiveValueWrite rv
 
@@ -268,9 +276,8 @@ liftRW5 bij a b c d e =
         ReactiveFieldWrite setter = liftW5 f1 a b c d e
         (f1, f2) = (direct bij, inverse bij)
 
---------------------------------------------------------------------------------
--- Curry and uncurry functions
---------------------------------------------------------------------------------
+-- |
+-- = Curry and uncurry functions
 
 curry3 :: ((a,b,c) -> d) -> a -> b -> c -> d
 curry3 f a b c = f (a,b,c)

@@ -172,14 +172,14 @@ initGame = do
 
 -- Initializes a readable RV for the board and an readable-writable RV
 -- for the playheads. Also installs some handlers for pieces modification.
-initBoardRV :: BIO.Board Int Tile (Player,GUICell)
+initBoardRV :: TickableClock
+            -> BIO.Board Int Tile (Player,GUICell)
             -> IO ( ReactiveFieldRead IO Board
                   , Array Pos (ReactiveFieldWrite IO GUICell)
                   , ReactiveFieldWrite IO [PlayHead])
-initBoardRV board@BIO.Board { boardPieces = (GameBoard gArray) } = do
+initBoardRV tc board@BIO.Board { boardPieces = (GameBoard gArray) } = do
   -- RV creation
   phMVar <- newCBMVar []
-  notBMVar <- mkClockRV 50
   let getterB :: IO Board
       getterB = do
         (boardArray :: [((Int,Int),Maybe (Player,GUICell))]) <- getAssocs gArray
@@ -191,7 +191,7 @@ initBoardRV board@BIO.Board { boardPieces = (GameBoard gArray) } = do
         return board
 
       notifierB :: IO () -> IO ()
-      notifierB = reactiveValueOnCanRead notBMVar
+      notifierB = reactiveValueOnCanRead tc
 
       getterP :: IO [PlayHead]
       getterP = readCBMVar phMVar

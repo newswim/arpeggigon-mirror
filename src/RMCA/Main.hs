@@ -12,6 +12,7 @@ import           Graphics.UI.Gtk.Layout.BackgroundContainer
 import           Hails.Yampa
 import           RMCA.Auxiliary
 import           RMCA.Configuration
+import           RMCA.Global.Clock
 import           RMCA.GUI.Board
 import           RMCA.GUI.Buttons
 import           RMCA.GUI.LayerSettings
@@ -58,7 +59,8 @@ main = do
   boxPackStart settingsBox laySep PackNatural 0
 
   (noteSettingsBox, guiCellMCBMVar) <- noteSettingsBox
-  (boardCont, boardMapRV, layerMapRV, phRVMapRV) <- createNotebook
+  tc <- newTickableClock
+  (boardCont, boardMapRV, layerMapRV, phRVMapRV) <- createNotebook tc
                                                     addLayerRV rmLayerRV
                                                     layerMCBMVar guiCellMCBMVar
   boxPackStart mainBox boardCont PackNatural 0
@@ -101,7 +103,7 @@ main = do
   -- supposedly is no guaranty of order but apparently there is…
   putStrLn "Board started."
   -- Jack setup
-  forkIO $ jackSetup boardQueue tempoRV
+  forkIO $ jackSetup tc boardQueue tempoRV
 
   widgetShowAll window
   ------------------------------------------------------------
