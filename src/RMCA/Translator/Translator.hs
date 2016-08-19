@@ -31,7 +31,8 @@ noteToMessages :: SampleRate
                -> (Frames,Note)
                -> [(Frames,Message)]
 noteToMessages sr chan lt (t,n@Note { noteDur = d }) =
-  [(t,nm),(t + dn,switchOnOff nm)]
+  | d == 0 = []
+  | otherwise = [(t,nm),(t + dn,switchOnOff nm)]
   where nm = noteOnToMessage chan n
         dt :: Double
         dt = fromRational (d * toRational (tempoToQNoteIvl lt))

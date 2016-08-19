@@ -10,8 +10,6 @@ import Data.Maybe
 import Data.ReactiveValue
 import FRP.Yampa
 
-import Debug.Trace
-
 -- |= General functions
 
 
@@ -104,7 +102,7 @@ varFreqSine = sin ^<< (2*pi*) ^<< integral <<^ (1/)
 
 -- | Generates an 'Event' at a regular frequency, which is given as an input to the signal function.
 repeatedlyS :: a -> SF DTime (Event a)
-repeatedlyS x = edgeBy (\a b -> traceShow (a,b) (maybeIf (a * b < 0) $> x)) 0
+repeatedlyS x = edgeBy (\a b -> maybeIf (a * b < 0) $> x) 0
                 <<< varFreqSine <<^ (2*)
 
 -- |
