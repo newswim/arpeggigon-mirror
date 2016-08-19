@@ -30,7 +30,7 @@ noteToMessages :: SampleRate
                -> LTempo
                -> (Frames,Note)
                -> [(Frames,Message)]
-noteToMessages sr chan lt (t,n@Note { noteDur = d }) =
+noteToMessages sr chan lt (t,n@Note { noteDur = d })
   | d == 0 = []
   | otherwise = [(t,nm),(t + dn,switchOnOff nm)]
   where nm = noteOnToMessage chan n

@@ -100,7 +100,7 @@ onChange' = proc x -> do
 varFreqSine :: SF DTime Double
 varFreqSine = sin ^<< (2*pi*) ^<< integral <<^ (1/)
 
--- | Generates an 'Event' at a regular frequency, which is given as an input to the signal function.
+-- | Generates an 'Event' with a regular period, which is given as an input to the signal function.
 repeatedlyS :: a -> SF DTime (Event a)
 repeatedlyS x = edgeBy (\a b -> maybeIf (a * b < 0) $> x) 0
                 <<< varFreqSine <<^ (2*)

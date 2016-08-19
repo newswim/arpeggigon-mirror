@@ -29,7 +29,7 @@ maxAbsBeat = 16
 -- its own fraction, discarding the unecessary beats.
 metronome :: SF Tempo (Event AbsBeat)
 metronome = accumBy (\pb _ -> nextBeatNo maxAbsBeat pb) 1 <<<
-            repeatedlyS () <<^ (/4) <<^ tempoToQNoteIvl
+            repeatedlyS () <<^ (15*) <<^ (1/) <<^ fromIntegral
 
 -- Tempo is the number of quarter notes per minute.
 tempoToQNoteIvl :: Tempo -> DTime
