@@ -60,12 +60,12 @@ main = do
 
   (noteSettingsBox, guiCellMCBMVar) <- noteSettingsBox
   tc <- newTickableClock
-  (boardCont, boardMapRV, layerMapRV, phRVMapRV) <- createNotebook tc
-                                                    addLayerRV rmLayerRV
-                                                    layerMCBMVar guiCellMCBMVar
+  (boardCont, boardMapRV, layerMapRV, instrMapRV, phRVMapRV) <-
+    createNotebook tc addLayerRV rmLayerRV layerMCBMVar instrMCBMVar guiCellMCBMVar
   boxPackStart mainBox boardCont PackNatural 0
 
-  --handleSaveLoad tempoRV boardRV layerRV instrRV pieceArrRV confSaveRV confLoadRV
+  handleSaveLoad tempoRV boardMapRV layerMapRV instrMapRV phRVMapRV
+    addLayerRV rmLayerRV confSaveRV confLoadRV
 
   boardRunRV <- newCBMVarRW BoardStop
   reactiveValueOnCanRead playRV $ reactiveValueWrite boardRunRV BoardStart

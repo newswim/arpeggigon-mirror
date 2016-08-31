@@ -13,6 +13,7 @@ import           Data.Foldable
 import qualified Data.IntMap                         as M
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
+import           Graphics.UI.Gtk
 import           RMCA.Auxiliary
 import           RMCA.Global.Clock
 import           RMCA.Semantics
@@ -20,6 +21,7 @@ import           RMCA.Translator.Message
 import           RMCA.Translator.RV
 import           RMCA.Translator.Translator
 import qualified Sound.JACK                          as Jack
+import qualified Sound.JACK.Exception                as JackExc
 import qualified Sound.JACK.MIDI                     as JMIDI
 
 rmcaName :: String
@@ -31,6 +33,16 @@ inPortName = "input"
 outPortName :: String
 outPortName = "output"
 
+handleErrorJack :: JackExc.All -> IO ()
+handleErrorJack _ = postGUIAsync $ do
+  diag <- messageDialogNewWithMarkup
+          Nothing [] MessageError ButtonsClose
+          "No running instance of Jack could be found!"
+  widgetShow diag
+  resp <- dialogRun diag
+  print resp
+  mainQuit
+
 -- Starts a default client with an input and an output port. Doesn't
 -- do anything as such.
 jackSetup :: (ReactiveValueReadWrite board
@@ -40,7 +52,7 @@ jackSetup :: (ReactiveValueReadWrite board
           -> board
           -> tempo
           -> IO ()
-jackSetup tc boardQueue tempoRV = Jack.handleExceptions $ do
+jackSetup tc boardQueue tempoRV = Sync.resolveT handleErrorJack $ do
   toProcessRV <- Trans.lift $ newCBMVarRW []
   Jack.withClientDefault rmcaName $ \client ->
     Jack.withPort client outPortName $ \output ->

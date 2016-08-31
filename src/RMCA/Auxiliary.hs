@@ -96,9 +96,20 @@ onChange' = proc x -> do
             if x'' == x then NoEvent else Event x
   returnA -< makeEvent x x'
 
+-- | Integrates some variable modulo something.
+integralMod :: (Real a, VectorSpace a s) => a -> SF a a
+integralMod x = intMod' 0
+  where intMod' x0 = switch (intMod'' x0) (\y -> intMod' (y - x))
+        intMod'' x0 =  proc t -> do
+          it <- (+ x0) ^<< integral -< t
+          es <- edgeBy (\_ y -> maybeIf (y > x) $> y) 0 -< it
+          returnA -< (it,es)
+
+
+
 -- | Generates a sine function whose period is given as a varying input.
 varFreqSine :: SF DTime Double
-varFreqSine = sin ^<< (2*pi*) ^<< integral <<^ (1/)
+varFreqSine = sin ^<< (2*pi*) ^<< integralMod 1 <<^ (1/)
 
 -- | Generates an 'Event' with a regular period, which is given as an input to the signal function.
 repeatedlyS :: a -> SF DTime (Event a)

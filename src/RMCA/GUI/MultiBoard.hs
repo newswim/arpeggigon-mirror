@@ -21,6 +21,9 @@ import           RMCA.Layer.Layer
 import           RMCA.MCBMVar
 import           RMCA.Semantics
 
+maxLayers :: Int
+maxLayers = 16
+
 createNotebook :: ( ReactiveValueRead addLayer () IO
                   , ReactiveValueRead rmLayer () IO
                   ) =>
@@ -28,6 +31,7 @@ createNotebook :: ( ReactiveValueRead addLayer () IO
                -> addLayer
                -> rmLayer
                -> MCBMVar Layer
+               -> MCBMVar InstrumentNo
                -> MCBMVar GUICell
                -> IO ( Notebook
                      , ReactiveFieldRead IO (M.IntMap Board)
@@ -35,7 +39,7 @@ createNotebook :: ( ReactiveValueRead addLayer () IO
                      , ReactiveFieldRead IO
                        (M.IntMap (ReactiveFieldWrite IO [PlayHead]))
                      )
-createNotebook tc addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
+createNotebook tc addLayerRV rmLayerRV layerMCBMVar instrMCBMVar guiCellMCBMVar = do
   n <- notebookNew
   let curPageRV = ReactiveFieldReadWrite setter getter notifier
         where (ReactiveFieldRead getter _) = notebookGetCurrentPagePassive n
@@ -103,7 +107,7 @@ createNotebook tc addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
   containerAdd centerBoard guiBoard
   containerAdd boardCont centerBoard
 
-  fstP <- notebookAppendPage n boardCont "Lol first"
+  fstP <- notebookAppendPage n boardCont ""
   notebookPageNumber <- newCBMVarRW (1 :: Int)
 
   initBoardRV tc guiBoard >>=
@@ -120,9 +124,12 @@ createNotebook tc addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
           reactiveValueWrite layerMapRV . M.insert cp nLayer
 
   layerHidMVar <- newEmptyMVar
+  instrHidMVar <- newEmptyMVar
 
   installCallbackMCBMVar layerMCBMVar
     (reactiveValueRead curChanRV >>= updateLayer) >>= putMVar layerHidMVar
+  installCallbackMCBMVar instrMCBMVar
+    (reactiveValueRead curChanRV >>= updateInstr) >>= putMVar instrHidMVar
 
   ------------------------------------------------------------------------------
   -- Following boards
@@ -130,7 +137,7 @@ createNotebook tc addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
 
   reactiveValueOnCanRead addLayerRV $ postGUIAsync $ do
     np <- reactiveValueRead notebookPageNumber
-    unless (np >= 16) $ do
+    unless (np >= maxLayers) $ do
       reactiveValueWrite notebookPageNumber (np + 1)
       nBoardCont <- backgroundContainerNew
 
@@ -183,6 +190,7 @@ createNotebook tc addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
     cp <- reactiveValueRead curChanRV
     when (cp >= 0) $ do
       takeMVar layerHidMVar >>= removeCallbackMCBMVar layerMCBMVar
+      takeMVar instrHidMVar >>= removeCallbackMCBMVar instrMCBMVar
       layerMap <- reactiveValueRead layerMapRV
       let mSelLayer = M.lookup cp layerMap
       when (isNothing mSelLayer) $ error "Not found selected layer!"
@@ -205,18 +213,7 @@ createNotebook tc addLayerRV rmLayerRV layerMCBMVar guiCellMCBMVar = do
   ------------------------------------------------------------------------------
   -- Flatten maps
   ------------------------------------------------------------------------------
-  let {-phMapRV :: ReactiveFieldWrite IO (M.IntMap [PlayHead])
-      phMapRV = ReactiveFieldWrite setter
-        where setter phM = sequence_ $ M.mapWithKey writePhs phM
-              writePhs :: Int -> [PlayHead] -> IO ()
-              writePhs k phs = do chanMap <- reactiveValueRead chanMapRV
-                                  let mselChan = M.lookup k chanMap
-                                  when (isNothing mselChan) $
-                                    error "Can't find layer!"
-                                  let (_,_,phsRV) = fromJust mselChan
-                                  reactiveValueWrite phsRV phs
--}
-      phMapRV :: ReactiveFieldRead IO (M.IntMap (ReactiveFieldWrite IO [PlayHead]))
+  let phMapRV :: ReactiveFieldRead IO (M.IntMap (ReactiveFieldWrite IO [PlayHead]))
       phMapRV = liftR (M.map (\(_,_,b) -> b)) chanMapRV
 
       boardMapRV :: ReactiveFieldRead IO (M.IntMap Board)
