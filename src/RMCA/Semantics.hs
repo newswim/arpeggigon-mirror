@@ -42,6 +42,8 @@ import RMCA.Auxiliary
 -- Basic Type Synonyms
 ------------------------------------------------------------------------------
 
+type InstrumentNo = Int
+
 -- Unipolar control value; [0, 1]
 type UCtrl = Double
 
