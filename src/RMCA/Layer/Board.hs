@@ -81,20 +81,6 @@ boardSF (StaticLayerConf { beatsPerBar = bpb }) =
 ----------------------------------------------------------------------------
 -- Machinery to make boards run in parallel
 ----------------------------------------------------------------------------
-{-
-boardRun :: M.IntMap StaticLayerConf
-         -> SF (Tempo, Event SwitchBoard, M.IntMap (Board,DynLayerConf))
-               (M.IntMap (Event [Note], [PlayHead]))
-boardRun iMap = undefined
-  where routing :: ( Event AbsBeat, Event SwitchBoard
-                   , M.IntMap (Board, DynLayerConf))
-                -> M.IntMap sf
-                -> M.IntMap
-                ((Event AbsBeat, Board, DynLayerConf, Event SwitchBoard),sf)
-        routing (eb,es,mSig) sfs = M.unionWith (,)
-          (fmap (\(board,layer) -> (eb,board,layer,es)) mSig)
-          sfs
--}
 
 boardRun' :: M.IntMap (SF (Event AbsBeat,Board,DynLayerConf,Event SwitchBoard)
                           (Event [Note], [PlayHead]))

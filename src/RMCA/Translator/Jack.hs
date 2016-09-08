@@ -16,6 +16,7 @@ import qualified Foreign.C.Error                     as E
 import           Graphics.UI.Gtk
 import           RMCA.Auxiliary
 import           RMCA.Global.Clock
+import           RMCA.IOClockworks
 import           RMCA.Semantics
 import           RMCA.Translator.Message
 import           RMCA.Translator.RV
@@ -48,7 +49,7 @@ handleErrorJack _ = postGUIAsync $ do
 jackSetup :: (ReactiveValueReadWrite board
               (M.IntMap ([Note],[Message])) IO
              , ReactiveValueRead tempo Tempo IO) =>
-             TickableClock
+             IOTick
           -> board
           -> tempo
           -> IO ()
@@ -73,7 +74,7 @@ jackCallBack :: ( ReactiveValueReadWrite toProcess [(Frames, RawMessage)] IO
                 , ReactiveValueReadWrite board
                   (M.IntMap ([Note],[Message])) IO
                 , ReactiveValueRead tempo Tempo IO) =>
-                TickableClock
+                IOTick
              -> JMIDI.Port Jack.Input
              -> JMIDI.Port Jack.Output
              -> toProcess
@@ -97,5 +98,5 @@ jackCallBack tc input output toProcessRV boardQueue tempoRV
     putStrLn ("Out: " ++ show (map fst go))
     reactiveValueWrite outMIDIRV go
     reactiveValueWrite toProcessRV old
-    tickClock tc
+    tickIOTick tc
   --------------

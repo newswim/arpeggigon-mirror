@@ -3,12 +3,12 @@
 -- | Auxiliary functions used throughout the code.
 module RMCA.Auxiliary where
 
-import Control.Monad
-import Data.CBMVar
-import Data.Fixed
-import Data.Maybe
-import Data.ReactiveValue
-import FRP.Yampa
+import           Control.Monad
+import           Data.CBMVar
+import qualified Data.IntMap        as M
+import           Data.Maybe
+import           Data.ReactiveValue
+import           FRP.Yampa
 
 -- |= General functions
 
@@ -58,6 +58,14 @@ eventIf b = if b then Event () else NoEvent
 -- | Generates a 'Just' value if the given condition is 'True'.
 maybeIf :: Bool -> Maybe ()
 maybeIf b = if b then Just () else Nothing
+
+intersectionWith3 :: (a -> b -> c -> d)
+                  -> M.IntMap a
+                  -> M.IntMap b
+                  -> M.IntMap c
+                  -> M.IntMap d
+intersectionWith3 f m n p =
+  M.intersectionWith (\x (y,z) -> f x y z) m $ M.intersectionWith (,) n p
 
 -- | = Yampa
 

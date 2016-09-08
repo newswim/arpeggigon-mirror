@@ -2,12 +2,14 @@
 
 module RMCA.Layer.LayerConf where
 
+import Data.IntMap             (IntMap)
 import Data.Ratio
 import Data.ReactiveValue
 import FRP.Yampa
 import RMCA.Auxiliary
 import RMCA.Global.Clock
 import RMCA.Semantics
+import RMCA.Translator.Message
 
 -- | Datatype representing dynamically modifiable characteristics for a layer.
 data DynLayerConf = DynLayerConf { layerBeat :: Rational
@@ -23,6 +25,13 @@ data StaticLayerConf = StaticLayerConf { beatsPerBar :: BeatsPerBar
 data SynthConf = SynthConf { volume     :: Int
                            , instrument :: InstrumentNo
                            } deriving (Show, Read, Eq)
+
+synthMessage :: Int -> SynthConf -> [Message]
+synthMessage chan (SynthConf { volume = v
+                             , instrument = i
+                             }) = [ Volume (mkChannel chan) v
+                                  , Instrument (mkChannel chan) (mkProgram i)
+                                  ]
 
 type LayerConf = (StaticLayerConf, DynLayerConf, SynthConf)
 

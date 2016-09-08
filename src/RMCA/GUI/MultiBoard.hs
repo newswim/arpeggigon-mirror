@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, TupleSections #-}
 
 module RMCA.GUI.MultiBoard where
 
@@ -15,37 +15,42 @@ import           Graphics.UI.Gtk.Board.TiledBoard           hiding (Board)
 import           Graphics.UI.Gtk.Layout.BackgroundContainer
 import           Graphics.UI.Gtk.Reactive.Gtk2
 import           RMCA.Auxiliary
-import           RMCA.Global.Clock
 import           RMCA.GUI.Board
-import           RMCA.Layer.Layer
+import           RMCA.IOClockworks
+import           RMCA.Layer.LayerConf
 import           RMCA.MCBMVar
 import           RMCA.Semantics
+import           RMCA.Translator.Message
 
 maxLayers :: Int
 maxLayers = 16
 
 createNotebook :: ( ReactiveValueRead addLayer () IO
                   , ReactiveValueRead rmLayer () IO
+                  , ReactiveValueReadWrite board (M.IntMap ([Note],[Message])) IO
                   ) =>
-                  TickableClock
+                  board
+               -> IOTick
                -> addLayer
                -> rmLayer
-               -> MCBMVar Layer
-               -> MCBMVar InstrumentNo
+               -> MCBMVar StaticLayerConf
+               -> MCBMVar DynLayerConf
+               -> MCBMVar SynthConf
                -> MCBMVar GUICell
                -> IO ( Notebook
                      , ReactiveFieldRead IO (M.IntMap Board)
-                     , ReactiveFieldRead IO (M.IntMap Layer)
+                     , ReactiveFieldRead IO (M.IntMap LayerConf)
                      , ReactiveFieldRead IO
                        (M.IntMap (ReactiveFieldWrite IO [PlayHead]))
                      )
-createNotebook tc addLayerRV rmLayerRV layerMCBMVar instrMCBMVar guiCellMCBMVar = do
+createNotebook boardQueue tc addLayerRV rmLayerRV
+  statMCBMVar dynMCBMVar synthMCBMVar guiCellMCBMVar = do
   n <- notebookNew
   let curPageRV = ReactiveFieldReadWrite setter getter notifier
         where (ReactiveFieldRead getter _) = notebookGetCurrentPagePassive n
               -- afterSwitchPage is deprecated but switchPage gets us
               -- the old page number and not the new one and using
-              -- afterSwitchPage doesn't trigger a warning.
+              -- afterSwitchPage doesn't trigger a warning so…
               setter = postGUIAsync . notebookSetCurrentPage n
               notifier io = void $ afterSwitchPage n (const io)
 
@@ -116,20 +121,30 @@ createNotebook tc addLayerRV rmLayerRV layerMCBMVar instrMCBMVar guiCellMCBMVar 
 
   reactiveValueRead pageChanRV >>=
     reactiveValueWrite pageChanRV . (\pc -> pc ++ [foundHole pc])
-  layerMapRV <- newCBMVarRW $ M.insert fstP defaultLayer M.empty
 
-  let updateLayer cp = do
-        nLayer <- reactiveValueRead layerMCBMVar
+  layerMapRV <- newCBMVarRW $ M.insert fstP defaultLayerConf M.empty
+
+  let updateDynLayer cp = do
+        nDyn <- reactiveValueRead dynMCBMVar
         reactiveValueRead layerMapRV >>=
-          reactiveValueWrite layerMapRV . M.insert cp nLayer
+          reactiveValueWrite layerMapRV .
+          M.adjust (\(stat,_,synth) -> (stat,nDyn,synth)) cp
+      updateSynth cp = do
+        synthState <- reactiveValueRead synthMCBMVar
+        reactiveValueAppend boardQueue $
+          M.singleton cp $ ([],) $ synthMessage cp synthState
+      updateStatLayer _ = return ()--undefined
 
-  layerHidMVar <- newEmptyMVar
-  instrHidMVar <- newEmptyMVar
+  statHidMVar <- newEmptyMVar
+  dynHidMVar <- newEmptyMVar
+  synthHidMVar <- newEmptyMVar
 
-  installCallbackMCBMVar layerMCBMVar
-    (reactiveValueRead curChanRV >>= updateLayer) >>= putMVar layerHidMVar
-  installCallbackMCBMVar instrMCBMVar
-    (reactiveValueRead curChanRV >>= updateInstr) >>= putMVar instrHidMVar
+  installCallbackMCBMVar statMCBMVar
+    (reactiveValueRead curChanRV >>= updateStatLayer) >>= putMVar statHidMVar
+  installCallbackMCBMVar dynMCBMVar
+    (reactiveValueRead curChanRV >>= updateDynLayer) >>= putMVar dynHidMVar
+  installCallbackMCBMVar synthMCBMVar
+    (reactiveValueRead curChanRV >>= updateSynth) >>= putMVar synthHidMVar
 
   ------------------------------------------------------------------------------
   -- Following boards
@@ -155,7 +170,7 @@ createNotebook tc addLayerRV rmLayerRV layerMCBMVar instrMCBMVar guiCellMCBMVar 
       reactiveValueRead chanMapRV >>=
         reactiveValueWrite chanMapRV . M.insert newCP (nBoardRV,nPieceArrRV,nPhRV)
       reactiveValueRead layerMapRV >>=
-        reactiveValueWrite layerMapRV . M.insert newCP defaultLayer
+        reactiveValueWrite layerMapRV . M.insert newCP defaultLayerConf
 
       --reactiveValueWrite curPageRV newP
       reactiveValueWrite pageChanRV (pChan ++ [newCP])
@@ -178,10 +193,9 @@ createNotebook tc addLayerRV rmLayerRV layerMCBMVar instrMCBMVar guiCellMCBMVar 
 
       reactiveValueRead chanMapRV >>=
         reactiveValueWrite chanMapRV . M.delete oldCP
+
       reactiveValueRead layerMapRV >>=
         reactiveValueWrite layerMapRV . M.delete oldCP
-
-      --updateRV curPageRV
 
     widgetShowAll n
     return ()
@@ -189,15 +203,22 @@ createNotebook tc addLayerRV rmLayerRV layerMCBMVar instrMCBMVar guiCellMCBMVar 
   reactiveValueOnCanRead curChanRV $ do
     cp <- reactiveValueRead curChanRV
     when (cp >= 0) $ do
-      takeMVar layerHidMVar >>= removeCallbackMCBMVar layerMCBMVar
-      takeMVar instrHidMVar >>= removeCallbackMCBMVar instrMCBMVar
+      takeMVar dynHidMVar >>= removeCallbackMCBMVar dynMCBMVar
+      takeMVar statHidMVar >>= removeCallbackMCBMVar statMCBMVar
+      takeMVar synthHidMVar >>= removeCallbackMCBMVar synthMCBMVar
       layerMap <- reactiveValueRead layerMapRV
       let mSelLayer = M.lookup cp layerMap
       when (isNothing mSelLayer) $ error "Not found selected layer!"
       let selLayer = fromJust mSelLayer
-      reactiveValueWrite layerMCBMVar selLayer
-      installCallbackMCBMVar layerMCBMVar (updateLayer cp) >>=
-        putMVar layerHidMVar
+      reactiveValueWrite dynMCBMVar (dynConf selLayer)
+      installCallbackMCBMVar dynMCBMVar (updateDynLayer cp) >>=
+        putMVar dynHidMVar
+      reactiveValueWrite statMCBMVar (staticConf selLayer)
+      installCallbackMCBMVar statMCBMVar (updateStatLayer cp) >>=
+        putMVar statHidMVar
+      reactiveValueWrite synthMCBMVar (synthConf selLayer)
+      installCallbackMCBMVar synthMCBMVar (updateSynth cp) >>=
+        putMVar synthHidMVar
       return ()
 
     oldCurChanRV <- newCBMVarRW =<< reactiveValueRead curChanRV

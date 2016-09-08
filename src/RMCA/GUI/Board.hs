@@ -14,10 +14,10 @@ module RMCA.GUI.Board ( GUICell (..)
                       , actualTile
                       ) where
 
+import           Control.Arrow
 import           Control.Monad
 import           Data.Array
 import           Data.Array.MArray
-import qualified Data.Bifunctor                   as BF
 import           Data.Board.GameBoardIO
 import           Data.CBMVar
 import           Data.Maybe
@@ -33,8 +33,8 @@ import           Graphics.UI.Gtk.Board.TiledBoard hiding
     )
 import qualified Graphics.UI.Gtk.Board.TiledBoard as BIO
 import           Paths_RMCA
-import           RMCA.Global.Clock
 import           RMCA.GUI.HelpersRewrite
+import           RMCA.IOClockworks
 import           RMCA.Semantics
 
 newtype GUIBoard = GUIBoard { toGS :: GameState Int Tile Player GUICell }
@@ -172,7 +172,7 @@ initGame = do
 
 -- Initializes a readable RV for the board and an readable-writable RV
 -- for the playheads. Also installs some handlers for pieces modification.
-initBoardRV :: TickableClock
+initBoardRV :: IOTick
             -> BIO.Board Int Tile (Player,GUICell)
             -> IO ( ReactiveFieldRead IO Board
                   , Array Pos (ReactiveFieldWrite IO GUICell)
@@ -184,8 +184,8 @@ initBoardRV tc board@BIO.Board { boardPieces = (GameBoard gArray) } = do
       getterB = do
         (boardArray :: [((Int,Int),Maybe (Player,GUICell))]) <- getAssocs gArray
         let board = makeBoard $
-              map (BF.first fromGUICoords .
-                   BF.second ((\(_,c) -> (cellAction c,repeatCount c)) .
+              map (first fromGUICoords .
+                   second ((\(_,c) -> (cellAction c,repeatCount c)) .
                               fromJust)) $
               filter (isJust . snd) boardArray
         return board

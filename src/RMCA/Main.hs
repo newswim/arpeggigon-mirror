@@ -11,7 +11,8 @@ import           Graphics.UI.Gtk.Board.BoardLink
 import           Graphics.UI.Gtk.Layout.BackgroundContainer
 import           Hails.Yampa
 import           RMCA.Auxiliary
-import           RMCA.Configuration
+--import           RMCA.Configuration
+import           RMCA.EventProvider
 import           RMCA.Global.Clock
 import           RMCA.GUI.Board
 import           RMCA.GUI.Buttons
@@ -19,10 +20,12 @@ import           RMCA.GUI.LayerSettings
 import           RMCA.GUI.MainSettings
 import           RMCA.GUI.MultiBoard
 import           RMCA.GUI.NoteSettings
+import           RMCA.IOClockworks
 import           RMCA.Layer.Board
-import           RMCA.Layer.Layer
+import           RMCA.Layer.LayerConf
 import           RMCA.Semantics
 import           RMCA.Translator.Jack
+import           RMCA.YampaReactive
 
 main :: IO ()
 main = do
@@ -53,45 +56,59 @@ main = do
   boxPackEnd settingsBox buttonBox PackNatural 0
 
   boardQueue <- newCBMVarRW mempty
-  (layerSettingsVBox, layerMCBMVar, instrMCBMVar) <- layerSettings boardQueue
+  (layerSettingsVBox, statMCBMVar, dynMCBMVar, synthMCBMVar) <- layerSettings
   boxPackStart settingsBox layerSettingsVBox PackNatural 0
   laySep <- hSeparatorNew
   boxPackStart settingsBox laySep PackNatural 0
 
   (noteSettingsBox, guiCellMCBMVar) <- noteSettingsBox
-  tc <- newTickableClock
-  (boardCont, boardMapRV, layerMapRV, instrMapRV, phRVMapRV) <-
-    createNotebook tc addLayerRV rmLayerRV layerMCBMVar instrMCBMVar guiCellMCBMVar
+  tc <- newIOTick
+  (boardCont, boardMapRV, layerMapRV, phRVMapRV) <-
+    createNotebook boardQueue tc addLayerRV rmLayerRV
+    statMCBMVar dynMCBMVar synthMCBMVar guiCellMCBMVar
   boxPackStart mainBox boardCont PackNatural 0
 
-  handleSaveLoad tempoRV boardMapRV layerMapRV instrMapRV phRVMapRV
-    addLayerRV rmLayerRV confSaveRV confLoadRV
+  --handleSaveLoad tempoRV boardMapRV layerMapRV instrMapRV phRVMapRV
+    --addLayerRV rmLayerRV confSaveRV confLoadRV
 
-  boardRunRV <- newCBMVarRW BoardStop
-  reactiveValueOnCanRead playRV $ reactiveValueWrite boardRunRV BoardStart
-  reactiveValueOnCanRead stopRV $ reactiveValueWrite boardRunRV BoardStop
+  funBoardRunRV <- getEPfromRV =<< newCBMVarRW (const StopBoard)
+  isStartMVar <- newMVar False
+  reactiveValueOnCanRead playRV $ do
+    isStarted <- readMVar isStartMVar
+    if isStarted
+      then reactiveValueWrite funBoardRunRV $ Event $ const ContinueBoard
+      else do modifyMVar_ isStartMVar $ const $ return True
+              reactiveValueWrite funBoardRunRV $ Event StartBoard
+  reactiveValueOnCanRead stopRV $ do
+    modifyMVar_ isStartMVar $ const $ return False
+    reactiveValueWrite funBoardRunRV $ Event $ const StopBoard
   boardMap <- reactiveValueRead boardMapRV
   layerMap <- reactiveValueRead layerMapRV
   tempo <- reactiveValueRead tempoRV
   let tempoRV' = liftR2 (\bool t -> t * fromEnum (not bool)) pauseRV tempoRV
-      inRV = liftR4 (\bm lm t br -> (t,br,M.intersectionWith (,) bm lm))
-             boardMapRV layerMapRV tempoRV' boardRunRV
-  initSig <- reactiveValueRead inRV
-  (inBoard, outBoard) <- yampaReactiveDual initSig (boardRun initSig)
+      statConfRV = liftR (fmap staticConf) layerMapRV
+      boardRunRV = liftR2 (\fb lm -> fmap ((fb <*>) . Event) lm)
+                   funBoardRunRV statConfRV
+      dynConfRV = liftR (fmap dynConf) layerMapRV
+      jointedMapRV = liftR3 (intersectionWith3 (,,))
+                     boardMapRV dynConfRV boardRunRV
+      inRV = liftR2 (,) tempoRV' jointedMapRV
+  initSig <- reactiveValueRead statConfRV
+  --(inBoard, outBoard) <- yampaReactiveDual initSig (boardRun
+    --initSig)
+  outBoard <- yampaReactiveFrom (boardRun initSig) inRV
   --reactiveValueOnCanRead inRV (reactiveValueRead inRV >>= print . M.keys)
-  inRV =:> inBoard
+  --inRV =:> inBoard
   reactiveValueOnCanRead outBoard $ do
     out <- reactiveValueRead outBoard
     --print out
     phRVMap <- reactiveValueRead phRVMapRV
 
-    let eventsMap = M.filter isEvent out
+    let noteMap = M.map fromEvent $ M.filter isEvent $ M.map fst out
         writePh chan val =
           fromMaybeM_ $ (`reactiveValueWrite` val) <$>
           M.lookup chan phRVMap
-        noteMap = M.map (eventToList . snd . splitE) out
-    sequence_ $ M.mapWithKey writePh $
-      M.map (fst . fromEvent) $ M.filter isEvent out
+    sequence_ $ M.mapWithKey writePh $ M.map snd out
     reactiveValueAppend boardQueue $ M.map (,[]) noteMap
 
 

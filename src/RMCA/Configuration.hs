@@ -6,7 +6,7 @@ module RMCA.Configuration where
 import           Control.Arrow
 import           Control.Exception
 import           Data.Array
-import qualified Data.IntMap         as M
+import qualified Data.IntMap          as M
 import           Data.List
 import           Data.Maybe
 import           Data.ReactiveValue
@@ -14,11 +14,9 @@ import           Graphics.UI.Gtk
 import           RMCA.Auxiliary
 import           RMCA.GUI.Board
 import           RMCA.GUI.MultiBoard
-import           RMCA.Layer.Layer
+import           RMCA.Layer.LayerConf
 import           RMCA.Semantics
 import           Text.Read
-
-type InstrumentNo = Int
 
 data BoardConf = BoardConf { confLayers :: [(BoardInit,Layer,InstrumentNo)]
                            , confTempo  :: Tempo
@@ -105,7 +103,8 @@ handleSaveLoad :: ( ReactiveValueReadWrite tempo Tempo IO
                   tempo -> board -> layer -> instr
                -> boards -> addLayer -> rmLayer -> save -> load -> IO ()
 --handleSaveLoad :: _
-handleSaveLoad tempoRV boardRV layerRV instrRV pieceArrRV addLayerRV rmLayerRV confSaveRV confLoadRV = do
+handleSaveLoad tempoRV boardRV layerRV instrRV pieceArrRV
+  addLayerRV rmLayerRV confSaveRV confLoadRV = do
   fcs <- fileChooserDialogNew (Just "Save configuration") Nothing
          FileChooserActionSave [("Cancel",ResponseCancel),("Ok",ResponseOk)]
   reactFilt <- fileFilterNew
