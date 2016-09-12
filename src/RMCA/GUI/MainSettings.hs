@@ -9,9 +9,9 @@ globalSettings = do
   globalSettingsBox <- vBoxNew False 10
   tempoAdj <- adjustmentNew 120 40 200 1 1 1
   tempoLabel <- labelNew (Just "Tempo")
-  boxPackStart globalSettingsBox tempoLabel PackNatural 0
+  boxPackStart globalSettingsBox tempoLabel PackGrow 0
   tempoScale <- hScaleNew tempoAdj
-  boxPackStart globalSettingsBox tempoScale PackNatural 0
+  boxPackStart globalSettingsBox tempoScale PackGrow 0
   scaleSetDigits tempoScale 0
   let tempoRV =
         bijection (floor, fromIntegral) `liftRW` scaleValueReactive tempoScale

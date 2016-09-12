@@ -2,14 +2,13 @@
 
 module RMCA.GUI.LayerSettings where
 
-import qualified Data.IntMap                           as M
+import qualified Data.IntMap                 as M
 import           Data.Maybe
 import           Data.ReactiveValue
 import           Data.String
 import           Data.Tuple
 import           Graphics.UI.Gtk
 import           Graphics.UI.Gtk.Reactive
-import           Graphics.UI.Gtk.Reactive.ToggleButton
 import           RMCA.Auxiliary
 import           RMCA.GUI.NoteSettings
 import           RMCA.Layer.LayerConf
@@ -43,7 +42,9 @@ layerSettings = do
   -- GUI Boxes
   ------------------------------------------------------------------------------
   layerSettingsVBox <- vBoxNew True 10
-  layerSettingsBox <- hBoxNew True 10
+  layerSettingsBox <- hBoxNew False 0
+  centerSettings <- alignmentNew 0.5 0.5 0 0
+  containerAdd layerSettingsBox centerSettings
   boxPackStart layerSettingsVBox layerSettingsBox PackNatural 0
 
 
@@ -70,7 +71,7 @@ layerSettings = do
   --labelSetAngle layBeatLabel 90
   labelSetLineWrap layBeatLabel True
   let layBeatLabelRV = labelTextReactive layBeatLabel
-  boxPackStart layerSettingsBox layBeatBox PackNatural 0
+  boxPackStart layerSettingsBox layBeatBox PackRepel 0
   auxLayBeatBox <- vBoxNew False 0
   boxPackEnd layBeatBox auxLayBeatBox PackRepel 0
   boxPackStart auxLayBeatBox layBeatLabel PackRepel 0
@@ -78,9 +79,9 @@ layerSettings = do
 
   layVolumeAdj <- adjustmentNew 100 0 100 1 1 1
   (layVolumeBox,layVolumeScale) <- mkVScale "Volume" layVolumeAdj
-  boxPackStart layerSettingsBox layVolumeBox PackNatural 0
+  boxPackStart layerSettingsBox layVolumeBox PackRepel 0
   (Requisition layVolW layVolH) <- widgetSizeRequest layVolumeScale
-  widgetSetSizeRequest layerSettingsBox layVolW (max layVolH 100)
+  widgetSetSizeRequest layerSettingsBox layVolW (max layVolH 75)
   scaleSetDigits layVolumeScale 0
   {-
   layTempoAdj <- adjustmentNew 1 0 2 0.1 0.1 1
@@ -89,10 +90,15 @@ layerSettings = do
 -}
   strAdj <- adjustmentNew 0.8 0 2 0.1 0.1 0
   (strBox, layStrengthScale) <- mkVScale "Strength" strAdj
-  boxPackStart layerSettingsBox strBox PackNatural 0
+  boxPackStart layerSettingsBox strBox PackRepel 0
+
+  layerSettingsBox' <- hBoxNew False 10
+  boxPackStart layerSettingsVBox layerSettingsBox' PackNatural 0
+  centerSettings' <- alignmentNew 0 0.5 0 0
+  containerAdd layerSettingsBox' centerSettings'
 
   bpbBox <- vBoxNew False 0
-  boxPackStart layerSettingsBox bpbBox PackNatural 0
+  boxPackStart layerSettingsBox' bpbBox PackRepel 0
   bpbLabel <- labelNew (Just "Beat per bar")
   labelSetLineWrap bpbLabel True
   bpbAdj <- adjustmentNew 4 1 16 1 1 0
@@ -105,7 +111,7 @@ layerSettings = do
   boxPackStart auxBpbBox bpbButton PackGrow 0
 
   repeatBox <- vBoxNew False 0
-  boxPackStart layerSettingsBox repeatBox PackNatural 0
+  boxPackStart layerSettingsBox' repeatBox PackRepel 0
   repeatLabel <- labelNew (Just "Repeat count")
   labelSetLineWrap repeatLabel True
   repeatAdj <- adjustmentNew 0 0 100 1 1 0
