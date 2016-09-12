@@ -71,32 +71,28 @@ main = do
   --handleSaveLoad tempoRV boardMapRV layerMapRV instrMapRV phRVMapRV
     --addLayerRV rmLayerRV confSaveRV confLoadRV
 
-  funBoardRunRV <- getEPfromRV =<< newCBMVarRW (const StopBoard)
+  boardStatusRV <- getEPfromRV =<< newCBMVarRW Stopped
   isStartMVar <- newMVar False
   reactiveValueOnCanRead playRV $ do
     isStarted <- readMVar isStartMVar
     if isStarted
-      then reactiveValueWrite funBoardRunRV $ Event $ const ContinueBoard
+      then reactiveValueWrite boardStatusRV $ Event Running
       else do modifyMVar_ isStartMVar $ const $ return True
-              reactiveValueWrite funBoardRunRV $ Event StartBoard
+              reactiveValueWrite boardStatusRV $ Event Running
   reactiveValueOnCanRead stopRV $ do
     modifyMVar_ isStartMVar $ const $ return False
-    reactiveValueWrite funBoardRunRV $ Event $ const StopBoard
+    reactiveValueWrite boardStatusRV $ Event Stopped
   boardMap <- reactiveValueRead boardMapRV
   layerMap <- reactiveValueRead layerMapRV
   tempo <- reactiveValueRead tempoRV
   let tempoRV' = liftR2 (\bool t -> t * fromEnum (not bool)) pauseRV tempoRV
-      statConfRV = liftR (fmap staticConf) layerMapRV
-      boardRunRV = liftR2 (\fb lm -> fmap ((fb <*>) . Event) lm)
-                   funBoardRunRV statConfRV
-      dynConfRV = liftR (fmap dynConf) layerMapRV
-      jointedMapRV = liftR3 (intersectionWith3 (,,))
-                     boardMapRV dynConfRV boardRunRV
-      inRV = liftR2 (,) tempoRV' jointedMapRV
-  initSig <- reactiveValueRead statConfRV
+      jointedMapRV = liftR (fmap (\(x,y) -> (x,y,NoEvent))) $
+                     liftR2 (M.intersectionWith (,)) boardMapRV layerMapRV
+      inRV = liftR3 (,,) tempoRV' boardStatusRV jointedMapRV
+  initSig <- reactiveValueRead layerMapRV
   --(inBoard, outBoard) <- yampaReactiveDual initSig (boardRun
     --initSig)
-  outBoard <- yampaReactiveFrom (boardRun initSig) inRV
+  outBoard <- yampaReactiveFrom (layers initSig) inRV
   --reactiveValueOnCanRead inRV (reactiveValueRead inRV >>= print . M.keys)
   --inRV =:> inBoard
   reactiveValueOnCanRead outBoard $ do

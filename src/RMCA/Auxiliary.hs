@@ -69,6 +69,9 @@ intersectionWith3 f m n p =
 
 -- | = Yampa
 
+countTo :: (Integral b, Ord b) => b -> SF (Event a) (Event b)
+countTo n = count >>^ filterE (> n)
+
 -- | 'stepBack' contains its previous argument as its output. Because it's hard to define it at time 0, it's wrapped up in a 'Maybe'.
 stepBack :: SF a (Maybe a)
 stepBack = sscan f (Nothing, Nothing) >>^ snd

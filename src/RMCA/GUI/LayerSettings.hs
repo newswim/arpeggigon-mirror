@@ -2,13 +2,14 @@
 
 module RMCA.GUI.LayerSettings where
 
-import qualified Data.IntMap                 as M
+import qualified Data.IntMap                           as M
 import           Data.Maybe
 import           Data.ReactiveValue
 import           Data.String
 import           Data.Tuple
 import           Graphics.UI.Gtk
 import           Graphics.UI.Gtk.Reactive
+import           Graphics.UI.Gtk.Reactive.ToggleButton
 import           RMCA.Auxiliary
 import           RMCA.GUI.NoteSettings
 import           RMCA.Layer.LayerConf
@@ -103,6 +104,21 @@ layerSettings = do
   boxPackStart auxBpbBox bpbLabel PackGrow 0
   boxPackStart auxBpbBox bpbButton PackGrow 0
 
+  repeatBox <- vBoxNew False 0
+  boxPackStart layerSettingsBox repeatBox PackNatural 0
+  repeatLabel <- labelNew (Just "Repeat count")
+  labelSetLineWrap repeatLabel True
+  repeatAdj <- adjustmentNew 0 0 100 1 1 0
+  repeatButton <- spinButtonNew repeatAdj 1 0
+  auxRepeatBox <- vBoxNew False 0
+  centerAl' <- alignmentNew 0.5 0.5 0 0
+  containerAdd auxRepeatBox centerAl'
+  boxPackStart repeatBox auxRepeatBox PackRepel 0
+  boxPackStart auxRepeatBox repeatLabel PackGrow 0
+  boxPackStart auxRepeatBox repeatButton PackGrow 0
+  repeatCheckButton <- checkButtonNewWithLabel "Unable repeat count"
+  boxPackStart auxRepeatBox repeatCheckButton PackGrow 0
+
   instrumentCombo <- comboBoxNewText
   instrumentIndex <- mapM (\(ind,ins) ->
                              do i <- comboBoxAppendText instrumentCombo $
@@ -133,8 +149,15 @@ layerSettings = do
     =<< reactiveValueRead (liftR3 DynLayerConf layBeatRV layPitchRV strengthRV)
 
   let bpbRV = spinButtonValueIntReactive bpbButton
+      repeatCheckRV = toggleButtonActiveReactive repeatCheckButton
+      repeatRV' = spinButtonValueIntReactive repeatButton
+      repeatRV = liftR2 (\act r -> if act then Just r else Nothing)
+                 repeatCheckRV repeatRV'
+  reactiveValueWrite repeatCheckRV False
+  --reactiveValueOnCanRead repeatCheckRV $ do
+
   statMCBMVar <- newMCBMVar
-    =<< reactiveValueRead (liftR StaticLayerConf bpbRV)
+    =<< reactiveValueRead (liftR2 StaticLayerConf bpbRV repeatRV)
 
   reactiveValueOnCanRead dynMCBMVar $ postGUIAsync $ do
     nDyn <- reactiveValueRead dynMCBMVar

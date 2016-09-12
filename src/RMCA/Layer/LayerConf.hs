@@ -19,6 +19,7 @@ data DynLayerConf = DynLayerConf { layerBeat :: Rational
 
 -- | Datatype representing statically modifiable characteristics for a layer.
 data StaticLayerConf = StaticLayerConf { beatsPerBar :: BeatsPerBar
+                                       , repeatCount :: Maybe Int
                                        } deriving (Show, Read, Eq)
 
 -- | Datatype containing informations useful for the synthetizer.
@@ -64,6 +65,7 @@ defaultLayerConf = (defaultStaticLayerConf,defaultDynLayerConf,defaultSynthConf)
 
 defaultStaticLayerConf :: StaticLayerConf
 defaultStaticLayerConf = StaticLayerConf { beatsPerBar = 4
+                                         , repeatCount = Nothing
                                          }
 defaultDynLayerConf :: DynLayerConf
 defaultDynLayerConf = DynLayerConf { layerBeat = 1 % 4
