@@ -2,20 +2,17 @@
 
 module RMCA.GUI.LayerSettings where
 
-import qualified Data.IntMap                 as M
-import           Data.Maybe
-import           Data.ReactiveValue
-import           Data.String
-import           Data.Tuple
-import           Graphics.UI.Gtk
-import           Graphics.UI.Gtk.Reactive
-import           RMCA.Auxiliary
-import           RMCA.GUI.NoteSettings
-import           RMCA.Layer.LayerConf
-import           RMCA.MCBMVar
-import           RMCA.Semantics
-import           RMCA.Translator.Instruments
-import           RMCA.Translator.Message
+import Data.Maybe
+import Data.ReactiveValue
+import Data.String
+import Data.Tuple
+import Graphics.UI.Gtk
+import Graphics.UI.Gtk.Reactive
+import RMCA.Auxiliary
+import RMCA.GUI.NoteSettings
+import RMCA.Layer.LayerConf
+import RMCA.MCBMVar
+import RMCA.Translator.Instruments
 
 floatConv :: (ReactiveValueReadWrite a b m,
               Real c, Real b, Fractional c, Fractional b) =>
@@ -33,6 +30,7 @@ mkVScale s adj = do
   return (hBox,boxScale)
 
 layerSettings :: IO ( VBox
+                    , ReactiveFieldWrite IO Bool
                     , MCBMVar StaticLayerConf
                     , MCBMVar DynLayerConf
                     , MCBMVar SynthConf
@@ -70,7 +68,7 @@ layerSettings = do
                   (`lookup` symbolString) <$> reactiveValueRead layBeatRV-}
   --labelSetAngle layBeatLabel 90
   labelSetLineWrap layBeatLabel True
-  let layBeatLabelRV = labelTextReactive layBeatLabel
+  --let layBeatLabelRV = labelTextReactive layBeatLabel
   boxPackStart layerSettingsBox layBeatBox PackRepel 0
   auxLayBeatBox <- vBoxNew False 0
   boxPackEnd layBeatBox auxLayBeatBox PackRepel 0
@@ -99,7 +97,7 @@ layerSettings = do
 
   bpbBox <- vBoxNew False 0
   boxPackStart layerSettingsBox' bpbBox PackRepel 0
-  bpbLabel <- labelNew (Just "Beat per bar")
+  bpbLabel <- labelNew (Just "Beats per bar")
   labelSetLineWrap bpbLabel True
   bpbAdj <- adjustmentNew 4 1 16 1 1 0
   bpbButton <- spinButtonNew bpbAdj 1 0
@@ -114,7 +112,7 @@ layerSettings = do
   boxPackStart layerSettingsBox' repeatBox PackRepel 0
   repeatLabel <- labelNew (Just "Repeat count")
   labelSetLineWrap repeatLabel True
-  repeatAdj <- adjustmentNew 0 0 100 1 1 0
+  repeatAdj <- adjustmentNew 0 0 (fromIntegral (maxBound :: Int)) 1 1 0
   repeatButton <- spinButtonNew repeatAdj 1 0
   auxRepeatBox <- vBoxNew False 0
   centerAl' <- alignmentNew 0.5 0.5 0 0
@@ -159,8 +157,22 @@ layerSettings = do
       repeatRV' = spinButtonValueIntReactive repeatButton
       repeatRV = liftR2 (\act r -> if act then Just r else Nothing)
                  repeatCheckRV repeatRV'
+      repeatSensitive = widgetSensitiveReactive repeatButton
+      repeatCheckSensitive = widgetSensitiveReactive repeatCheckButton
+      bpbSensitiveRV = widgetSensitiveReactive bpbButton
+      statConfSensitive =
+        liftW2 (\b -> (b,b)) bpbSensitiveRV repeatCheckSensitive
+{-
+  reactiveValueOnCanRead bpbSensitiveRV $ do
+    issens <- reactiveValueRead repeatCheckSensitive
+    if issens
+      then reactiveValueRead repeatCheckRV >>=
+           reactiveValueWrite repeatSensitive
+      else reactiveValueWrite repeatSensitive False
+-}
+  repeatCheckRV =:> repeatSensitive
   reactiveValueWrite repeatCheckRV False
-  --reactiveValueOnCanRead repeatCheckRV $ do
+  reactiveValueWrite repeatSensitive False
 
   statMCBMVar <- newMCBMVar
     =<< reactiveValueRead (liftR2 StaticLayerConf bpbRV repeatRV)
@@ -193,11 +205,6 @@ layerSettings = do
   syncRightOnLeftWithBoth (\ni ol -> ol { instrument = ni })
     instrumentComboRV synthMCBMVar
 
-{-
-  reactiveValueOnCanRead layVolumeRV $ do
-    vol <- reactiveValueRead layVolumeRV
-    chan <- reactiveValueRead chanRV
-    let vol' = floor ((fromIntegral vol / 100) * 127)
-    reactiveValueAppend boardQueue ([],[Volume (mkChannel chan) vol'])
--}
-  return (layerSettingsVBox, statMCBMVar, dynMCBMVar, synthMCBMVar)
+  return ( layerSettingsVBox
+         , statConfSensitive
+         , statMCBMVar, dynMCBMVar, synthMCBMVar)

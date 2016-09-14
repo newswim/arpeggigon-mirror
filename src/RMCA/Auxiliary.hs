@@ -69,7 +69,7 @@ intersectionWith3 f m n p =
 
 -- | = Yampa
 
-countTo :: (Integral b, Ord b) => b -> SF (Event a) (Event b)
+countTo :: (Integral b) => b -> SF (Event a) (Event b)
 countTo n = count >>^ filterE (> n)
 
 -- | 'stepBack' contains its previous argument as its output. Because it's hard to define it at time 0, it's wrapped up in a 'Maybe'.
@@ -138,17 +138,6 @@ newCBMVarRW val = do
       setter = writeCBMVar mvar
       notifier = installCallbackCBMVar mvar
   return $ ReactiveFieldReadWrite setter getter notifier
-
--- | Appends a value to a reactive value.
-reactiveValueAppend :: (Monoid b, ReactiveValueReadWrite a b m) =>
-                       a -> b -> m ()
-reactiveValueAppend rv v = do ov <- reactiveValueRead rv
-                              reactiveValueWrite rv (ov `mappend` v)
-
--- | Writes 'mempty' to a reactive value containing a 'Monoid'.
-reactiveValueEmpty :: (Monoid b, ReactiveValueReadWrite a b m) =>
-                      a -> m ()
-reactiveValueEmpty rv = reactiveValueWrite rv mempty
 
 -- | Writes a value to a reactive value if the value is different from the one already in the reactive value.
 reactiveValueWriteOnNotEq :: ( Eq b

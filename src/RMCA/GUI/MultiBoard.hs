@@ -19,6 +19,7 @@ import           RMCA.GUI.Board
 import           RMCA.IOClockworks
 import           RMCA.Layer.LayerConf
 import           RMCA.MCBMVar
+import           RMCA.ReactiveValueAtomicUpdate
 import           RMCA.Semantics
 import           RMCA.Translator.Message
 
@@ -27,7 +28,7 @@ maxLayers = 16
 
 createNotebook :: ( ReactiveValueRead addLayer () IO
                   , ReactiveValueRead rmLayer () IO
-                  , ReactiveValueReadWrite board (M.IntMap ([Note],[Message])) IO
+                  , ReactiveValueAtomicUpdate board (M.IntMap ([Note],[Message])) IO
                   ) =>
                   board
                -> IOTick

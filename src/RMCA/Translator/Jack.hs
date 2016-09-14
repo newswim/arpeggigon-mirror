@@ -6,17 +6,16 @@ module RMCA.Translator.Jack ( jackSetup
                             ) where
 
 import           Control.Arrow
-import           Control.Concurrent.MVar
 import qualified Control.Monad.Exception.Synchronous as Sync
 import qualified Control.Monad.Trans.Class           as Trans
+import           Data.CBRef
 import           Data.Foldable
 import qualified Data.IntMap                         as M
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
 import           Graphics.UI.Gtk
-import           RMCA.Auxiliary
-import           RMCA.Global.Clock
 import           RMCA.IOClockworks
+import           RMCA.ReactiveValueAtomicUpdate
 import           RMCA.Semantics
 import           RMCA.Translator.Message
 import           RMCA.Translator.RV
@@ -46,7 +45,7 @@ handleErrorJack _ = postGUIAsync $ do
 
 -- Starts a default client with an input and an output port. Doesn't
 -- do anything as such.
-jackSetup :: (ReactiveValueReadWrite board
+jackSetup :: (ReactiveValueAtomicUpdate board
               (M.IntMap ([Note],[Message])) IO
              , ReactiveValueRead tempo Tempo IO) =>
              IOTick
@@ -54,7 +53,7 @@ jackSetup :: (ReactiveValueReadWrite board
           -> tempo
           -> IO ()
 jackSetup tc boardQueue tempoRV = Sync.resolveT handleErrorJack $ do
-  toProcessRV <- Trans.lift $ newCBMVarRW []
+  toProcessRV <- Trans.lift $ newCBRef []
   Jack.withClientDefault rmcaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
@@ -70,8 +69,8 @@ jackSetup tc boardQueue tempoRV = Sync.resolveT handleErrorJack $ do
 -- them with value coming from the machine itself and stuff them into
 -- the output port. When this function is not running, events are
 -- processed.
-jackCallBack :: ( ReactiveValueReadWrite toProcess [(Frames, RawMessage)] IO
-                , ReactiveValueReadWrite board
+jackCallBack :: ( ReactiveValueAtomicUpdate toProcess [(Frames, RawMessage)] IO
+                , ReactiveValueAtomicUpdate board
                   (M.IntMap ([Note],[Message])) IO
                 , ReactiveValueRead tempo Tempo IO) =>
                 IOTick
@@ -91,11 +90,11 @@ jackCallBack tc input output toProcessRV boardQueue tempoRV
     tempo <- reactiveValueRead tempoRV
     concat . toList . gatherMessages tempo nframesInt <$>
       reactiveValueRead boardQueue >>= \bq ->
-      reactiveValueAppend toProcessRV bq >> putStrLn ("BoardQueue: " ++ show (map fst bq))
+      reactiveValueAppend toProcessRV bq-- >> putStrLn ("BoardQueue: " ++ show (map fst bq))
     reactiveValueEmpty  boardQueue
     (go, old') <- schedule nframesInt <$> reactiveValueRead toProcessRV
     let old = map (first (+ (- nframesInt))) old'
-    putStrLn ("Out: " ++ show (map fst go))
+    --putStrLn ("Out: " ++ show (map fst go))
     reactiveValueWrite outMIDIRV go
     reactiveValueWrite toProcessRV old
     tickIOTick tc

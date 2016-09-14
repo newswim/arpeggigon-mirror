@@ -3,18 +3,14 @@
 module Main where
 
 import           Control.Concurrent
-import qualified Data.IntMap                                as M
+import qualified Data.IntMap                    as M
 import           Data.ReactiveValue
 import           FRP.Yampa
 import           Graphics.UI.Gtk
-import           Graphics.UI.Gtk.Board.BoardLink
-import           Graphics.UI.Gtk.Layout.BackgroundContainer
-import           Hails.Yampa
 import           RMCA.Auxiliary
 --import           RMCA.Configuration
+import           Data.CBRef
 import           RMCA.EventProvider
-import           RMCA.Global.Clock
-import           RMCA.GUI.Board
 import           RMCA.GUI.Buttons
 import           RMCA.GUI.LayerSettings
 import           RMCA.GUI.MainSettings
@@ -22,8 +18,7 @@ import           RMCA.GUI.MultiBoard
 import           RMCA.GUI.NoteSettings
 import           RMCA.IOClockworks
 import           RMCA.Layer.Board
-import           RMCA.Layer.LayerConf
-import           RMCA.Semantics
+import           RMCA.ReactiveValueAtomicUpdate
 import           RMCA.Translator.Jack
 import           RMCA.YampaReactive
 
@@ -43,7 +38,7 @@ main = do
   windowMaximize window
 
   settingsBox <- vBoxNew False 0
-  boxPackEnd mainBox settingsBox PackNatural 0
+  boxPackEnd mainBox settingsBox PackGrow 0
   (globalSettingsBox, tempoRV) <- globalSettings
   boxPackStart settingsBox globalSettingsBox PackNatural 0
   globalSep <- hSeparatorNew
@@ -55,8 +50,8 @@ main = do
    addLayerRV,rmLayerRV) <- getButtons
   boxPackEnd settingsBox buttonBox PackNatural 0
 
-  boardQueue <- newCBMVarRW mempty
-  (layerSettingsVBox, statMCBMVar, dynMCBMVar, synthMCBMVar) <- layerSettings
+  boardQueue <- newCBRef mempty
+  (layerSettingsVBox, statConfSensitiveRV, statMCBMVar, dynMCBMVar, synthMCBMVar) <- layerSettings
   boxPackStart settingsBox layerSettingsVBox PackNatural 0
   laySep <- hSeparatorNew
   boxPackStart settingsBox laySep PackNatural 0
@@ -71,24 +66,31 @@ main = do
   --handleSaveLoad tempoRV boardMapRV layerMapRV instrMapRV phRVMapRV
     --addLayerRV rmLayerRV confSaveRV confLoadRV
 
-  boardStatusRV <- getEPfromRV =<< newCBMVarRW Stopped
+  boardStatusRV <- newCBMVarRW Stopped
+  reactiveValueOnCanRead boardStatusRV $ do
+    bs <- reactiveValueRead boardStatusRV
+    case bs of
+      Running -> reactiveValueWrite statConfSensitiveRV False
+      Stopped -> reactiveValueWrite statConfSensitiveRV True
+
+  boardStatusEP <- getEPfromRV boardStatusRV
   isStartMVar <- newMVar False
   reactiveValueOnCanRead playRV $ do
     isStarted <- readMVar isStartMVar
     if isStarted
-      then reactiveValueWrite boardStatusRV $ Event Running
+      then reactiveValueWrite boardStatusRV Running
       else do modifyMVar_ isStartMVar $ const $ return True
-              reactiveValueWrite boardStatusRV $ Event Running
+              reactiveValueWrite boardStatusRV Running
   reactiveValueOnCanRead stopRV $ do
     modifyMVar_ isStartMVar $ const $ return False
-    reactiveValueWrite boardStatusRV $ Event Stopped
+    reactiveValueWrite boardStatusRV Stopped
   boardMap <- reactiveValueRead boardMapRV
   layerMap <- reactiveValueRead layerMapRV
   tempo <- reactiveValueRead tempoRV
   let tempoRV' = liftR2 (\bool t -> t * fromEnum (not bool)) pauseRV tempoRV
       jointedMapRV = liftR (fmap (\(x,y) -> (x,y,NoEvent))) $
                      liftR2 (M.intersectionWith (,)) boardMapRV layerMapRV
-      inRV = liftR3 (,,) tempoRV' boardStatusRV jointedMapRV
+      inRV = liftR3 (,,) tempoRV' boardStatusEP jointedMapRV
   initSig <- reactiveValueRead layerMapRV
   --(inBoard, outBoard) <- yampaReactiveDual initSig (boardRun
     --initSig)
