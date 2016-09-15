@@ -47,8 +47,8 @@ synthConf (_,_,s) = s
 
 layerMetronome :: StaticLayerConf
                -> SF (Event AbsBeat, DynLayerConf) (Event BeatNo)
-layerMetronome (StaticLayerConf { beatsPerBar = bpb
-                                }) =
+layerMetronome StaticLayerConf { beatsPerBar = bpb
+                               } =
   proc (eb, DynLayerConf { layerBeat = r
                          }) -> do
     ewbno <- accumFilter (\_ (ab,r) -> ((),selectBeat (ab,r))) () -< (,r) <$> eb

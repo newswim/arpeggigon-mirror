@@ -6,6 +6,13 @@ import Control.Monad
 import Data.CBRef
 import Data.ReactiveValue
 
+reactiveValueNonAtomicUpdate :: (ReactiveValueReadWrite a b m) =>
+                                a -> (b -> b) -> m b
+reactiveValueNonAtomicUpdate rv f = do
+  val <- reactiveValueRead rv
+  reactiveValueWrite rv $ f val
+  return val
+
 class (ReactiveValueReadWrite a b m) => ReactiveValueAtomicUpdate a b m where
   reactiveValueUpdate :: a -> (b -> b) -> m b
 
@@ -15,7 +22,7 @@ reactiveValueAppend rv val = void $ reactiveValueUpdate rv (`mappend` val)
 
 reactiveValueEmpty :: (Monoid b, ReactiveValueAtomicUpdate a b m) =>
                       a -> m b
-reactiveValueEmpty rv = reactiveValueUpdate rv (\_ -> mempty)
+reactiveValueEmpty rv = reactiveValueUpdate rv (const mempty)
 
 instance ReactiveValueRead (CBRef a) a IO where
   reactiveValueRead = readCBRef

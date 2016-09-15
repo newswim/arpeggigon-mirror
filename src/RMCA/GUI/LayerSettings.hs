@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, TupleSections #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MultiParamTypeClasses, TupleSections
+             #-}
 
 module RMCA.GUI.LayerSettings where
 
@@ -10,14 +11,10 @@ import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Reactive
 import RMCA.Auxiliary
 import RMCA.GUI.NoteSettings
+import RMCA.Layer.Board
 import RMCA.Layer.LayerConf
 import RMCA.MCBMVar
 import RMCA.Translator.Instruments
-
-floatConv :: (ReactiveValueReadWrite a b m,
-              Real c, Real b, Fractional c, Fractional b) =>
-             a -> ReactiveFieldReadWrite m c
-floatConv = liftRW $ bijection (realToFrac, realToFrac)
 
 mkVScale :: String -> Adjustment -> IO (HBox,VScale)
 mkVScale s adj = do
@@ -29,13 +26,13 @@ mkVScale s adj = do
   boxPackStart hBox boxScale PackNatural 0
   return (hBox,boxScale)
 
-layerSettings :: IO ( VBox
-                    , ReactiveFieldWrite IO Bool
-                    , MCBMVar StaticLayerConf
-                    , MCBMVar DynLayerConf
-                    , MCBMVar SynthConf
-                    )
-layerSettings = do
+layerSettings :: (ReactiveValueRead isStarted RunStatus IO) =>
+                 isStarted -> IO ( VBox
+                                 , MCBMVar StaticLayerConf
+                                 , MCBMVar DynLayerConf
+                                 , MCBMVar SynthConf
+                                 )
+layerSettings isStartedRV = do
   ------------------------------------------------------------------------------
   -- GUI Boxes
   ------------------------------------------------------------------------------
@@ -159,17 +156,22 @@ layerSettings = do
                  repeatCheckRV repeatRV'
       repeatSensitive = widgetSensitiveReactive repeatButton
       repeatCheckSensitive = widgetSensitiveReactive repeatCheckButton
-      bpbSensitiveRV = widgetSensitiveReactive bpbButton
-      statConfSensitive =
-        liftW2 (\b -> (b,b)) bpbSensitiveRV repeatCheckSensitive
-{-
-  reactiveValueOnCanRead bpbSensitiveRV $ do
-    issens <- reactiveValueRead repeatCheckSensitive
-    if issens
-      then reactiveValueRead repeatCheckRV >>=
-           reactiveValueWrite repeatSensitive
-      else reactiveValueWrite repeatSensitive False
--}
+
+  bpbSensitiveRV <- swapHandlerStorage $
+                    widgetSensitiveReactive bpbButton
+
+  reactiveValueOnCanRead isStartedRV $ do
+    reactiveValueRead isStartedRV >>=
+      \case
+        Running ->  do reactiveValueRead repeatCheckRV
+                       reactiveValueWrite repeatSensitive False
+                       reactiveValueWrite bpbSensitiveRV False
+                       reactiveValueWrite repeatCheckSensitive False
+        Stopped -> do reactiveValueRead repeatCheckRV >>=
+                        reactiveValueWrite repeatSensitive
+                      reactiveValueWrite bpbSensitiveRV True
+                      reactiveValueWrite repeatCheckSensitive True
+
   repeatCheckRV =:> repeatSensitive
   reactiveValueWrite repeatCheckRV False
   reactiveValueWrite repeatSensitive False
@@ -205,6 +207,4 @@ layerSettings = do
   syncRightOnLeftWithBoth (\ni ol -> ol { instrument = ni })
     instrumentComboRV synthMCBMVar
 
-  return ( layerSettingsVBox
-         , statConfSensitive
-         , statMCBMVar, dynMCBMVar, synthMCBMVar)
+  return (layerSettingsVBox, statMCBMVar, dynMCBMVar, synthMCBMVar)

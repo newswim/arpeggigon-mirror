@@ -1,4 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables, TupleSections #-}
+{-# LANGUAGE LambdaCase, MultiParamTypeClasses, ScopedTypeVariables,
+             TupleSections #-}
 
 module Main where
 
@@ -51,7 +52,9 @@ main = do
   boxPackEnd settingsBox buttonBox PackNatural 0
 
   boardQueue <- newCBRef mempty
-  (layerSettingsVBox, statConfSensitiveRV, statMCBMVar, dynMCBMVar, synthMCBMVar) <- layerSettings
+  --isStartMVar <- newMVar False
+  boardStatusRV <- newCBMVarRW Stopped
+  (layerSettingsVBox, statMCBMVar, dynMCBMVar, synthMCBMVar) <- layerSettings boardStatusRV
   boxPackStart settingsBox layerSettingsVBox PackNatural 0
   laySep <- hSeparatorNew
   boxPackStart settingsBox laySep PackNatural 0
@@ -66,24 +69,20 @@ main = do
   --handleSaveLoad tempoRV boardMapRV layerMapRV instrMapRV phRVMapRV
     --addLayerRV rmLayerRV confSaveRV confLoadRV
 
-  boardStatusRV <- newCBMVarRW Stopped
+  {-
   reactiveValueOnCanRead boardStatusRV $ do
     bs <- reactiveValueRead boardStatusRV
     case bs of
       Running -> reactiveValueWrite statConfSensitiveRV False
       Stopped -> reactiveValueWrite statConfSensitiveRV True
-
+-}
   boardStatusEP <- getEPfromRV boardStatusRV
-  isStartMVar <- newMVar False
-  reactiveValueOnCanRead playRV $ do
-    isStarted <- readMVar isStartMVar
-    if isStarted
-      then reactiveValueWrite boardStatusRV Running
-      else do modifyMVar_ isStartMVar $ const $ return True
-              reactiveValueWrite boardStatusRV Running
-  reactiveValueOnCanRead stopRV $ do
-    modifyMVar_ isStartMVar $ const $ return False
-    reactiveValueWrite boardStatusRV Stopped
+  reactiveValueOnCanRead playRV $
+    reactiveValueRead boardStatusRV >>=
+      \case
+        Running -> reactiveValueWrite boardStatusRV Running
+        Stopped -> reactiveValueWrite boardStatusRV Running
+  reactiveValueOnCanRead stopRV $ reactiveValueWrite boardStatusRV Stopped
   boardMap <- reactiveValueRead boardMapRV
   layerMap <- reactiveValueRead layerMapRV
   tempo <- reactiveValueRead tempoRV
@@ -96,7 +95,6 @@ main = do
     --initSig)
   outBoard <- yampaReactiveFrom (layers initSig) inRV
   --reactiveValueOnCanRead inRV (reactiveValueRead inRV >>= print . M.keys)
-  --inRV =:> inBoard
   reactiveValueOnCanRead outBoard $ do
     out <- reactiveValueRead outBoard
     --print out
@@ -109,15 +107,8 @@ main = do
     sequence_ $ M.mapWithKey writePh $ M.map snd out
     reactiveValueAppend boardQueue $ M.map (,[]) noteMap
 
-
-{-
-    reactiveValueRead (liftR (event mempty (,[]) <<< snd <<< splitE) outBoard) >>=
-      reactiveValueAppend boardQueue-}
-  -- This needs to be set last otherwise phRV is written to, so
-  -- inBoard is written to and the notes don't get played. There
-  -- supposedly is no guaranty of order but apparently there is…
   putStrLn "Board started."
-  -- Jack setup
+
   forkIO $ jackSetup tc boardQueue tempoRV
 
   widgetShowAll window
