@@ -105,7 +105,7 @@ main = do
 
   putStrLn "Board started."
 
-  forkIO $ jackSetup tc boardQueue tempoRV
+  forkIO $ jackSetup tc boardQueue tempoRV layerMapRV
 
   widgetShowAll window
   ------------------------------------------------------------

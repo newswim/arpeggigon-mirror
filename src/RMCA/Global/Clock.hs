@@ -21,8 +21,8 @@ maxAbsBeat = 16
 -- with a beat number modulo sixteen. Each layer is then beating at
 -- its own fraction, discarding the unecessary beats.
 metronome :: SF Tempo (Event AbsBeat)
-metronome = accumBy (\pb _ -> nextBeatNo maxAbsBeat pb) 1 <<<
-            repeatedlyS () <<^ (15*) <<^ (1/) <<^ fromIntegral
+metronome = accumBy (\pb _ -> nextBeatNo maxAbsBeat pb) 0 <<<
+            repeatedlyS' () <<^ (15*) <<^ (1/) <<^ fromIntegral
 
 -- Tempo is the number of quarter notes per minute.
 tempoToQNoteIvl :: Tempo -> DTime

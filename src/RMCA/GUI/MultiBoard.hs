@@ -6,6 +6,7 @@ import           Control.Concurrent.MVar
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.Array
+import           Data.CBRef
 import qualified Data.IntMap                                as M
 import           Data.List
 import           Data.Maybe
@@ -40,7 +41,7 @@ createNotebook :: ( ReactiveValueRead addLayer () IO
                -> MCBMVar GUICell
                -> IO ( Notebook
                      , ReactiveFieldRead IO (M.IntMap Board)
-                     , ReactiveFieldRead IO (M.IntMap LayerConf)
+                     , CBRef (M.IntMap LayerConf)
                      , ReactiveFieldRead IO
                        (M.IntMap (ReactiveFieldWrite IO [PlayHead]))
                      )
@@ -123,13 +124,17 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
   reactiveValueRead pageChanRV >>=
     reactiveValueWrite pageChanRV . (\pc -> pc ++ [foundHole pc])
 
-  layerMapRV <- newCBMVarRW $ M.insert fstP defaultLayerConf M.empty
+  layerMapRV <- newCBRef $ M.insert fstP defaultLayerConf M.empty
+  reactiveValueOnCanRead layerMapRV $ do
+    synth <- fmap (\(_,_,s) -> s) <$> reactiveValueRead layerMapRV
+    sequence_ $ M.mapWithKey
+      (\chan mess -> reactiveValueAppend boardQueue $
+        M.singleton chan $ ([],) $ synthMessage chan mess) synth
 
   let updateDynLayer cp = do
         nDyn <- reactiveValueRead dynMCBMVar
-        reactiveValueRead layerMapRV >>=
-          reactiveValueWrite layerMapRV .
-          M.adjust (\(stat,_,synth) -> (stat,nDyn,synth)) cp
+        reactiveValueUpdate_ layerMapRV
+          (M.adjust (\(stat,_,synth) -> (stat,nDyn,synth)) cp)
       updateSynth cp = do
         synthState <- reactiveValueRead synthMCBMVar
         reactiveValueAppend boardQueue $
@@ -247,4 +252,4 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
                 chanMap <- reactiveValueRead chanMapRV
                 mapM (reactiveValueRead . \(b,_,_) -> b) chanMap
 
-  return (n, boardMapRV, readOnly layerMapRV, phMapRV)
+  return (n, boardMapRV, layerMapRV, phMapRV)

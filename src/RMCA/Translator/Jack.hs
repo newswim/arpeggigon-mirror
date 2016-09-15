@@ -11,10 +11,12 @@ import qualified Control.Monad.Trans.Class           as Trans
 import           Data.CBRef
 import           Data.Foldable
 import qualified Data.IntMap                         as M
+import           Data.Maybe
 import           Data.ReactiveValue
 import qualified Foreign.C.Error                     as E
 import           Graphics.UI.Gtk
 import           RMCA.IOClockworks
+import           RMCA.Layer.LayerConf
 import           RMCA.ReactiveValueAtomicUpdate
 import           RMCA.Semantics
 import           RMCA.Translator.Message
@@ -47,18 +49,21 @@ handleErrorJack _ = postGUIAsync $ do
 -- do anything as such.
 jackSetup :: (ReactiveValueAtomicUpdate board
               (M.IntMap ([Note],[Message])) IO
-             , ReactiveValueRead tempo Tempo IO) =>
+             , ReactiveValueRead tempo Tempo IO
+             , ReactiveValueAtomicUpdate layerConfs (M.IntMap LayerConf) IO
+             ) =>
              IOTick
           -> board
           -> tempo
+          -> layerConfs
           -> IO ()
-jackSetup tc boardQueue tempoRV = Sync.resolveT handleErrorJack $ do
+jackSetup tc boardQueue tempoRV layerMapRV = Sync.resolveT handleErrorJack $ do
   toProcessRV <- Trans.lift $ newCBRef []
   Jack.withClientDefault rmcaName $ \client ->
     Jack.withPort client outPortName $ \output ->
     Jack.withPort client inPortName  $ \input ->
     Jack.withProcess client (jackCallBack tc input output
-                              toProcessRV boardQueue tempoRV) $
+                              toProcessRV boardQueue tempoRV layerMapRV) $
     Jack.withActivation client $ Trans.lift $ do
     putStrLn $ "Started " ++ rmcaName ++ " JACK client."
     --newEmptyMVar >>= takeMVar
@@ -72,26 +77,42 @@ jackSetup tc boardQueue tempoRV = Sync.resolveT handleErrorJack $ do
 jackCallBack :: ( ReactiveValueAtomicUpdate toProcess [(Frames, RawMessage)] IO
                 , ReactiveValueAtomicUpdate board
                   (M.IntMap ([Note],[Message])) IO
-                , ReactiveValueRead tempo Tempo IO) =>
+                , ReactiveValueRead tempo Tempo IO
+                , ReactiveValueAtomicUpdate layerConfs (M.IntMap LayerConf) IO
+                ) =>
                 IOTick
              -> JMIDI.Port Jack.Input
              -> JMIDI.Port Jack.Output
              -> toProcess
              -> board
              -> tempo
+             -> layerConfs
              -> Jack.NFrames
              -> Sync.ExceptionalT E.Errno IO ()
-jackCallBack tc input output toProcessRV boardQueue tempoRV
+jackCallBack tc input output toProcessRV boardQueue tempoRV layerMapRV
   nframes@(Jack.NFrames nframesInt') = do
   let inMIDIRV = inMIDIEvent input nframes
       outMIDIRV = outMIDIEvent output nframes
       nframesInt = fromIntegral nframesInt' :: Int
   Trans.lift $ do
     tempo <- reactiveValueRead tempoRV
+    inMIDI <- reactiveValueRead inMIDIRV
+    let (unchangedMessages,toBeTreatedMessages) =
+          break (\(_,m) -> fromMaybe False $ do
+                    mess <- fromRawMessage m
+                    return (isInstrument mess || isVolume mess)) inMIDI
+    reactiveValueAppend toProcessRV unchangedMessages
+    let (volume,instruments) = break (isInstrument . snd) $
+          map (second (fromJust . fromRawMessage)) toBeTreatedMessages
+    mapM_ ((\(Volume c v) -> reactiveValueUpdate layerMapRV
+            (M.adjust (\(st,d,s) -> (st,d,s { volume = v }))
+             (fromChannel c))) . snd) volume
+    mapM_ ((\(Instrument c p) -> reactiveValueUpdate layerMapRV
+            (M.adjust (\(st,d,s) -> (st,d,s { instrument = fromProgram p }))
+              (fromChannel c))) . snd) instruments
     concat . toList . gatherMessages tempo nframesInt <$>
-      reactiveValueRead boardQueue >>= \bq ->
-      reactiveValueAppend toProcessRV bq-- >> putStrLn ("BoardQueue: " ++ show (map fst bq))
-    reactiveValueEmpty  boardQueue
+      reactiveValueEmpty boardQueue >>=
+      reactiveValueAppend toProcessRV
     (go, old') <- schedule nframesInt <$> reactiveValueRead toProcessRV
     let old = map (first (+ (- nframesInt))) old'
     --putStrLn ("Out: " ++ show (map fst go))

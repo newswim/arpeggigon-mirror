@@ -41,8 +41,14 @@ getChannel (Instrument c _ ) = Channel.fromChannel c
 mkChannel :: Int -> Channel
 mkChannel = Channel.toChannel
 
+fromChannel :: Channel -> Int
+fromChannel = Channel.fromChannel
+
 mkProgram :: Int -> Channel.Program
 mkProgram = Channel.toProgram
+
+fromProgram :: Channel.Program -> Int
+fromProgram = Channel.fromProgram
 
 -- Function to go back and forth with the representations of pitches,
 -- as they are different in our model and in the Jack API model.
@@ -60,10 +66,13 @@ isNoteOff :: Message -> Bool
 isNoteOff NoteOff {} = True
 isNoteOff _ = False
 
+isVolume :: Message -> Bool
+isVolume Volume {} = True
+isVolume _ = False
 
-isControl :: Message -> Bool
-isControl Volume {} = True
-isControl _ = False
+isInstrument :: Message -> Bool
+isInstrument Instrument {} = True
+isInstrument _ = False
 
 switchOnOff :: Message -> Message
 switchOnOff (NoteOn  c p v) = NoteOff c p v

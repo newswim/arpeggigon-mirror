@@ -16,9 +16,13 @@ reactiveValueNonAtomicUpdate rv f = do
 class (ReactiveValueReadWrite a b m) => ReactiveValueAtomicUpdate a b m where
   reactiveValueUpdate :: a -> (b -> b) -> m b
 
+reactiveValueUpdate_ :: (ReactiveValueAtomicUpdate a b m) =>
+                        a -> (b -> b) -> m ()
+reactiveValueUpdate_ rv f = void $ reactiveValueUpdate rv f
+
 reactiveValueAppend :: (Monoid b, ReactiveValueAtomicUpdate a b m) =>
                        a -> b -> m ()
-reactiveValueAppend rv val = void $ reactiveValueUpdate rv (`mappend` val)
+reactiveValueAppend rv val = reactiveValueUpdate_ rv (`mappend` val)
 
 reactiveValueEmpty :: (Monoid b, ReactiveValueAtomicUpdate a b m) =>
                       a -> m b

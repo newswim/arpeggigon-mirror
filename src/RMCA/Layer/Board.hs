@@ -10,6 +10,8 @@ import           RMCA.Global.Clock
 import           RMCA.Layer.LayerConf
 import           RMCA.Semantics
 
+import           Debug.Trace
+
 data RunStatus = Running | Stopped
 
 automaton :: [PlayHead]
@@ -44,7 +46,7 @@ layer = layerStopped
           returnA            -< ((en,phs),e)
 
         lrAux slc iphs = proc (eab, b, (slc',dlc,_), ers) -> do
-          ebno  <- layerMetronome slc -< (eab, dlc)
+          ebno  <- layerMetronome slc -< (traceShow eab eab, dlc)
           enphs@(_,phs) <- automaton iphs -< (b, dlc, ebno)
           r <- (case repeatCount slc of
                   Nothing -> never

@@ -66,5 +66,8 @@ repeatedlyS :: a -> SF DTime (Event a)
 repeatedlyS x = edgeBy (\a b -> maybeIf (a * b < 0) $> x) 0
                 <<< varFreqSine <<^ (2*)
 
+repeatedlyS' :: a -> SF DTime (Event a)
+repeatedlyS' x = (repeatedlyS x &&& now x) >>> arr (uncurry lMerge)
+
 -- |
 -- = Curry and uncurry functions

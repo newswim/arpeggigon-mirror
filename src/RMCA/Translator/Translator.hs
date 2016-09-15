@@ -69,7 +69,7 @@ sortNotes = sortNotes' ([],[])
         sortNotes' (n, c) (x@(_,m):xs)
           | isNoteOn m = sortNotes' (x:n, c) xs
           | isNoteOff m = sortNotes' (n,c) xs
-          | isControl m = sortNotes' (n,x:c) xs
+          | isVolume m || isInstrument m = sortNotes' (n,x:c) xs
           | otherwise = sortNotes' (n,c) xs
 
 -- Note messages are converted to PlayHeads
