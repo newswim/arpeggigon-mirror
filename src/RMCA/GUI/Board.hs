@@ -37,9 +37,7 @@ import           RMCA.GUI.HelpersRewrite
 import           RMCA.IOClockworks
 import           RMCA.Semantics
 
-newtype GUIBoard = GUIBoard { toGS :: GameState Int Tile Player GUICell }
-
-type IOBoard = BIO.Board Int Tile (Player,GUICell)
+newtype GUIBoard = GUIBoard (GameState Int Tile Player GUICell)
 
 -- There are two types of tiles that can be distinguished by setting
 -- two different colors for debugging purposes. A future release might
@@ -65,10 +63,12 @@ hexW = round d
   where d :: Double
         d = 4 * fromIntegral tileW / 3
 
+{-
 hexH :: Int
 hexH = round d
   where d :: Double
         d = sqrt 3 * fromIntegral hexW / 2
+-}
 
 boardToTile :: [(Int,Int,Tile)]
 boardToTile = [(x,y,selTile) | (x,y) <- range ( (xMin-1,yMin)

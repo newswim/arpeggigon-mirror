@@ -4,7 +4,6 @@ module RMCA.Translator.RV where
 
 import           Control.Monad.Exception.Synchronous (ExceptionalT, resolveT)
 import qualified Data.Bifunctor                      as BF
-import           Data.CBMVar
 import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
 import qualified Data.List                           as L
 import           Data.Ord                            (comparing)

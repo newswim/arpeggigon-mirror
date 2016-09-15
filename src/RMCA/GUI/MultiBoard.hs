@@ -139,7 +139,10 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
         synthState <- reactiveValueRead synthMCBMVar
         reactiveValueAppend boardQueue $
           M.singleton cp $ ([],) $ synthMessage cp synthState
-      updateStatLayer _ = return ()--undefined
+      updateStatLayer cp = do
+        nStat <- reactiveValueRead statMCBMVar
+        reactiveValueUpdate_ layerMapRV
+          (M.adjust (\(_,dyn,synth) -> (nStat,dyn,synth)) cp)
 
   statHidMVar <- newEmptyMVar
   dynHidMVar <- newEmptyMVar

@@ -2,7 +2,6 @@
 
 module RMCA.Layer.LayerConf where
 
-import Data.IntMap             (IntMap)
 import Data.Ratio
 import Data.ReactiveValue
 import FRP.Yampa

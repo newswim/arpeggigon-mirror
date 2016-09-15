@@ -46,9 +46,9 @@ layer = layerStopped
           returnA            -< ((en,phs),e)
 
         lrAux slc iphs = proc (eab, b, (slc',dlc,_), ers) -> do
-          ebno  <- layerMetronome slc -< (traceShow eab eab, dlc)
+          ebno  <- layerMetronome slc -< (eab, dlc)
           enphs@(_,phs) <- automaton iphs -< (b, dlc, ebno)
-          r <- (case repeatCount slc of
+          r <- (case let a = repeatCount slc in traceShow a a of
                   Nothing -> never
                   Just n -> countTo (n * beatsPerBar slc)) -< ebno
           let ers' = ers `lMerge` (r `tag` Running)

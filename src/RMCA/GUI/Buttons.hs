@@ -41,17 +41,6 @@ toggleButtonNewFromStock s = do
   labelSetUseUnderline buttonLabel True
   packButton button buttonBox buttonLabel buttonImg
 
-buttonBoxNewWithLabelFromStock :: StockId -> IO HBox
-buttonBoxNewWithLabelFromStock s = do
-  buttonBox <- hBoxNew False 0
-  buttonImg <- imageNewFromStock s IconSizeButton
-  stockTxt <- stockLookupItem s
-  buttonLabel <- labelNew (siLabel <$> stockTxt)
-  labelSetUseUnderline buttonLabel True
-  boxPackStart buttonBox buttonImg PackRepel 0
-  boxPackStart buttonBox buttonLabel PackRepel 0
-  return buttonBox
-
 getButtons :: (ReactiveValueRead boardStatus RunStatus IO) =>
               boardStatus -> IO ( VBox
                                 , ReactiveFieldRead IO ()

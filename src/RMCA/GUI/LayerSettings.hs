@@ -152,13 +152,14 @@ layerSettings isStartedRV = do
   let bpbRV = spinButtonValueIntReactive bpbButton
       repeatCheckRV = toggleButtonActiveReactive repeatCheckButton
       repeatRV' = spinButtonValueIntReactive repeatButton
-      repeatRV = liftR2 (\act r -> if act then Just r else Nothing)
-                 repeatCheckRV repeatRV'
+      repeatRV = let f (act,r) = if act then Just r else Nothing
+                     g r = case r of
+                       Nothing -> (False,0)
+                       Just n  -> (True,n)
+                 in liftRW2 (bijection (g,f)) repeatCheckRV repeatRV'
       repeatSensitive = widgetSensitiveReactive repeatButton
       repeatCheckSensitive = widgetSensitiveReactive repeatCheckButton
-
-  bpbSensitiveRV <- swapHandlerStorage $
-                    widgetSensitiveReactive bpbButton
+      bpbSensitiveRV = widgetSensitiveReactive bpbButton
 
   reactiveValueOnCanRead isStartedRV $
     reactiveValueRead isStartedRV >>=
@@ -188,6 +189,7 @@ layerSettings isStartedRV = do
   reactiveValueOnCanRead statMCBMVar $ postGUIAsync $ do
     nStat <- reactiveValueRead statMCBMVar
     reactiveValueWriteOnNotEq bpbRV $ beatsPerBar nStat
+    reactiveValueWriteOnNotEq repeatRV $ repeatCount nStat
 
   reactiveValueOnCanRead synthMCBMVar $ do
     nSynth <- reactiveValueRead synthMCBMVar
@@ -200,8 +202,10 @@ layerSettings isStartedRV = do
     layPitchRV dynMCBMVar
   syncRightOnLeftWithBoth (\ns ol -> ol { strength = ns })
     strengthRV dynMCBMVar
-  syncRightOnLeftWithBoth (\nb ol -> ol { beatsPerBar = nb})
+  syncRightOnLeftWithBoth (\nb ol -> ol { beatsPerBar = nb })
     bpbRV statMCBMVar
+  syncRightOnLeftWithBoth (\nr ol -> ol { repeatCount = nr })
+    repeatRV statMCBMVar
   syncRightOnLeftWithBoth (\nv ol -> ol { volume = nv })
     layVolumeRV synthMCBMVar
   syncRightOnLeftWithBoth (\ni ol -> ol { instrument = ni })
