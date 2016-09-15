@@ -1,14 +1,18 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, MultiParamTypeClasses,
+             OverloadedStrings #-}
 
 module RMCA.GUI.Buttons ( buttonNewFromStockWithLabel
                         , toggleButtonNewFromStock
                         , getButtons
                         ) where
 
+import Control.Monad
+import Data.Maybe
 import Data.ReactiveValue
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Reactive
 import RMCA.GUI.StockId
+import RMCA.Layer.Board
 
 packButton :: (BoxClass a, ButtonClass b, ImageClass i, LabelClass l) =>
               b -> a -> l -> i -> IO b
@@ -37,17 +41,33 @@ toggleButtonNewFromStock s = do
   labelSetUseUnderline buttonLabel True
   packButton button buttonBox buttonLabel buttonImg
 
-getButtons :: IO ( VBox
-                 , ReactiveFieldRead IO ()
-                 , ReactiveFieldRead IO ()
-                 , ReactiveFieldRead IO Bool
-                 , ReactiveFieldRead IO Bool
-                 , ReactiveFieldRead IO ()
-                 , ReactiveFieldRead IO ()
-                 , ReactiveFieldRead IO ()
-                 , ReactiveFieldRead IO ()
-                 )
-getButtons = do
+buttonBoxNewWithLabelFromStock :: StockId -> IO HBox
+buttonBoxNewWithLabelFromStock s = do
+  buttonBox <- hBoxNew False 0
+  buttonImg <- imageNewFromStock s IconSizeButton
+  stockTxt <- stockLookupItem s
+  buttonLabel <- labelNew (siLabel <$> stockTxt)
+  labelSetUseUnderline buttonLabel True
+  boxPackStart buttonBox buttonImg PackRepel 0
+  boxPackStart buttonBox buttonLabel PackRepel 0
+  return buttonBox
+
+getButtons :: (ReactiveValueRead boardStatus RunStatus IO) =>
+              boardStatus -> IO ( VBox
+                                , ReactiveFieldRead IO ()
+                                , ReactiveFieldRead IO ()
+                                , ReactiveFieldRead IO Bool
+                                , ReactiveFieldRead IO Bool
+                                , ReactiveFieldRead IO ()
+                                , ReactiveFieldRead IO ()
+                                , ReactiveFieldRead IO ()
+                                , ReactiveFieldRead IO ()
+                                )
+getButtons boardStatusRV = do
+  --addRestartButton
+  restartM <- stockLookupItem gtkMediaRestart
+  when (isJust restartM) $ do
+    stockAddItem [(fromJust restartM) { siLabel = "_Restart" }]
   buttonBox <- vBoxNew False 10
 
   buttonBoxAddRmLayers <- hBoxNew True 10
@@ -72,11 +92,16 @@ getButtons = do
   let confLoadRV = buttonActivateField buttonLoad
   boxPackStart buttonBoxSaveLoad buttonLoad PackGrow 0
 
-
   buttonBoxBot <- hBoxNew True 10
   boxPackStart buttonBox buttonBoxBot PackNatural 0
   buttonPlay <- buttonNewFromStock gtkMediaPlay
   let playRV = buttonActivateField buttonPlay
+      playStockId = wrapMW (buttonSetLabel buttonPlay)
+  reactiveValueWrite playStockId gtkMediaPlay
+  reactiveValueOnCanRead boardStatusRV $ reactiveValueRead boardStatusRV >>=
+    \case
+      Stopped -> reactiveValueWrite playStockId $ gtkMediaPlay
+      Running -> reactiveValueWrite playStockId $ gtkMediaRestart
   boxPackStart buttonBoxBot buttonPlay PackRepel 0
 
   buttonPause <- toggleButtonNewFromStock gtkMediaPause

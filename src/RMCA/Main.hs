@@ -1,5 +1,4 @@
-{-# LANGUAGE LambdaCase, MultiParamTypeClasses, ScopedTypeVariables,
-             TupleSections #-}
+{-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables, TupleSections #-}
 
 module Main where
 
@@ -45,15 +44,16 @@ main = do
   globalSep <- hSeparatorNew
   boxPackStart settingsBox globalSep PackNatural 10
 
+  boardStatusRV <- newCBMVarRW Stopped
+
   (buttonBox,
    playRV,stopRV,pauseRV,recordRV,
    confSaveRV,confLoadRV,
-   addLayerRV,rmLayerRV) <- getButtons
+   addLayerRV,rmLayerRV) <- getButtons boardStatusRV
   boxPackEnd settingsBox buttonBox PackNatural 0
 
   boardQueue <- newCBRef mempty
   --isStartMVar <- newMVar False
-  boardStatusRV <- newCBMVarRW Stopped
   (layerSettingsVBox, statMCBMVar, dynMCBMVar, synthMCBMVar) <- layerSettings boardStatusRV
   boxPackStart settingsBox layerSettingsVBox PackNatural 0
   laySep <- hSeparatorNew
@@ -77,11 +77,7 @@ main = do
       Stopped -> reactiveValueWrite statConfSensitiveRV True
 -}
   boardStatusEP <- getEPfromRV boardStatusRV
-  reactiveValueOnCanRead playRV $
-    reactiveValueRead boardStatusRV >>=
-      \case
-        Running -> reactiveValueWrite boardStatusRV Running
-        Stopped -> reactiveValueWrite boardStatusRV Running
+  reactiveValueOnCanRead playRV $ reactiveValueWrite boardStatusRV Running
   reactiveValueOnCanRead stopRV $ reactiveValueWrite boardStatusRV Stopped
   boardMap <- reactiveValueRead boardMapRV
   layerMap <- reactiveValueRead layerMapRV

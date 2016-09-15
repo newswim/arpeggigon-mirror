@@ -160,17 +160,17 @@ layerSettings isStartedRV = do
   bpbSensitiveRV <- swapHandlerStorage $
                     widgetSensitiveReactive bpbButton
 
-  reactiveValueOnCanRead isStartedRV $ do
+  reactiveValueOnCanRead isStartedRV $
     reactiveValueRead isStartedRV >>=
-      \case
-        Running ->  do reactiveValueRead repeatCheckRV
-                       reactiveValueWrite repeatSensitive False
-                       reactiveValueWrite bpbSensitiveRV False
-                       reactiveValueWrite repeatCheckSensitive False
-        Stopped -> do reactiveValueRead repeatCheckRV >>=
-                        reactiveValueWrite repeatSensitive
-                      reactiveValueWrite bpbSensitiveRV True
-                      reactiveValueWrite repeatCheckSensitive True
+    \case
+      Running ->  do reactiveValueRead repeatCheckRV
+                     reactiveValueWrite repeatSensitive False
+                     reactiveValueWrite bpbSensitiveRV False
+                     reactiveValueWrite repeatCheckSensitive False
+      Stopped -> do reactiveValueRead repeatCheckRV >>=
+                      reactiveValueWrite repeatSensitive
+                    reactiveValueWrite bpbSensitiveRV True
+                    reactiveValueWrite repeatCheckSensitive True
 
   repeatCheckRV =:> repeatSensitive
   reactiveValueWrite repeatCheckRV False

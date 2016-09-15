@@ -28,11 +28,11 @@ data SynthConf = SynthConf { volume     :: Int
                            } deriving (Show, Read, Eq)
 
 synthMessage :: Int -> SynthConf -> [Message]
-synthMessage chan (SynthConf { volume = v
-                             , instrument = i
-                             }) = [ Volume (mkChannel chan) v
-                                  , Instrument (mkChannel chan) (mkProgram i)
-                                  ]
+synthMessage chan SynthConf { volume = v
+                            , instrument = i
+                            } = [ Volume (mkChannel chan) v
+                                , Instrument (mkChannel chan) (mkProgram i)
+                                ]
 
 type LayerConf = (StaticLayerConf, DynLayerConf, SynthConf)
 
