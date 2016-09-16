@@ -1,4 +1,4 @@
-{-# LANGUAGE Arrows #-}
+{-# LANGUAGE Arrows, TupleSections #-}
 
 module RMCA.Layer.Board where
 
