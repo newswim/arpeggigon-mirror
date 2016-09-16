@@ -14,6 +14,18 @@ import           Debug.Trace
 
 data RunStatus = Running | Stopped
 
+layerMetronome :: StaticLayerConf
+               -> SF (Event AbsBeat, DynLayerConf) (Event BeatNo)
+layerMetronome StaticLayerConf { beatsPerBar = bpb
+                               } =
+  proc (eb, DynLayerConf { layerBeat = r
+                         }) -> do
+    ewbno <- accumFilter (\_ (ab,r) -> ((),selectBeat (ab,r))) () -< (,r) <$> eb
+    accumBy (flip nextBeatNo) 0 -< ewbno `tag` bpb
+      where selectBeat (absBeat, layBeat) =
+              maybeIf ((absBeat - 1) `mod`
+                        floor (fromIntegral maxAbsBeat * layBeat) == 0)
+
 automaton :: [PlayHead]
           -> SF (Board, DynLayerConf, Event BeatNo)
                 (Event [Note], [PlayHead])
@@ -47,12 +59,13 @@ layer = layerStopped
 
         lrAux slc iphs = proc (eab, b, (slc',dlc,_), ers) -> do
           ebno  <- layerMetronome slc -< (eab, dlc)
-          enphs@(_,phs) <- automaton iphs -< (b, dlc, ebno)
+          enphs@(_,phs) <- automaton iphs -< (b, dlc, traceShow ebno ebno)
           r <- (case let a = repeatCount slc in traceShow a a of
                   Nothing -> never
-                  Just n -> countTo (n * beatsPerBar slc)) -< ebno
+                  Just n -> countTo (1 + n * beatsPerBar slc)) -< ebno
           let ers' = ers `lMerge` (r `tag` Running)
-          e <- notYet -< fmap (\rs -> (rs, slc', phs ++ startHeads b)) ers'
+          ophs <- iPre iphs -< phs
+          e <- notYet -< fmap (\rs -> (rs, slc', ophs ++ startHeads b)) ers'
           returnA -< (enphs,e)
 
 layers :: M.IntMap a

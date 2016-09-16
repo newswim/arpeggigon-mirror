@@ -44,18 +44,6 @@ staticConf (s,_,_) = s
 synthConf :: LayerConf -> SynthConf
 synthConf (_,_,s) = s
 
-layerMetronome :: StaticLayerConf
-               -> SF (Event AbsBeat, DynLayerConf) (Event BeatNo)
-layerMetronome StaticLayerConf { beatsPerBar = bpb
-                               } =
-  proc (eb, DynLayerConf { layerBeat = r
-                         }) -> do
-    ewbno <- accumFilter (\_ (ab,r) -> ((),selectBeat (ab,r))) () -< (,r) <$> eb
-    accumBy (flip nextBeatNo) 0 -< ewbno `tag` bpb
-      where selectBeat (absBeat, layBeat) =
-              maybeIf ((absBeat - 1) `mod`
-                        floor (fromIntegral maxAbsBeat * layBeat) == 0)
-
 getDefaultLayerConfRV :: IO (ReactiveFieldReadWrite IO LayerConf)
 getDefaultLayerConfRV = newCBMVarRW defaultLayerConf
 
