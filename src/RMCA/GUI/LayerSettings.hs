@@ -109,7 +109,7 @@ layerSettings isStartedRV = do
   boxPackStart layerSettingsBox' repeatBox PackRepel 0
   repeatLabel <- labelNew (Just "Repeat count")
   labelSetLineWrap repeatLabel True
-  repeatAdj <- adjustmentNew 0 0 (fromIntegral (maxBound :: Int)) 1 1 0
+  repeatAdj <- adjustmentNew 1 1 100 1 1 0
   repeatButton <- spinButtonNew repeatAdj 1 0
   auxRepeatBox <- vBoxNew False 0
   centerAl' <- alignmentNew 0.5 0.5 0 0
