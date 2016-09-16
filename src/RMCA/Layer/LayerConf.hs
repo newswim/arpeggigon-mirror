@@ -51,7 +51,7 @@ layerMetronome StaticLayerConf { beatsPerBar = bpb
   proc (eb, DynLayerConf { layerBeat = r
                          }) -> do
     ewbno <- accumFilter (\_ (ab,r) -> ((),selectBeat (ab,r))) () -< (,r) <$> eb
-    accumBy (flip nextBeatNo) 1 -< ewbno `tag` bpb
+    accumBy (flip nextBeatNo) 0 -< ewbno `tag` bpb
       where selectBeat (absBeat, layBeat) =
               maybeIf ((absBeat - 1) `mod`
                         floor (fromIntegral maxAbsBeat * layBeat) == 0)
