@@ -87,7 +87,7 @@ main = do
   initSig <- reactiveValueRead layerMapRV
   --(inBoard, outBoard) <- yampaReactiveDual initSig (boardRun
     --initSig)
-  outBoard <- yampaReactiveFrom (layers initSig) inRV
+  outBoard <- yampaReactiveWithMetronome (layers initSig) inRV 15
   --reactiveValueOnCanRead inRV (reactiveValueRead inRV >>= print . M.keys)
   reactiveValueOnCanRead outBoard $ do
     out <- reactiveValueRead outBoard

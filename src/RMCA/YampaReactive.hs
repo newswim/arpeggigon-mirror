@@ -16,10 +16,11 @@ yampaReactiveFrom sf rv = do
   return output
 
 yampaReactiveWithMetronome :: (ReactiveValueRead c a IO) =>
-                              a -> SF a b -> c -> DTime
+                              SF a b -> c -> DTime
                            -> IO (ReactiveFieldRead IO b)
-yampaReactiveWithMetronome init sf rv dt = do
+yampaReactiveWithMetronome sf rv dt = do
   clock <- mkClock dt
+  init <- reactiveValueRead rv
   (input,output) <- yampaReactiveDual init sf
   rv =:> input
   reactiveValueOnCanRead clock $

@@ -6,11 +6,42 @@ import FRP.Yampa
 import Data.Maybe
 import RMCA.Auxiliary.Misc
 
+import Debug.Trace
+
 -- | = Yampa
 
 countTo :: (Integral b) => b -> SF (Event a) (Event b)
 countTo n = count >>^ filterE (== n)
 
+-- | Synchonizes two event sources. An event on the first source will be delayed until an event occurs on the second.
+--
+-- Ex:
+-- Event a => . . 1 . . . . 2 . . . 3 . . 4 . . . . . 5 . . 6 . . . . .
+-- Event b => . a . . . b . . . c . . . . . . d . e . f . . . . . g . .
+-- wairFor => . . . . . 1 . . . 2 . . . . . . 4 . . . 5 . . . . . 6 . .
+
+waitForEvent :: (Show a, Show b) => SF (Event a, Event b) (Event a)
+waitForEvent = proc (ea,eb) -> do
+  em <- arr $ uncurry $ mapMerge Left Right (\_ b -> Right b) -< let a = (ea,eb) in traceShow a a
+  hob <- dAccumHoldBy accumulator NoEvent -< em
+  returnA -< let a = eb *> (ea `lMerge` hob) in traceShow (a,eb) a
+  where accumulator :: Event a -> Either a b -> Event a
+        accumulator _ (Left a) = Event a
+        accumulator _ (Right _) = NoEvent
+        --accumulator _ (Right b) =
+
+{-
+waitForEvent :: SF (Event b, Event a) (Event b)
+waitForEvent = proc (eb,ea) -> do
+  rec
+    es' <- iPre NoEvent -< es
+    es <- rSwitch waitAux -< ((eb,ea),es' `tag` waitAux)
+  returnA -< es
+  where waitAux = proc (eb,ea) -> do
+          --ea' <- (if b then notYet else identity) -< ea
+          eb' <- accumHoldBy (\_ b -> Event b) NoEvent -< eb
+          returnA -< ea *> eb'
+-}
 -- | 'stepBack' contains its previous argument as its output. Because it's hard to define it at time 0, it's wrapped up in a 'Maybe'.
 stepBack :: SF a (Maybe a)
 stepBack = sscan f (Nothing, Nothing) >>^ snd

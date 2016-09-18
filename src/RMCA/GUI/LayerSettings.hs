@@ -119,6 +119,8 @@ layerSettings isStartedRV = do
   boxPackStart auxRepeatBox repeatButton PackGrow 0
   repeatCheckButton <- checkButtonNewWithLabel "Unable repeat count"
   boxPackStart auxRepeatBox repeatCheckButton PackGrow 0
+  keepCheckButton <- checkButtonNewWithLabel "Keep heads on restart"
+  boxPackStart auxRepeatBox keepCheckButton PackGrow 0
 
   instrumentCombo <- comboBoxNewText
   instrumentIndex <- mapM (\(ind,ins) ->
@@ -127,9 +129,9 @@ layerSettings isStartedRV = do
                                 return (i, ind)) instrumentList
   comboBoxSetActive instrumentCombo 0
   boxPackStart layerSettingsVBox instrumentCombo PackNatural 10
-  ------------------------------------------------------------------------------
+  -------------------------------------------------------------------------
   -- RVs
-  ------------------------------------------------------------------------------
+  -------------------------------------------------------------------------
   let indexToInstr i = fromMaybe (error "Can't get the selected instrument.") $
                        lookup i instrumentIndex
       instrToIndex ins =
@@ -137,8 +139,9 @@ layerSettings isStartedRV = do
         lookup ins $ map swap instrumentIndex
       instrumentComboRV = bijection (indexToInstr, instrToIndex) `liftRW`
                           comboBoxIndexRV instrumentCombo
-      layVolumeRV = liftRW (bijection (floor, fromIntegral)) $
+      layVolumeRV = liftRW (bijection (round, fromIntegral)) $
                     scaleValueReactive layVolumeScale
+      keepCheckRV = toggleButtonActiveReactive keepCheckButton
 
   synthMCBMVar <- newMCBMVar
     =<< reactiveValueRead (liftR2 SynthConf layVolumeRV instrumentComboRV)
@@ -147,7 +150,8 @@ layerSettings isStartedRV = do
   let strengthRV = floatConv $ scaleValueReactive layStrengthScale
 
   dynMCBMVar <- newMCBMVar
-    =<< reactiveValueRead (liftR3 DynLayerConf layBeatRV layPitchRV strengthRV)
+    =<< reactiveValueRead
+        (liftR4 DynLayerConf layBeatRV layPitchRV strengthRV keepCheckRV)
 
   let bpbRV = spinButtonValueIntReactive bpbButton
       repeatCheckRV = toggleButtonActiveReactive repeatCheckButton
@@ -174,6 +178,7 @@ layerSettings isStartedRV = do
                     reactiveValueWrite repeatCheckSensitive True
 
   repeatCheckRV =:> repeatSensitive
+  --repeatCheckRV =:> keepCheckSensitive
   reactiveValueWrite repeatCheckRV False
   reactiveValueWrite repeatSensitive False
 
@@ -185,6 +190,7 @@ layerSettings isStartedRV = do
     reactiveValueWriteOnNotEq layBeatRV $ layerBeat nDyn
     reactiveValueWriteOnNotEq layPitchRV $ relPitch nDyn
     reactiveValueWriteOnNotEq strengthRV $ strength nDyn
+    reactiveValueWriteOnNotEq keepCheckRV $ keepHeads nDyn
 
   reactiveValueOnCanRead statMCBMVar $ postGUIAsync $ do
     nStat <- reactiveValueRead statMCBMVar
@@ -202,6 +208,8 @@ layerSettings isStartedRV = do
     layPitchRV dynMCBMVar
   syncRightOnLeftWithBoth (\ns ol -> ol { strength = ns })
     strengthRV dynMCBMVar
+  syncRightOnLeftWithBoth (\nk ol -> ol { keepHeads = nk })
+    keepCheckRV dynMCBMVar
   syncRightOnLeftWithBoth (\nb ol -> ol { beatsPerBar = nb })
     bpbRV statMCBMVar
   syncRightOnLeftWithBoth (\nr ol -> ol { repeatCount = nr })

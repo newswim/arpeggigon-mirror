@@ -4,9 +4,7 @@ module RMCA.Layer.LayerConf where
 
 import Data.Ratio
 import Data.ReactiveValue
-import FRP.Yampa
 import RMCA.Auxiliary
-import RMCA.Global.Clock
 import RMCA.Semantics
 import RMCA.Translator.Message
 
@@ -14,6 +12,7 @@ import RMCA.Translator.Message
 data DynLayerConf = DynLayerConf { layerBeat :: Rational
                                  , relPitch  :: RelPitch
                                  , strength  :: Strength
+                                 , keepHeads :: Bool
                                  } deriving (Show, Read, Eq)
 
 -- | Datatype representing statically modifiable characteristics for a layer.
@@ -58,6 +57,7 @@ defaultDynLayerConf :: DynLayerConf
 defaultDynLayerConf = DynLayerConf { layerBeat = 1 % 4
                                    , relPitch = 0
                                    , strength = 1
+                                   , keepHeads = False
                                    }
 defaultSynthConf :: SynthConf
 defaultSynthConf = SynthConf { volume = 127

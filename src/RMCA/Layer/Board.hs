@@ -12,7 +12,7 @@ import           RMCA.Semantics
 
 import           Debug.Trace
 
-data RunStatus = Running | Stopped
+data RunStatus = Running | Stopped deriving(Show, Eq)
 
 layerMetronome :: StaticLayerConf
                -> SF (Event AbsBeat, DynLayerConf) (Event BeatNo)
@@ -59,13 +59,17 @@ layer = layerStopped
 
         lrAux slc iphs = proc (eab, b, (slc',dlc,_), ers) -> do
           ebno  <- layerMetronome slc -< (eab, dlc)
-          enphs@(_,phs) <- automaton iphs -< (b, dlc, traceShow ebno ebno)
-          r <- (case let a = repeatCount slc in traceShow a a of
+          enphs@(_,phs) <- automaton iphs -< (b, dlc, ebno)
+          r <- (case repeatCount slc of
                   Nothing -> never
                   Just n -> countTo (1 + n * beatsPerBar slc)) -< ebno
-          let ers' = ers `lMerge` (r `tag` Running)
+          erun <- waitForEvent -< (filterE (== Running) ers,ebno)
+          estop <- arr $ filterE (/= Running) -< ers
+          let ers' = erun `lMerge` estop
+              ers'' = ers' `lMerge` (r `tag` Running)
           ophs <- iPre iphs -< phs
-          e <- notYet -< fmap (\rs -> (rs, slc', ophs ++ startHeads b)) ers'
+          let ophs' = if keepHeads dlc then ophs else []
+          e <- notYet -< fmap (\rs -> (rs, slc', ophs' ++ startHeads b)) (ers'')
           returnA -< (enphs,e)
 
 layers :: M.IntMap a
@@ -77,7 +81,12 @@ layers imap = proc (t,erun,map) -> do
   let e = fmap switchCol elc
       newMetronome Running = metronome
       newMetronome Stopped = never
-  eabs <- rSwitch metronome -< (t, newMetronome <$> erun)
+  erun' <- accumFilter (\oRS nRS ->
+                          case (oRS,nRS) of
+                            (Stopped,_) -> (nRS,Just nRS)
+                            (Running, Stopped) -> (Stopped,Just Stopped)
+                            _ -> (oRS,Nothing)) Stopped -< erun
+  eabs <- rSwitch metronome -< (t, newMetronome <$> erun')
   rpSwitch routing (imap $> layer) -< ((eabs,erun,map),e)
   where routing (eabs,erun,map) sfs = M.intersectionWith (,)
           (fmap (\(b,l,er) -> (eabs,b,l,erun `lMerge` er)) map) sfs
