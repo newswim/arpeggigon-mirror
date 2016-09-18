@@ -1,4 +1,4 @@
-{-# LANGUAGE Arrows, TupleSections #-}
+{-# LANGUAGE TupleSections #-}
 
 module RMCA.Layer.LayerConf where
 

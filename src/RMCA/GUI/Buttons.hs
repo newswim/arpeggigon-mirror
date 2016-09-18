@@ -55,7 +55,7 @@ getButtons :: (ReactiveValueRead boardStatus RunStatus IO) =>
 getButtons boardStatusRV = do
   --addRestartButton
   restartM <- stockLookupItem gtkMediaRestart
-  when (isJust restartM) $ do
+  when (isJust restartM) $
     stockAddItem [(fromJust restartM) { siLabel = "_Restart" }]
   buttonBox <- vBoxNew False 5
 
@@ -89,8 +89,8 @@ getButtons boardStatusRV = do
   reactiveValueWrite playStockId gtkMediaPlay
   reactiveValueOnCanRead boardStatusRV $ reactiveValueRead boardStatusRV >>=
     \case
-      Stopped -> reactiveValueWrite playStockId $ gtkMediaPlay
-      Running -> reactiveValueWrite playStockId $ gtkMediaRestart
+      Stopped -> reactiveValueWrite playStockId gtkMediaPlay
+      Running -> reactiveValueWrite playStockId gtkMediaRestart
   boxPackStart buttonBoxBot buttonPlay PackRepel 0
 
   buttonPause <- toggleButtonNewFromStock gtkMediaPause

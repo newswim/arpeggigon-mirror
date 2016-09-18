@@ -67,7 +67,7 @@ layer = layerStopped
               ers'' = ers' `lMerge` (r `tag` Running)
           ophs <- iPre iphs -< phs
           let ophs' = if keepHeads dlc then ophs else []
-          e <- notYet -< fmap (\rs -> (rs, slc', ophs' ++ startHeads b)) (ers'')
+          e <- notYet -< fmap (\rs -> (rs, slc', ophs' ++ startHeads b)) ers''
           returnA -< (enphs,e)
 
 layers :: M.IntMap a
