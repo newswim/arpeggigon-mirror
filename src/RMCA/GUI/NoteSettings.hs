@@ -59,9 +59,9 @@ comboBoxIndexRV box = ReactiveFieldReadWrite setter getter notifier
 
 noteSettingsBox :: IO (VBox, MCBMVar GUICell)
 noteSettingsBox = do
-  pieceBox <- vBoxNew False 10
-  naBox <- vBoxNew False 10
-  boxPackStart pieceBox naBox PackNatural 10
+  pieceBox <- vBoxNew False 5
+  naBox <- vBoxNew False 5
+  boxPackStart pieceBox naBox PackNatural 0
 
   -- Articulation box
   artCombo <- comboBoxNewText
@@ -69,7 +69,7 @@ noteSettingsBox = do
                                     (fromString $ show art)
                                return (art,i)) [NoAccent ..]
   comboBoxSetActive artCombo 0
-  boxPackStart naBox artCombo PackNatural 10
+  boxPackStart naBox artCombo PackNatural 0
   let indexToArt i =
         fromMaybe (error "In indexToArt: failed \
                          \to find the selected \
@@ -87,7 +87,7 @@ noteSettingsBox = do
                                       (fromString $ show sli)
                                  return (sli,i)) [NoSlide ..]
   comboBoxSetActive slideCombo 0
-  boxPackStart naBox slideCombo PackNatural 10
+  boxPackStart naBox slideCombo PackNatural 0
   let indexToSlide i =
         fromMaybe (error "In indexToSlide: failed \
                          \to find the correct slide \
@@ -122,14 +122,14 @@ noteSettingsBox = do
                   comboBoxIndexRV noteDurCombo
   noteDurLabel <- labelNew =<< (`lookup` symbolString) <$> reactiveValueRead noteDurRV
   let noteDurLabelRV = labelTextReactive noteDurLabel
-  boxPackStart naBox noteDurBox PackNatural 10
-  boxPackStart noteDurBox noteDurCombo PackNatural 10
-  boxPackStart noteDurBox noteDurLabel PackNatural 10
+  boxPackStart naBox noteDurBox PackNatural 0
+  boxPackStart noteDurBox noteDurCombo PackNatural 0
+  boxPackStart noteDurBox noteDurLabel PackNatural 0
 
   -- Repeat count box
   rCountAdj <- adjustmentNew 1 0 100 1 1 0
   rCount <- spinButtonNew rCountAdj 1 0
-  boxPackStart pieceBox rCount PackNatural 10
+  boxPackStart pieceBox rCount PackNatural 0
   let rCountRV = spinButtonValueIntReactive rCount
 
   -- Side RV

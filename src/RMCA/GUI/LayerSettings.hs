@@ -36,7 +36,7 @@ layerSettings isStartedRV = do
   ------------------------------------------------------------------------------
   -- GUI Boxes
   ------------------------------------------------------------------------------
-  layerSettingsVBox <- vBoxNew True 10
+  layerSettingsVBox <- vBoxNew True 5
   layerSettingsBox <- hBoxNew False 0
   centerSettings <- alignmentNew 0.5 0.5 0 0
   containerAdd layerSettingsBox centerSettings
@@ -128,7 +128,7 @@ layerSettings isStartedRV = do
                                      fromString ins
                                 return (i, ind)) instrumentList
   comboBoxSetActive instrumentCombo 0
-  boxPackStart layerSettingsVBox instrumentCombo PackNatural 10
+  boxPackStart layerSettingsVBox instrumentCombo PackNatural 0
   -------------------------------------------------------------------------
   -- RVs
   -------------------------------------------------------------------------

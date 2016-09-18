@@ -57,7 +57,7 @@ getButtons boardStatusRV = do
   restartM <- stockLookupItem gtkMediaRestart
   when (isJust restartM) $ do
     stockAddItem [(fromJust restartM) { siLabel = "_Restart" }]
-  buttonBox <- vBoxNew False 10
+  buttonBox <- vBoxNew False 5
 
   buttonBoxAddRmLayers <- hBoxNew True 10
   boxPackStart buttonBox buttonBoxAddRmLayers PackNatural 0
