@@ -6,8 +6,6 @@ import FRP.Yampa
 import Data.Maybe
 import RMCA.Auxiliary.Misc
 
-import Debug.Trace
-
 -- | = Yampa
 
 countTo :: (Integral b) => b -> SF (Event a) (Event b)
@@ -20,11 +18,11 @@ countTo n = count >>^ filterE (== n)
 -- Event b => . a . . . b . . . c . . . . . . d . e . f . . . . . g . .
 -- wairFor => . . . . . 1 . . . 2 . . . . . . 4 . . . 5 . . . . . 6 . .
 
-waitForEvent :: (Show a, Show b) => SF (Event a, Event b) (Event a)
+waitForEvent :: SF (Event a, Event b) (Event a)
 waitForEvent = proc (ea,eb) -> do
-  em <- arr $ uncurry $ mapMerge Left Right (\_ b -> Right b) -< let a = (ea,eb) in traceShow a a
+  em <- arr $ uncurry $ mapMerge Left Right (\_ b -> Right b) -< (ea,eb)
   hob <- dAccumHoldBy accumulator NoEvent -< em
-  returnA -< let a = eb *> (ea `lMerge` hob) in traceShow (a,eb) a
+  returnA -< eb *> (ea `lMerge` hob)
   where accumulator :: Event a -> Either a b -> Event a
         accumulator _ (Left a) = Event a
         accumulator _ (Right _) = NoEvent

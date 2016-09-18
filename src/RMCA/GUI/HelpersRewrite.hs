@@ -90,7 +90,7 @@ validArea = filter (onBoard . fromGUICoords) $
 -- index of the tile carrying the piece that covers the tile.
 actualTile :: (Int,Int) -> (Int,Int)
 actualTile p@(x,y)
-  | p `elem` piecesCoords = p
+  | y <= yMin || p `elem` piecesCoords = p
   | otherwise = (x,y-1)
   where piecesCoords = validArea ++ ctrlCoords
 

@@ -226,7 +226,6 @@ initBoardRV tc board@BIO.Board { boardPieces = (GameBoard gArray) } = do
       setterW :: (Int,Int) -> GUICell -> IO ()
       setterW i g = postGUIAsync $ boardSetPiece i (Player,g) board
 
-
       arrW :: Array Pos (ReactiveFieldWrite IO GUICell)
       arrW = array (minimum validArea, maximum validArea)
              [(i, ReactiveFieldWrite (setterW i))

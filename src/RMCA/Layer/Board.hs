@@ -10,8 +10,6 @@ import           RMCA.Global.Clock
 import           RMCA.Layer.LayerConf
 import           RMCA.Semantics
 
-import           Debug.Trace
-
 data RunStatus = Running | Stopped deriving(Show, Eq)
 
 layerMetronome :: StaticLayerConf
