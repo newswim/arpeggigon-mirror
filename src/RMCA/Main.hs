@@ -79,7 +79,8 @@ main = do
   boardStatusEP <- getEPfromRV boardStatusRV
   reactiveValueOnCanRead playRV $ reactiveValueWrite boardStatusRV Running
   reactiveValueOnCanRead stopRV $ reactiveValueWrite boardStatusRV Stopped
-  let tempoRV' = liftR2 (\bool t -> t * fromEnum (not bool)) pauseRV tempoRV
+  let tempoRV' = liftR2 (\paused tempo -> if paused then 0 else tempo)
+                 pauseRV tempoRV
       jointedMapRV = liftR (fmap (\(x,y) -> (x,y,NoEvent))) $
                      liftR2 (M.intersectionWith (,)) boardMapRV layerMapRV
       inRV = liftR3 (,,) tempoRV' boardStatusEP jointedMapRV
