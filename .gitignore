@@ -37,3 +37,4 @@ html/
 *.html
 *.folded
 /doc
+/cabal.sandbox.config

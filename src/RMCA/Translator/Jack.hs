@@ -66,7 +66,6 @@ jackSetup tc boardQueue tempoRV layerMapRV = Sync.resolveT handleErrorJack $ do
                               toProcessRV boardQueue tempoRV layerMapRV) $
     Jack.withActivation client $ Trans.lift $ do
     putStrLn $ "Started " ++ rmcaName ++ " JACK client."
-    --newEmptyMVar >>= takeMVar
     Jack.waitForBreak
     return ()
 

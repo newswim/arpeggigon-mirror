@@ -32,7 +32,7 @@ import           Graphics.UI.Gtk.Board.TiledBoard hiding
     , boardOnPieceDragStart
     )
 import qualified Graphics.UI.Gtk.Board.TiledBoard as BIO
-import           Paths_RMCA
+import           Paths_arpeggigon
 import           RMCA.GUI.HelpersRewrite
 import           RMCA.IOClockworks
 import           RMCA.Semantics
