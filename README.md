@@ -23,7 +23,10 @@ Install guide
 ---
 
 The arpeggigon needs the [GTK+ 2.0 C API](http://www.gtk.org/) and
-the [JACK C API](http://jackaudio.org/) to be built. It is known to
+the [JACK C API](http://jackaudio.org/) to be built. Note that Gtk2Hs
+depends on external program such
+as [alex](http://hackage.haskell.org/package/alex)
+or [happy](http://hackage.haskell.org/package/happy). It is known to
 work with GHC 7.10.3 and GHC 8.0.1.
 
 Running the arpeggigon is then possible with:
@@ -123,7 +126,7 @@ The stop button simply stops all the layers.
 This lists the buttons that have no effect but are yet present at the
 moment in the GUI. This features are being worked on in priority.
 * Recording a performance is not yet possible.
-* Configuration saving and loading is unavailable.
+* Configuration saving and loading is unavailable (soon to be fixed).
 * Slides are not implemented.
 * Tabs are not really named.
 
@@ -146,3 +149,13 @@ Copyright 2016, Guerric Chupin and Henrik Nilsson.
 
 The arpeggigon is licensed under the BSD 3-Clause License. A copy of
 the license is included in the [LICENSE](LICENSE) file.
+
+Credits
+---
+
+We would like to thank the following people for their help, support
+and feedback on the arpeggigon:
+* Ivan Perez
+* Henning Thielemann
+* Michel Mauny
+* François Pessaux
