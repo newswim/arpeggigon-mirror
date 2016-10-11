@@ -5,6 +5,7 @@ module RMCA.Auxiliary.Yampa where
 import FRP.Yampa
 import Data.Maybe
 import RMCA.Auxiliary.Misc
+import Control.Monad
 
 -- | = Yampa
 
@@ -81,7 +82,7 @@ integralMod x = intMod' 0
   where intMod' x0 = switch (intMod'' x0) (\y -> intMod' (y - x))
         intMod'' x0 =  proc t -> do
           it <- (+ x0) ^<< integral -< t
-          es <- edgeBy (\_ y -> maybeIf (y > x) $> y) 0 -< it
+          es <- edgeBy (\_ y -> guard (y > x) $> y) 0 -< it
           returnA -< (it,es)
 
 
@@ -92,7 +93,7 @@ varFreqSine = sin ^<< (2*pi*) ^<< integralMod 1 <<^ (1/)
 
 -- | Generates an 'Event' with a regular period, which is given as an input to the signal function.
 repeatedlyS :: a -> SF DTime (Event a)
-repeatedlyS x = edgeBy (\a b -> maybeIf (a * b < 0) $> x) 0
+repeatedlyS x = edgeBy (\a b -> guard (a * b < 0) $> x) 0
                 <<< varFreqSine <<^ (2*)
 
 repeatedlyS' :: a -> SF DTime (Event a)

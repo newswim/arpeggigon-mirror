@@ -25,32 +25,24 @@ fromMaybeM_ :: (Monad m) => Maybe (m ()) -> m ()
 fromMaybeM_ = fromMaybe (return ())
 
 safeHead :: [a] -> Maybe a
-safeHead [] = Nothing
+safeHead []    = Nothing
 safeHead (x:_) = Just x
 
 safeTail :: [a] -> [a]
-safeTail [] = []
+safeTail []     = []
 safeTail (_:xs) = xs
 
 maybeToEvent :: Maybe a -> Event a
-maybeToEvent Nothing = NoEvent
+maybeToEvent Nothing  = NoEvent
 maybeToEvent (Just x) = Event x
 
 eventToMaybe :: Event a -> Maybe a
-eventToMaybe NoEvent = Nothing
+eventToMaybe NoEvent   = Nothing
 eventToMaybe (Event x) = Just x
 
 eventToList :: Event [a] -> [a]
-eventToList NoEvent = []
+eventToList NoEvent   = []
 eventToList (Event x) = x
-
--- | Generates an 'Event' if the given condition is 'True'.
-eventIf :: Bool -> Event ()
-eventIf b = if b then Event () else NoEvent
-
--- | Generates a 'Just' value if the given condition is 'True'.
-maybeIf :: Bool -> Maybe ()
-maybeIf b = if b then Just () else Nothing
 
 curry3 :: ((a,b,c) -> d) -> a -> b -> c -> d
 curry3 f a b c = f (a,b,c)

@@ -2,6 +2,7 @@
 
 module RMCA.Layer.Board where
 
+import           Control.Monad
 import qualified Data.IntMap          as M
 import           Data.List            ((\\))
 import           FRP.Yampa
@@ -21,8 +22,8 @@ layerMetronome StaticLayerConf { beatsPerBar = bpb
     ewbno <- accumFilter (\_ (ab,r) -> ((),selectBeat (ab,r))) () -< (,r) <$> eb
     accumBy (flip nextBeatNo) 0 -< ewbno `tag` bpb
       where selectBeat (absBeat, layBeat) =
-              maybeIf ((absBeat - 1) `mod`
-                        floor (fromIntegral maxAbsBeat * layBeat) == 0)
+              guard ((absBeat - 1) `mod`
+                      floor (fromIntegral maxAbsBeat * layBeat) == 0)
 
 automaton :: [PlayHead]
           -> SF (Board, DynLayerConf, Event BeatNo)
@@ -60,7 +61,7 @@ layer = layerStopped
           enphs@(_,phs) <- automaton iphs -< (b, dlc, ebno)
           r <- (case repeatCount slc of
                   Nothing -> never
-                  Just n -> countTo (1 + n * beatsPerBar slc)) -< ebno
+                  Just n  -> countTo (1 + n * beatsPerBar slc)) -< ebno
           erun <- waitForEvent -< (filterE (== Running) ers,ebno)
           estop <- arr $ filterE (/= Running) -< ers
           let ers' = erun `lMerge` estop
@@ -81,9 +82,9 @@ layers imap = proc (t,erun,map) -> do
       newMetronome Stopped = never
   erun' <- accumFilter (\oRS nRS ->
                           case (oRS,nRS) of
-                            (Stopped,_) -> (nRS,Just nRS)
+                            (Stopped,_)        -> (nRS,Just nRS)
                             (Running, Stopped) -> (Stopped,Just Stopped)
-                            _ -> (oRS,Nothing)) Stopped -< erun
+                            _                  -> (oRS,Nothing)) Stopped -< erun
   eabs <- rSwitch metronome -< (t, newMetronome <$> erun')
   rpSwitch routing (imap $> layer) -< ((eabs,erun,map),e)
   where routing (eabs,erun,map) sfs = M.intersectionWith (,)
