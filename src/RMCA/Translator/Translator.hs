@@ -53,12 +53,20 @@ sortRawMessages = sortRawMessages' ([],[])
           where nm = fromRawMessage xm
 
 -- Direct each message to a specific channel.
+-- (Simplified version not using <$> or <*>
+sortChannel :: [Message] -> [(Int,[Message])]
+sortChannel ms = [ (getChannel (head ms'), ms')
+                 | ms' <- groupBy ((==) `on` getChannel) ms ]
+
+{-
+-- Direct each message to a specific channel.
 -- /!\ To be modified.
 sortChannel :: [Message] -> [(Int,[Message])]
 sortChannel = map ((,) <$> (fst . head) <*> map snd)
               . groupBy ((==) `on` fst) . map sortChannel'
   where sortChannel' :: Message -> (Int, Message)
         sortChannel' m = let c = getChannel m in (c,m)
+-}
 
 -- NoteOn messages are on the right, other Control messages are on the
 -- left. For now we throw away NoteOff messages.

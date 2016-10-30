@@ -3,6 +3,7 @@
 module Main where
 
 import           Control.Concurrent
+import           Data.Monoid
 import qualified Data.IntMap                    as M
 import           Data.ReactiveValue
 import           FRP.Yampa
@@ -96,9 +97,9 @@ main = do
 
     let noteMap = M.map fromEvent $ M.filter isEvent $ M.map fst out
         writePh chan val =
-          fromMaybeM_ $ (`reactiveValueWrite` val) <$>
-          M.lookup chan phRVMap
-    sequence_ $ M.mapWithKey writePh $ M.map snd out
+          fromMaybeM_ $ fmap (`reactiveValueWrite` val)
+                             (M.lookup chan phRVMap)
+    sequence_ $ M.elems $ M.mapWithKey writePh $ M.map snd out
     reactiveValueAppend boardQueue $ M.map (,[]) noteMap
 
   putStrLn "Board started."

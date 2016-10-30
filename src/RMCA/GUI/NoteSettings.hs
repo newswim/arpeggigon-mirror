@@ -120,7 +120,8 @@ noteSettingsBox = do
                          \for the duration.") $ lookup d noteDurIndex
       noteDurRV = bijection (indexToDur, durToIndex) `liftRW`
                   comboBoxIndexRV noteDurCombo
-  noteDurLabel <- labelNew =<< (`lookup` symbolString) <$> reactiveValueRead noteDurRV
+  noteDurLabel <- labelNew =<< fmap (`lookup` symbolString)
+                                    (reactiveValueRead noteDurRV)
   let noteDurLabelRV = labelTextReactive noteDurLabel
   boxPackStart naBox noteDurBox PackNatural 0
   boxPackStart noteDurBox noteDurCombo PackNatural 0
@@ -140,14 +141,15 @@ noteSettingsBox = do
     nDur <- reactiveValueRead noteDurRV
     oCell <- reactiveValueRead setRV
     let nCa :: Maybe NoteAttr
-        nCa = (\na -> na { naDur = nDur }) <$> getNAttr (cellAction oCell)
+        nCa = fmap (\na -> na { naDur = nDur }) (getNAttr (cellAction oCell))
         nCell :: GUICell
         nCell = if isJust nCa
                 then oCell { cellAction =
                              setNAttr (fromJust nCa) (cellAction oCell) }
                 else oCell
     reactiveValueWriteOnNotEq setRV nCell
-    fromMaybeM_ $ reactiveValueWrite noteDurLabelRV <$> lookup nDur symbolString
+    fromMaybeM_ $ fmap (reactiveValueWrite noteDurLabelRV)
+                       (lookup nDur symbolString)
 
 
   reactiveValueOnCanRead rCountRV $ do
@@ -160,8 +162,8 @@ noteSettingsBox = do
     nSlide <- reactiveValueRead slideComboRV
     oCell <- reactiveValueRead setRV
     let nCa :: Maybe NoteAttr
-        nCa = (\na -> na { naOrn = (naOrn na) { ornSlide = nSlide } }) <$>
-              getNAttr (cellAction oCell)
+        nCa = fmap (\na -> na { naOrn = (naOrn na) { ornSlide = nSlide } })
+                   (getNAttr (cellAction oCell))
         nCell :: GUICell
         nCell = if isJust nCa
                 then oCell { cellAction =
@@ -174,7 +176,7 @@ noteSettingsBox = do
     nArt <- reactiveValueRead artComboRV
     oCell <- reactiveValueRead setRV
     let nCa :: Maybe NoteAttr
-        nCa = (\na -> na { naArt = nArt }) <$> getNAttr (cellAction oCell)
+        nCa = fmap (\na -> na { naArt = nArt }) (getNAttr (cellAction oCell))
         nCell :: GUICell
         nCell = if isJust nCa
                 then oCell { cellAction =
@@ -200,13 +202,14 @@ noteSettingsBox = do
 
   reactiveValueOnCanRead setRV $ postGUIAsync $ do
     nCell <- reactiveValueRead setRV
-    fromMaybeM_ (reactiveValueWriteOnNotEq artComboRV . naArt <$>
-                  getNAttr (cellAction nCell))
-    fromMaybeM_ (reactiveValueWriteOnNotEq slideComboRV . ornSlide . naOrn <$>
-                  getNAttr (cellAction nCell))
+    fromMaybeM_ (fmap (reactiveValueWriteOnNotEq artComboRV . naArt)
+                      (getNAttr (cellAction nCell)))
+    fromMaybeM_ (fmap (reactiveValueWriteOnNotEq slideComboRV
+                       . ornSlide . naOrn)
+                      (getNAttr (cellAction nCell)))
     reactiveValueWriteOnNotEq rCountRV $ repeatCount nCell
-    fromMaybeM_ (reactiveValueWriteOnNotEq noteDurRV . naDur <$>
-                  getNAttr (cellAction nCell))
+    fromMaybeM_ (fmap (reactiveValueWriteOnNotEq noteDurRV . naDur)
+                      (getNAttr (cellAction nCell)))
     updateNaBox nCell
 
   widgetShow pieceBox

@@ -50,7 +50,7 @@ stopIOMetronome (IOMetronome (_,tid)) = killThread tid
 newtype IOTick = IOTick (MVar [IO ()])
 
 newIOTick :: IO IOTick
-newIOTick = IOTick <$> newMVar []
+newIOTick = fmap IOTick (newMVar [])
 
 tickIOTick :: IOTick -> IO ()
 tickIOTick (IOTick mvar) = readMVar mvar >>= sequence_

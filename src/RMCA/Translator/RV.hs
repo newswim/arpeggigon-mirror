@@ -3,6 +3,7 @@
 module RMCA.Translator.RV where
 
 import           Control.Monad.Exception.Synchronous (ExceptionalT, resolveT)
+import           Data.Monoid                         hiding (All)
 import qualified Data.Bifunctor                      as BF
 import qualified Data.EventList.Absolute.TimeBody    as EventListAbs
 import qualified Data.List                           as L
@@ -24,8 +25,8 @@ inMIDIEvent :: JMIDI.Port Jack.Input
             -> ReactiveFieldRead IO [(Frames,RawMessage)]
 inMIDIEvent input nframes = ReactiveFieldRead getter notifier
   where getter :: IO [(Frames, RawMessage)]
-        getter = handleError $ transform <$>
-                 JMIDI.readEventsFromPort input nframes
+        getter = handleError $ 
+                     fmap transform (JMIDI.readEventsFromPort input nframes)
 
         transform :: EventListAbs.T Jack.NFrames t -> [(Frames, t)]
         transform = map (BF.first (\(Jack.NFrames n) -> fromIntegral n)) .

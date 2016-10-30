@@ -3,7 +3,7 @@
 
 module RMCA.ReactiveValueAtomicUpdate where
 
-import Control.Monad
+import Data.Monoid
 import Data.CBRef
 import Data.ReactiveValue
 
@@ -19,7 +19,7 @@ class (ReactiveValueReadWrite a b m) => ReactiveValueAtomicUpdate a b m where
 
 reactiveValueUpdate_ :: (ReactiveValueAtomicUpdate a b m) =>
                         a -> (b -> b) -> m ()
-reactiveValueUpdate_ rv f = void $ reactiveValueUpdate rv f
+reactiveValueUpdate_ rv f = reactiveValueUpdate rv f >> return ()
 
 reactiveValueAppend :: (Monoid b, ReactiveValueAtomicUpdate a b m) =>
                        a -> b -> m ()

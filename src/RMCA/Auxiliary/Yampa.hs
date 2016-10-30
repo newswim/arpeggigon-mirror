@@ -18,6 +18,18 @@ countTo n = count >>^ filterE (== n)
 -- Event b => . a . . . b . . . c . . . . . . d . e . f . . . . . g . .
 -- wairFor => . . . . . 1 . . . 2 . . . . . . 4 . . . 5 . . . . . 6 . .
 
+-- A more direct approach, and without any use of *> to avoid depending
+-- on applicatives.
+
+waitForEvent :: SF (Event a, Event b) (Event a)
+waitForEvent = sscanPrim procEvts NoEvent NoEvent
+    where
+        procEvts eaPrev (NoEvent,      NoEvent) = Just (eaPrev,  NoEvent)
+        procEvts _      (ea@(Event _), NoEvent) = Just (ea,      NoEvent)
+        procEvts eaPrev (NoEvent,      Event _) = Just (NoEvent, eaPrev)
+        procEvts _      (ea@(Event _), Event _) = Just (NoEvent, ea)
+
+{-
 waitForEvent :: SF (Event a, Event b) (Event a)
 waitForEvent = proc (ea,eb) -> do
   em <- arr $ uncurry $ mapMerge Left Right (\_ b -> Right b) -< (ea,eb)
@@ -27,6 +39,7 @@ waitForEvent = proc (ea,eb) -> do
         accumulator _ (Left a) = Event a
         accumulator _ (Right _) = NoEvent
         --accumulator _ (Right b) =
+-}
 
 {-
 waitForEvent :: SF (Event b, Event a) (Event b)
@@ -81,7 +94,7 @@ integralMod x = intMod' 0
   where intMod' x0 = switch (intMod'' x0) (\y -> intMod' (y - x))
         intMod'' x0 =  proc t -> do
           it <- (+ x0) ^<< integral -< t
-          es <- edgeBy (\_ y -> maybeIf (y > x) $> y) 0 -< it
+          es <- edgeBy (\_ y -> if y > x then Just y else Nothing) 0 -< it
           returnA -< (it,es)
 
 
@@ -92,7 +105,7 @@ varFreqSine = sin ^<< (2*pi*) ^<< integralMod 1 <<^ (1/)
 
 -- | Generates an 'Event' with a regular period, which is given as an input to the signal function.
 repeatedlyS :: a -> SF DTime (Event a)
-repeatedlyS x = edgeBy (\a b -> maybeIf (a * b < 0) $> x) 0
+repeatedlyS x = edgeBy (\a b -> if a * b < 0 then Just x else Nothing) 0
                 <<< varFreqSine <<^ (2*)
 
 repeatedlyS' :: a -> SF DTime (Event a)
