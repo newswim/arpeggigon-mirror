@@ -52,7 +52,6 @@ executable arpeggigon
                        -Wall
                        -fno-warn-name-shadowing
                        -fno-warn-unused-do-bind
-                       -debug
 
 -- executable arpeggigon.prof
 --   main-is:             RMCA/Main.hs
