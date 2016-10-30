@@ -19,7 +19,8 @@ layerMetronome StaticLayerConf { beatsPerBar = bpb
                                } =
   proc (eb, DynLayerConf { layerBeat = r
                          }) -> do
-    ewbno <- accumFilter (\_ (ab,r) -> ((),selectBeat (ab,r))) () -< (,r) <$> eb
+    ewbno <- accumFilter (\_ (ab,r) -> ((),selectBeat (ab,r))) ()
+                 -< fmap (,r) eb
     accumBy (flip nextBeatNo) 0 -< ewbno `tag` bpb
       where selectBeat (absBeat, layBeat) =
               guard ((absBeat - 1) `mod`
@@ -85,8 +86,8 @@ layers imap = proc (t,erun,map) -> do
                             (Stopped,_)        -> (nRS,Just nRS)
                             (Running, Stopped) -> (Stopped,Just Stopped)
                             _                  -> (oRS,Nothing)) Stopped -< erun
-  eabs <- rSwitch metronome -< (t, newMetronome <$> erun')
-  rpSwitch routing (imap $> layer) -< ((eabs,erun,map),e)
+  eabs <- rSwitch metronome -< (t, fmap newMetronome erun')
+  rpSwitch routing (fmap (const layer) imap) -< ((eabs,erun,map),e)
   where routing (eabs,erun,map) sfs = M.intersectionWith (,)
           (fmap (\(b,l,er) -> (eabs,b,l,erun `lMerge` er)) map) sfs
 

@@ -94,12 +94,13 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
                   when (button == LeftButton && isJust nmp) $ do
                     let nCell = snd $ fromJust nmp
                     mOHid <- tryTakeMVar guiCellHidMVar
-                    forM_ mOHid $ removeCallbackMCBMVar guiCellMCBMVar
+                    maybe (return ()) (removeCallbackMCBMVar guiCellMCBMVar) mOHid
                     reactiveValueWrite guiCellMCBMVar nCell
                     nHid <- installCallbackMCBMVar guiCellMCBMVar $ do
                       cp <- reactiveValueRead curChanRV
                       guiVal <- reactiveValueRead guiCellMCBMVar
-                      mChanRV <- M.lookup cp <$> reactiveValueRead chanMapRV
+                      mChanRV <- fmap (M.lookup cp)
+                                      (reactiveValueRead chanMapRV)
                       when (isNothing mChanRV) $ error "Can't get piece array!"
                       let (_,pieceArrRV,_) = fromJust mChanRV
                       reactiveValueWrite (pieceArrRV ! fPos) guiVal
@@ -126,8 +127,8 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
 
   layerMapRV <- newCBRef $ M.insert fstP defaultLayerConf M.empty
   reactiveValueOnCanRead layerMapRV $ do
-    synth <- fmap (\(_,_,s) -> s) <$> reactiveValueRead layerMapRV
-    sequence_ $ M.mapWithKey
+    synth <- fmap (fmap (\(_,_,s) -> s)) (reactiveValueRead layerMapRV)
+    sequence_ $ M.elems $ M.mapWithKey
       (\chan mess -> reactiveValueAppend boardQueue $
         M.singleton chan $ ([],) $ synthMessage chan mess) synth
 
@@ -252,9 +253,21 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
       boardMapRV = ReactiveFieldRead getter notifier
         where notifier io = do
                 chanMap <- reactiveValueRead chanMapRV
-                mapM_ ((`reactiveValueOnCanRead` io) . \(b,_,_) -> b) chanMap
+                intMapMapM_ ((`reactiveValueOnCanRead` io) . \(b,_,_) -> b) chanMap
               getter = do
                 chanMap <- reactiveValueRead chanMapRV
-                mapM (reactiveValueRead . \(b,_,_) -> b) chanMap
+                intMapMapM (reactiveValueRead . \(b,_,_) -> b) chanMap
 
   return (n, boardMapRV, layerMapRV, phMapRV)
+
+------------------------------------------------------------------------------
+-- IntMap versions of mapM etc. to make code work with GHC 7.8.3
+------------------------------------------------------------------------------
+
+intMapMapM_ :: (Functor m, Monad m) => (a -> m b) -> M.IntMap a -> m ()
+intMapMapM_ f im = mapM_ f (M.elems im)
+
+intMapMapM :: (Functor m, Monad m) => (a -> m b) -> M.IntMap a -> m (M.IntMap b)
+intMapMapM f im = fmap (M.fromList . zip ks) (mapM f es)
+    where
+        (ks, es) = unzip (M.toList im)

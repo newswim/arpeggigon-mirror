@@ -9,7 +9,7 @@ import           Control.Arrow
 import qualified Control.Monad.Exception.Synchronous as Sync
 import qualified Control.Monad.Trans.Class           as Trans
 import           Data.CBRef
-import           Data.Foldable
+import           Data.Foldable                       hiding (mapM_,concat)
 import qualified Data.IntMap                         as M
 import           Data.Maybe
 import           Data.ReactiveValue
@@ -109,10 +109,10 @@ jackCallBack tc input output toProcessRV boardQueue tempoRV layerMapRV
     mapM_ ((\(Instrument c p) -> reactiveValueUpdate layerMapRV
             (M.adjust (\(st,d,s) -> (st,d,s { instrument = fromProgram p }))
               (fromChannel c))) . snd) instruments
-    concat . toList . gatherMessages tempo nframesInt <$>
-      reactiveValueEmpty boardQueue >>=
+    fmap (concat . toList . gatherMessages tempo nframesInt)
+         (reactiveValueEmpty boardQueue) >>=
       reactiveValueAppend toProcessRV
-    (go, old') <- schedule nframesInt <$> reactiveValueRead toProcessRV
+    (go, old') <- fmap (schedule nframesInt) (reactiveValueRead toProcessRV)
     let old = map (first (+ (- nframesInt))) old'
     --putStrLn ("Out: " ++ show (map fst go))
     reactiveValueWrite outMIDIRV go

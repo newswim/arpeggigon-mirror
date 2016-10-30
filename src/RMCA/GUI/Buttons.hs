@@ -37,7 +37,7 @@ toggleButtonNewFromStock s = do
   buttonBox <- hBoxNew False 0
   buttonImg <- imageNewFromStock s IconSizeButton
   stockTxt <- stockLookupItem s
-  buttonLabel <- labelNew (siLabel <$> stockTxt)
+  buttonLabel <- labelNew (fmap siLabel stockTxt)
   labelSetUseUnderline buttonLabel True
   packButton button buttonBox buttonLabel buttonImg
 

@@ -32,13 +32,13 @@ newtype HandlerId a = HandlerId Integer deriving(Eq, Show, Ord)
 newtype MCBMVar a = MCBMVar (MVar (a, (HandlerId a,CallbackMap)))
 
 newMCBMVar :: a -> IO (MCBMVar a)
-newMCBMVar = (MCBMVar <$>) . newMVar . (,(HandlerId 0,M.empty))
+newMCBMVar = (fmap MCBMVar) . newMVar . (,(HandlerId 0,M.empty))
 
 readMCBMVar :: MCBMVar a -> IO a
-readMCBMVar (MCBMVar x) = fst <$> readMVar x
+readMCBMVar (MCBMVar x) = fmap fst (readMVar x)
 
 runCallBacks :: MCBMVar a -> IO ()
-runCallBacks (MCBMVar x) = readMVar x >>= sequence_ . snd . snd
+runCallBacks (MCBMVar x) = readMVar x >>= sequence_ . M.elems . snd . snd
 
 writeMCBMVar :: MCBMVar a -> a -> IO ()
 writeMCBMVar w@(MCBMVar x) y = do

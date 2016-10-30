@@ -6,6 +6,7 @@ import FRP.Yampa
 -- |= General functions
 
 
+{-
 -- | Reversed version of '(\<$\>)'.
 (<$$>) :: (Functor f) => f a -> (a -> b) -> f b
 (<$$>) = flip (<$>)
@@ -13,6 +14,7 @@ import FRP.Yampa
 -- | Reversed version of '(<$)'.
 ($>) :: (Functor f) => f a -> b -> f b
 ($>) = flip (<$)
+-}
 
 -- | @bound (min,max)@ behaves like identity if the supplied value is between @min@ and @max@, otherwise it is replaced either by @min@ or by @max@.
 bound :: (Ord a) => (a, a) -> a -> a
