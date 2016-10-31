@@ -1,5 +1,6 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses,
-             ScopedTypeVariables, TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, LambdaCase,
+             MultiParamTypeClasses, ScopedTypeVariables, TypeSynonymInstances
+             #-}
 
 module RMCA.GUI.Board ( GUICell (..)
                       , attachGameRules
@@ -22,6 +23,7 @@ import           Data.Board.GameBoardIO
 import           Data.CBMVar
 import           Data.Maybe
 import           Data.ReactiveValue
+import           Data.Word
 import           Game.Board.BasicTurnGame
 import           Graphics.UI.Gtk                  hiding (Action)
 import           Graphics.UI.Gtk.Board.BoardLink  hiding (attachGameRules)
@@ -48,7 +50,7 @@ data Tile = TileW | TileB
 rotateGUICell :: GUICell -> GUICell
 rotateGUICell g = g { cellAction = rotateAction $ cellAction g }
   where rotateAction (ChDir b na d) = ChDir b na (nextDir d)
-        rotateAction x = x
+        rotateAction x              = x
 
 tileW :: Int
 tileW = 40
@@ -152,14 +154,13 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
 
 initGame :: IO (Game GUIBoard Int Tile Player GUICell)
 initGame = do
-  pixbufs <- fileToPixbuf
+  --pixbufs <- fileToPixbuf
   tilePixbufB <- pixbufNew ColorspaceRgb False 8 tileW tileH
   tilePixbufW <- pixbufNew ColorspaceRgb False 8 tileW tileH
   pixbufFill tilePixbufB 50 50 50 0
   pixbufFill tilePixbufW 50 50 50 0
-  let pixPiece :: (Player,GUICell) -> Pixbuf
-      pixPiece (_,a) = fromJust $ lookup (actionToFile a) pixbufs
-      pixTile :: Tile -> Pixbuf
+  pixPiece <- pixbufForPiece
+  let pixTile :: Tile -> Pixbuf
       pixTile TileW = tilePixbufW
       pixTile TileB = tilePixbufB
       visualA = VisualGameAspects { tileF = pixTile
@@ -232,7 +233,7 @@ initBoardRV tc board@BIO.Board { boardPieces = (GameBoard gArray) } = do
              | i <- validArea :: [(Int,Int)]]
 
   return (b,arrW,writeOnly ph)
-
+{-
 fileToPixbuf :: IO [(FilePath,Pixbuf)]
 fileToPixbuf = mapM (\f -> let f' = ("img/" ++ f) in
                         uncurry (liftM2 (,))
@@ -243,15 +244,53 @@ fileToPixbuf = mapM (\f -> let f' = ("img/" ++ f) in
                (["hexOn.png","hexOff.png","stop.svg","split.svg","absorb.svg"] ++
                 concat [["start" ++ show d ++ ".svg","ric" ++ show d ++ ".svg"]
                        | d <- [N .. NW]])
+-}
+pixbufForPiece :: IO ((Player, GUICell) -> Pixbuf)
+pixbufForPiece = do
+  let changeColor _ r g b ma = if (r == 0 && g == 0 && b == 0)
+                               then (r, g, b, ma)
+                               else (0, g, 0, ma)
+  pixbufs <- mapM (\a -> do df <- getDataFileName $ actionToFile a
+                            p <- do p' <- pixbufNewFromFile df
+                                    pixbufScaleSimple p' hexW hexW InterpBilinear
+                            p' <- pixbufCopy p
+                            modifyPixbuf changeColor p'
+                            return (a, (p, p'))
+                 ) actionList
+  let f (_, GUICell { cellAction = a
+                    , asPh = t }) = (if t then snd else fst) $ fromJust $
+                                    lookup (anonymizeConstructor a) pixbufs
+  return f
 
-actionToFile :: GUICell -> FilePath
-actionToFile GUICell { cellAction = a
-                     , asPh = ph
-                     } =
-  case a of
-    Inert           -> "img/hexO" ++ (if ph then "n" else "ff") ++ ".png"
-    Absorb          -> "img/absorb.svg"
-    Stop _          -> "img/stop.svg"
-    ChDir True _ d  -> "img/start" ++ show d ++ ".svg"
-    ChDir False _ d -> "img/ric" ++ show d ++ ".svg"
-    Split _         -> "img/split.svg"
+modifyPixbuf :: ((Int, Int) -> Word8 ->  Word8 -> Word8 -> Maybe Word8 ->
+                (Word8, Word8, Word8, Maybe Word8))
+             -> Pixbuf -> IO ()
+modifyPixbuf f p = do
+  pixs <- pixbufGetPixels p
+  w <- pixbufGetWidth p
+  h <- pixbufGetHeight p
+  rs <- pixbufGetRowstride p
+  chans <- pixbufGetNChannels p
+  forM_ [(x,y) | x <- [0..w - 1], y <- [0..h - 1]] $ \(x,y) -> do
+    let p = x * rs + y * chans
+    red <- readArray pixs p
+    green <- readArray pixs (p + 1)
+    blue <- readArray pixs (p + 2)
+    alpha <- if (chans == 4)
+            then fmap Just $ readArray pixs (p + 3)
+            else return Nothing
+    let (nr, ng, nb, na) = f (x,y) red green blue alpha
+    writeArray pixs p nr
+    writeArray pixs (p + 1) ng
+    writeArray pixs (p + 2) nb
+    when (isJust na) $ writeArray pixs (p + 3) $ fromJust na
+
+
+actionToFile :: Action -> FilePath
+actionToFile = \case
+                    Inert           -> "img/hexOff.png"
+                    Absorb          -> "img/absorb.svg"
+                    Stop _          -> "img/stop.svg"
+                    ChDir True _ d  -> "img/start" ++ show d ++ ".svg"
+                    ChDir False _ d -> "img/ric" ++ show d ++ ".svg"
+                    Split _         -> "img/split.svg"

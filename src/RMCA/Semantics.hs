@@ -258,6 +258,11 @@ data NoteAttr = NoteAttr {
     naOrn :: Ornaments
 } deriving (Show,Read,Eq)
 
+noNoteAttr :: NoteAttr
+noNoteAttr = NoteAttr { naArt = NoAccent
+                      , naDur = 0
+                      , naOrn = noOrn
+                      }
 
 -- High level note representation emitted form a layer
 data Note = Note {
@@ -333,6 +338,25 @@ data Action = Inert                   -- No action, play heads move through.
             | Split NoteAttr          -- Play note then split head into five.
             deriving (Show,Read,Eq)
 
+-- Contains a list of all the actions. Useful to have for e.g. pixbufs
+-- generation. It is shared for all applications from here to avoid
+-- forgetting to add a case if future actions are added.
+actionList :: [Action]
+actionList = [ Inert
+             , Absorb
+             , Stop noNoteAttr
+             , Split noNoteAttr
+             ] ++
+             [ ChDir t noNoteAttr d | t <- [True, False]
+                                    , d <- [minBound..maxBound]
+                                    ]
+
+anonymizeConstructor :: Action -> Action
+anonymizeConstructor Inert         = Inert
+anonymizeConstructor Absorb        = Absorb
+anonymizeConstructor (Stop _)      = Stop noNoteAttr
+anonymizeConstructor (Split _)     = Split noNoteAttr
+anonymizeConstructor (ChDir t _ d) = ChDir t noNoteAttr d
 
 -- Cells
 -- A cell stores an action and a repetition number.
