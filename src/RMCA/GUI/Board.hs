@@ -39,6 +39,8 @@ import           RMCA.GUI.HelpersRewrite
 import           RMCA.IOClockworks
 import           RMCA.Semantics
 
+import           Debug.Trace
+
 newtype GUIBoard = GUIBoard (GameState Int Tile Player GUICell)
 
 -- There are two types of tiles that can be distinguished by setting
@@ -164,7 +166,7 @@ initGame = do
       pixTile TileW = tilePixbufW
       pixTile TileB = tilePixbufB
       visualA = VisualGameAspects { tileF = pixTile
-                                  , pieceF = pixPiece
+                                  , pieceF = \(_,g) -> pixPiece g
                                   , bgColor = (1000,1000,1000)
                                   , bg = Nothing
                                   }
@@ -245,21 +247,44 @@ fileToPixbuf = mapM (\f -> let f' = ("img/" ++ f) in
                 concat [["start" ++ show d ++ ".svg","ric" ++ show d ++ ".svg"]
                        | d <- [N .. NW]])
 -}
-pixbufForPiece :: IO ((Player, GUICell) -> Pixbuf)
+
+-- If the repeatCount of some tile is superior to mrc,
+-- then this tile will be undistinguishable from any other tile with a
+-- repeat count superior to mrc.
+mrc :: (Num a) => a
+mrc = 6
+
+pixbufForPiece :: IO (GUICell -> Pixbuf)
 pixbufForPiece = do
-  let changeColor _ r g b ma = if (r == 0 && g == 0 && b == 0)
-                               then (r, g, b, ma)
-                               else (0, g, 0, ma)
-  pixbufs <- mapM (\a -> do df <- getDataFileName $ actionToFile a
-                            p <- do p' <- pixbufNewFromFile df
-                                    pixbufScaleSimple p' hexW hexW InterpBilinear
-                            p' <- pixbufCopy p
-                            modifyPixbuf changeColor p'
-                            return (a, (p, p'))
-                 ) actionList
-  let f (_, GUICell { cellAction = a
-                    , asPh = t }) = (if t then snd else fst) $ fromJust $
-                                    lookup (anonymizeConstructor a) pixbufs
+  let colorPlayHead _ r g b ma = if (r == 0 && g == 0 && b == 0)
+                                 then (0, 0, 0, ma)
+                                 else (0, g, 0, ma)
+      colorRC 0  _ _ _ _ ma = (0, 0, 0, ma)
+      colorRC rc _ r g b ma =
+        if (r == 0 && g == 0 && b == 0)
+        then (0, 0, 0, ma)
+        else let (gradr, gradg, gradb)  = ( (maxBound - r) `quot` mrc
+                                          , (g - minBound) `quot` mrc
+                                          , (b - minBound) `quot` mrc
+                                          )
+             in ( r + gradr * (rc - 1)
+                , g - gradg * (rc - 1)
+                , b - gradb * (rc - 1)
+                , ma
+                )
+  pixbufs <- mapM (\(a,rc) -> do df <- getDataFileName $ actionToFile a
+                                 p <- do p' <- pixbufNewFromFile df
+                                         pixbufScaleSimple p' hexW hexW InterpBilinear
+                                 modifyPixbuf (colorRC rc) p
+                                 p' <- pixbufCopy p
+                                 modifyPixbuf colorPlayHead p'
+                                 return ((a,rc), (p, p'))
+                  ) [(a,r) | r <- [0..mrc], a <- actionList]
+  let f GUICell { cellAction = a
+                , asPh = t
+                , repeatCount = r } =
+        (if t then snd else fst) $ fromJust $
+        lookup (anonymizeConstructor a, min (fromIntegral r) mrc) pixbufs
   return f
 
 modifyPixbuf :: ((Int, Int) -> Word8 ->  Word8 -> Word8 -> Maybe Word8 ->

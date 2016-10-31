@@ -3,14 +3,14 @@
 module Main where
 
 import           Control.Concurrent
-import           Data.Monoid
+import           Data.CBRef
 import qualified Data.IntMap                    as M
+import           Data.Monoid
 import           Data.ReactiveValue
 import           FRP.Yampa
 import           Graphics.UI.Gtk
 import           RMCA.Auxiliary
 --import           RMCA.Configuration
-import           Data.CBRef
 import           RMCA.EventProvider
 import           RMCA.GUI.Buttons
 import           RMCA.GUI.LayerSettings
@@ -32,7 +32,7 @@ main = do
   window <- windowNew
   -- Main box
   mainBox <- hBoxNew False 10
-  set window [ windowTitle := "Reactogon"
+  set window [ windowTitle := "Arpeggigon"
              , containerChild := mainBox
              , containerBorderWidth := 10
              ]
