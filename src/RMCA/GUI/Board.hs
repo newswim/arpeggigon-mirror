@@ -151,7 +151,8 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
     | Just (_,p) <- getPieceAt game iPos
     = applyChanges guiBoard [ RemovePiece iPos
                             , RemovePiece fPos
-                            , AddPiece fPos Player p]
+                            , AddPiece fPos Player p
+                            ]
     | otherwise = guiBoard
 
 initGame :: IO (Game GUIBoard Int Tile Player GUICell)
@@ -202,23 +203,24 @@ initBoardRV tc board@BIO.Board { boardPieces = (GameBoard gArray) } = do
       setterP :: [PlayHead] -> IO ()
       setterP lph = do
         oph <- readCBMVar phMVar
-        let offPh :: PlayHead -> IO ()
-            offPh ph = do
-              let pos = toGUICoords $ phPos ph
-              piece <- boardGetPiece pos board
-              when (isJust piece) $ do
-                let (_,c) = fromJust piece
-                boardSetPiece pos (Player, c { asPh = False }) board
-            onPh :: PlayHead -> IO ()
-            onPh ph =  do
-              let pos = toGUICoords $ phPos ph
-              piece <- boardGetPiece pos board
-              when (isJust piece) $ do
-                let (_,c) = fromJust piece
-                boardSetPiece pos (Player, c { asPh = True }) board
-        postGUIAsync $ mapM_ offPh oph
-        postGUIAsync $ mapM_ onPh lph
-        writeCBMVar phMVar lph
+        unless (oph == lph) $ do
+          let offPh :: PlayHead -> IO ()
+              offPh ph = do
+                let pos = toGUICoords $ phPos ph
+                piece <- boardGetPiece pos board
+                when (isJust piece) $ do
+                  let (_,c) = fromJust piece
+                  boardSetPiece pos (Player, c { asPh = False }) board
+              onPh :: PlayHead -> IO ()
+              onPh ph =  do
+                let pos = toGUICoords $ phPos ph
+                piece <- boardGetPiece pos board
+                when (isJust piece) $ do
+                  let (_,c) = fromJust piece
+                  boardSetPiece pos (Player, c { asPh = True }) board
+          postGUIAsync $ mapM_ offPh oph
+          postGUIAsync $ mapM_ onPh lph
+          writeCBMVar phMVar lph
 
       notifierP :: IO () -> IO ()
       notifierP = installCallbackCBMVar phMVar
