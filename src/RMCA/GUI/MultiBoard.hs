@@ -27,6 +27,9 @@ import           RMCA.Translator.Message
 maxLayers :: Int
 maxLayers = 16
 
+layerName :: String
+layerName = "Layer"
+
 createNotebook :: ( ReactiveValueRead addLayer () IO
                   , ReactiveValueRead rmLayer () IO
                   , ReactiveValueAtomicUpdate board (M.IntMap ([Note],[Message])) IO
@@ -115,7 +118,7 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
   containerAdd centerBoard guiBoard
   containerAdd boardCont centerBoard
 
-  fstP <- notebookAppendPage n boardCont ""
+  fstP <- notebookAppendPage n boardCont layerName
   notebookPageNumber <- newCBMVarRW (1 :: Int)
 
   initBoardRV tc guiBoard >>=
@@ -174,7 +177,7 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
       containerAdd nCenterBoard nGuiBoard
       containerAdd nBoardCont nCenterBoard
 
-      notebookAppendPage n nBoardCont $ show np
+      notebookAppendPage n nBoardCont layerName
       pChan <- reactiveValueRead pageChanRV
       let newCP = foundHole pChan
       (nBoardRV, nPieceArrRV, nPhRV) <- initBoardRV tc nGuiBoard
