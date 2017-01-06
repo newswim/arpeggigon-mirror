@@ -35,15 +35,17 @@ Running the arpeggigon is then possible with:
 	cabal install --only-dependencies
     cabal run arpeggigon
 
-To install the arpeggigon globally, one can call:
+**WARNING:** to run, the Arpeggigon needs a running Jack server. If it cannot 
+find one on startup it will crash. Experience has shown that it can be quite 
+difficult to set up such a server, however there are good tools and tutorials
+online to help you with that task, in particular 
+[qjackctl](https://qjackctl.sourceforge.io/) often does a good job at easing
+it.
 
-	cabal install
-
-This will create an executable located in
-`<path_to_repo>/.cabal-sandbox/bin/` from where it is possible to create a
-symbolic link to an object in the `PATH`.
-
-	ln -s <path_to_repo>/.cabal-sandbox/bin/arpeggigon <somewhere_in_PATH>/arpeggigon
+**WARNING (bis):** as will be stated after, the Arpeggigon is a MIDI event 
+producer, therefore it needs to be connected to a synthetizer to produce music.
+Again, [qjackctl](https://qjackctl.sourceforge.io/) makes this task quite easy,
+but it is also possible to do it via the command line.
 
 Description
 ---
