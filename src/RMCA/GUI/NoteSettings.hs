@@ -19,18 +19,18 @@ import RMCA.MCBMVar
 import RMCA.Semantics
 
 setNAttr :: NoteAttr -> Action -> Action
-setNAttr _ Inert = Inert
-setNAttr _ Absorb = Absorb
-setNAttr na (Stop _) = Stop na
+setNAttr _ Inert            = Inert
+setNAttr _ Absorb           = Absorb
+setNAttr na (Stop _)        = Stop na
 setNAttr na (ChDir b _ dir) = ChDir b na dir
-setNAttr na (Split _) = Split na
+setNAttr na (Split _)       = Split na
 
 getNAttr :: Action -> Maybe NoteAttr
-getNAttr Inert = Nothing
-getNAttr Absorb = Nothing
-getNAttr (Stop na) = Just na
+getNAttr Inert          = Nothing
+getNAttr Absorb         = Nothing
+getNAttr (Stop na)      = Just na
 getNAttr (ChDir _ na _) = Just na
-getNAttr (Split na) = Just na
+getNAttr (Split na)     = Just na
 
 symbolString :: [(Duration,String)]
 symbolString = map (\(_,y,z) -> (z,y)) noteSymbList
@@ -43,7 +43,8 @@ noteList' = map (\(x,y,z) -> (x ++ " " ++ y,z)) noteSymbList
 
 noteSymbList :: [(String, String, Duration)]
 noteSymbList = sortBy (comparing (\(_,_,x) -> x))
-               [ ("♩", "Quarter note", 1 % 4)
+               [ ("𝄽", "No note", 0)
+               , ("♩", "Quarter note", 1 % 4)
                , ("♪", "Eighth note ", 1 % 8)
                , ("𝅗𝅥", "Half note", 1 % 2)
                , ("𝅘𝅥𝅯", "Sixteenth note", 1 % 16)
@@ -196,9 +197,9 @@ noteSettingsBox = do
                   widgetShowAll noteDurBox
       updateNaBox :: GUICell -> IO ()
       updateNaBox GUICell { cellAction = act } = case act of
-        Inert -> hideNa
+        Inert  -> hideNa
         Absorb -> hideNa
-        _ -> showNa
+        _      -> showNa
 
   reactiveValueOnCanRead setRV $ postGUIAsync $ do
     nCell <- reactiveValueRead setRV

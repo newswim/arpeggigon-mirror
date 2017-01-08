@@ -157,7 +157,6 @@ instance PlayableGame GUIBoard Int Tile Player GUICell where
 
 initGame :: IO (Game GUIBoard Int Tile Player GUICell)
 initGame = do
-  --pixbufs <- fileToPixbuf
   tilePixbufB <- pixbufNew ColorspaceRgb False 8 tileW tileH
   tilePixbufW <- pixbufNew ColorspaceRgb False 8 tileW tileH
   pixbufFill tilePixbufB 50 50 50 0
@@ -237,18 +236,6 @@ initBoardRV tc board@BIO.Board { boardPieces = (GameBoard gArray) } = do
              | i <- validArea :: [(Int,Int)]]
 
   return (b,arrW,writeOnly ph)
-{-
-fileToPixbuf :: IO [(FilePath,Pixbuf)]
-fileToPixbuf = mapM (\f -> let f' = ("img/" ++ f) in
-                        uncurry (liftM2 (,))
-                        ( return f'
-                        , getDataFileName f' >>=
-                          (pixbufNewFromFile >=>
-                           \p -> pixbufScaleSimple p hexW hexW InterpBilinear)))
-               (["hexOn.png","hexOff.png","stop.svg","split.svg","absorb.svg"] ++
-                concat [["start" ++ show d ++ ".svg","ric" ++ show d ++ ".svg"]
-                       | d <- [N .. NW]])
--}
 
 -- If the repeatCount of some tile is superior to mrc,
 -- then this tile will be undistinguishable from any other tile with a
@@ -304,8 +291,8 @@ modifyPixbuf f p = do
     green <- readArray pixs (p + 1)
     blue <- readArray pixs (p + 2)
     alpha <- if (chans == 4)
-            then fmap Just $ readArray pixs (p + 3)
-            else return Nothing
+             then fmap Just $ readArray pixs (p + 3)
+             else return Nothing
     let (nr, ng, nb, na) = f (x,y) red green blue alpha
     writeArray pixs p nr
     writeArray pixs (p + 1) ng

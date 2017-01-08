@@ -10,9 +10,10 @@ import           Data.Maybe
 import           Data.Ord
 import           Data.Ratio
 import           FRP.Yampa
-import           RMCA.Global.Clock
 import           RMCA.Semantics
 import           RMCA.Translator.Message
+
+import           Debug.Trace
 
 messageToNote :: Message -> Note
 messageToNote (NoteOn _ p s) = Note { notePch = p
@@ -27,15 +28,15 @@ messageToNote m = error $ "In messageToNote: the message "
 -- the left is a note message, the other a note off.
 noteToMessages :: SampleRate
                -> Int -- channel number
-               -> LTempo
+               -> Tempo
                -> (Frames,Note)
                -> [(Frames,Message)]
-noteToMessages sr chan lt (t,n@Note { noteDur = d })
+noteToMessages sr chan tempo (t,n@Note { noteDur = d })
   | d == 0 = []
-  | otherwise = [(t,nm),(t + dn,switchOnOff nm)]
+  | otherwise = let a = [(t,nm),(t + dn, switchOnOff nm)] in traceShow a a
   where nm = noteOnToMessage chan n
         dt :: Double
-        dt = fromRational (d * toRational (tempoToQNoteIvl lt))
+        dt = fromRational (4 * d * (60 % fromIntegral tempo))
         dn = floor $ dt * fromIntegral sr
 
 noteOnToMessage :: Int -> Note -> Message

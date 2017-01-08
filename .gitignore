@@ -29,7 +29,6 @@ html/
 *.txt
 /.cabal-sandbox/
 /.ghci
-/lol.hs
 *.aux
 *.hp
 *.prof
@@ -38,3 +37,4 @@ html/
 *.folded
 /doc
 /cabal.sandbox.config
+*.png

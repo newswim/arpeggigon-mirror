@@ -9,7 +9,7 @@ import           Control.Arrow
 import qualified Control.Monad.Exception.Synchronous as Sync
 import qualified Control.Monad.Trans.Class           as Trans
 import           Data.CBRef
-import           Data.Foldable                       hiding (mapM_,concat)
+import           Data.Foldable                       hiding (concat, mapM_)
 import qualified Data.IntMap                         as M
 import           Data.Maybe
 import           Data.ReactiveValue
@@ -27,7 +27,7 @@ import qualified Sound.JACK.Exception                as JackExc
 import qualified Sound.JACK.MIDI                     as JMIDI
 
 rmcaName :: String
-rmcaName = "RMCA"
+rmcaName = "arpeggigon"
 
 inPortName :: String
 inPortName = "input"
@@ -42,7 +42,6 @@ handleErrorJack _ = postGUIAsync $ do
           "No running instance of Jack could be found!"
   widgetShow diag
   resp <- dialogRun diag
-  print resp
   mainQuit
 
 -- Starts a default client with an input and an output port. Doesn't
@@ -59,15 +58,16 @@ jackSetup :: (ReactiveValueAtomicUpdate board
           -> IO ()
 jackSetup tc boardQueue tempoRV layerMapRV = Sync.resolveT handleErrorJack $ do
   toProcessRV <- Trans.lift $ newCBRef []
-  Jack.withClientDefault rmcaName $ \client ->
+  Jack.withClientDefault rmcaName $ \client -> do
+    sr <- Trans.lift $ Jack.getSampleRate client
     Jack.withPort client outPortName $ \output ->
-    Jack.withPort client inPortName  $ \input ->
-    Jack.withProcess client (jackCallBack tc input output
-                              toProcessRV boardQueue tempoRV layerMapRV) $
-    Jack.withActivation client $ Trans.lift $ do
-    putStrLn $ "Started " ++ rmcaName ++ " JACK client."
-    Jack.waitForBreak
-    return ()
+      Jack.withPort client inPortName  $ \input ->
+      Jack.withProcess client (jackCallBack tc sr input output
+                               toProcessRV boardQueue tempoRV layerMapRV) $
+      Jack.withActivation client $ Trans.lift $ do
+      putStrLn $ "Started " ++ rmcaName ++ " JACK client."
+      Jack.waitForBreak
+      return ()
 
 -- The callback function. It pumps value out of the input port, mix
 -- them with value coming from the machine itself and stuff them into
@@ -80,6 +80,7 @@ jackCallBack :: ( ReactiveValueAtomicUpdate toProcess [(Frames, RawMessage)] IO
                 , ReactiveValueAtomicUpdate layerConfs (M.IntMap LayerConf) IO
                 ) =>
                 IOTick
+             -> SampleRate
              -> JMIDI.Port Jack.Input
              -> JMIDI.Port Jack.Output
              -> toProcess
@@ -88,7 +89,7 @@ jackCallBack :: ( ReactiveValueAtomicUpdate toProcess [(Frames, RawMessage)] IO
              -> layerConfs
              -> Jack.NFrames
              -> Sync.ExceptionalT E.Errno IO ()
-jackCallBack tc input output toProcessRV boardQueue tempoRV layerMapRV
+jackCallBack tc sr input output toProcessRV boardQueue tempoRV layerMapRV
   nframes@(Jack.NFrames nframesInt') = do
   let inMIDIRV = inMIDIEvent input nframes
       outMIDIRV = outMIDIEvent output nframes
@@ -109,7 +110,7 @@ jackCallBack tc input output toProcessRV boardQueue tempoRV layerMapRV
     mapM_ ((\(Instrument c p) -> reactiveValueUpdate layerMapRV
             (M.adjust (\(st,d,s) -> (st,d,s { instrument = fromProgram p }))
               (fromChannel c))) . snd) instruments
-    fmap (concat . toList . gatherMessages tempo nframesInt)
+    fmap (concat . toList . gatherMessages sr tempo)
          (reactiveValueEmpty boardQueue) >>=
       reactiveValueAppend toProcessRV
     (go, old') <- fmap (schedule nframesInt) (reactiveValueRead toProcessRV)

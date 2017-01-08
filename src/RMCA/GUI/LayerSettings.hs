@@ -47,7 +47,8 @@ layerSettings isStartedRV = do
   layBeatCombo <- comboBoxNewText
   layBeatIndex <- mapM (\(str,dur) -> do i <- comboBoxAppendText layBeatCombo
                                               (fromString str)
-                                         return (dur,i)) noteList'
+                                         return (dur,i)) $
+                  filter (\(_,dur) -> dur /= 0) noteList'
   comboBoxSetActive layBeatCombo 0
   let indexToDur i =
         fromMaybe (error "In indexToDur: failed \
@@ -117,7 +118,7 @@ layerSettings isStartedRV = do
   boxPackStart repeatBox auxRepeatBox PackRepel 0
   boxPackStart auxRepeatBox repeatLabel PackGrow 0
   boxPackStart auxRepeatBox repeatButton PackGrow 0
-  repeatCheckButton <- checkButtonNewWithLabel "Unable repeat count"
+  repeatCheckButton <- checkButtonNewWithLabel "Enable repeat count"
   boxPackStart auxRepeatBox repeatCheckButton PackGrow 0
   keepCheckButton <- checkButtonNewWithLabel "Keep heads on restart"
   boxPackStart auxRepeatBox keepCheckButton PackGrow 0

@@ -3,7 +3,6 @@
 module RMCA.Global.Clock ( AbsBeat
                          , maxAbsBeat
                          , metronome
-                         , tempoToQNoteIvl
                          ) where
 
 import FRP.Yampa
@@ -23,7 +22,3 @@ maxAbsBeat = 16
 metronome :: SF Tempo (Event AbsBeat)
 metronome = accumBy (\pb _ -> nextBeatNo maxAbsBeat pb) 0 <<<
             repeatedlyS' () <<^ (15*) <<^ (1/) <<^ fromIntegral
-
--- Tempo is the number of quarter notes per minute.
-tempoToQNoteIvl :: Tempo -> DTime
-tempoToQNoteIvl = (15/) . fromIntegral
