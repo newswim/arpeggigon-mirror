@@ -33,7 +33,7 @@ noteToMessages :: SampleRate
                -> [(Frames,Message)]
 noteToMessages sr chan tempo (t,n@Note { noteDur = d })
   | d == 0 = []
-  | otherwise = let a = [(t,nm),(t + dn, switchOnOff nm)] in traceShow a a
+  | otherwise = let a = [(t,nm),(t + dn, switchOnOff nm)] in {-traceShow a -}a
   where nm = noteOnToMessage chan n
         dt :: Double
         dt = fromRational (4 * d * (60 % fromIntegral tempo))
@@ -129,6 +129,23 @@ gatherMessages sr t = M.map (map (second toRawMessage)) .
         gatherMessages' chan (notes,messages) =
           zip (repeat 0) messages ++
           concatMap (noteToMessages sr chan t . (0,)) notes
+
+-- Only takes Note -> Frames process and keep Messages from the previous
+-- function gatherMessages.
+
+getMessages :: SampleRate
+                -> Tempo
+                -> M.IntMap ([Note], [Message])
+                -> M.IntMap [(Frames, Message)]
+getMessages sr t = M.mapWithKey getMessages'
+
+  where getMessages' :: Int
+                     -> ([Note], [Message])
+                     -> [(Frames, Message)]
+        getMessages' chan (notes, messages) =
+          zip (repeat 0) messages ++
+          concatMap (noteToMessages sr chan t . (0,)) notes
+
 
 -- Takes a list of time stamped "things", a sample rate and a buffer
 -- size. The function argument is a function that needs to tell which

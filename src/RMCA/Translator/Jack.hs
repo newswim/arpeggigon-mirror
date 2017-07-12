@@ -110,13 +110,47 @@ jackCallBack tc sr input output toProcessRV boardQueue tempoRV layerMapRV
     mapM_ ((\(Instrument c p) -> reactiveValueUpdate layerMapRV
             (M.adjust (\(st,d,s) -> (st,d,s { instrument = fromProgram p }))
               (fromChannel c))) . snd) instruments
-    fmap (concat . toList . gatherMessages sr tempo)
+    toProcess <- reactiveValueRead toProcessRV
+    {-fmap (concat . toList . gatherMessages sr tempo)
          (reactiveValueEmpty boardQueue) >>=
-      reactiveValueAppend toProcessRV
+      reactiveValueAppend toProcessRV-}
+    fmap ((`removeRepeat` toProcess) . concat . toList . getMessages sr tempo)
+         (reactiveValueEmpty boardQueue) >>=
+      reactiveValueWrite toProcessRV
     (go, old') <- fmap (schedule nframesInt) (reactiveValueRead toProcessRV)
+    {-if not $ null $ map (second fromRawMessage) go then
+      do print $ toShow $ map (second fromRawMessage) go
+    else
+      do putChar ' '-}
     let old = map (first (+ (- nframesInt))) old'
-    --putStrLn ("Out: " ++ show (map fst go))
     reactiveValueWrite outMIDIRV go
     reactiveValueWrite toProcessRV old
     tickIOTick tc
   --------------
+
+toShow :: [(Frames, Maybe Message)] -> String
+toShow as = case as of
+          [] -> []
+          (v, Just n@(NoteOn _ p _)) : xs -> show p++"-NoteOn "++toShow xs
+          (v, Just n@(NoteOff _ p _)) : xs -> show p++"-NoteOff "++toShow xs
+          x : xs -> toShow xs
+
+fromRaws :: [(Frames, RawMessage)] -> [(Frames, Message)]
+fromRaws = fst . sortRawMessages
+
+toRaws :: [(Frames, Message)] -> [(Frames, RawMessage)]
+toRaws = map (second toRawMessage)
+
+removeRepeat :: [(Frames, Message)] -> [(Frames, RawMessage)] -> [(Frames, RawMessage)]
+removeRepeat fms frs = toRaws $ checkAndInsert fms (fromRaws frs)
+    where checkAndInsert :: [(Frames, Message)] -> [(Frames, Message)] -> [(Frames, Message)]
+          checkAndInsert fms [] = fms
+          checkAndInsert fms (fm@(_, m) : fromRaws) | isNoteOff m = searchNoteOn fms fm : checkAndInsert fms fromRaws
+                                                    | otherwise   = fm : checkAndInsert fms fromRaws
+
+searchNoteOn :: [(Frames, Message)] -> (Frames, Message) -> (Frames, Message)
+searchNoteOn [] fm = fm
+searchNoteOn ((frames, NoteOn _ p' _) : fms) fm@(_, m@(NoteOff _ p _)) = case p' == p of
+                                                    True -> (frames, m)
+                                                    False -> searchNoteOn fms fm
+searchNoteOn (fm' : fms) fm = searchNoteOn fms fm
