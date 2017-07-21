@@ -48,10 +48,10 @@ newtype GUIBoard = GUIBoard (GameState Int Tile Player GUICell)
 -- want to remove that.
 data Tile = TileW | TileB
 
-
 rotateGUICell :: GUICell -> GUICell
 rotateGUICell g = g { cellAction = rotateAction $ cellAction g }
   where rotateAction (ChDir b na d) = ChDir b na (nextDir d)
+        rotateAction (Split na ds)  = Split na (turnQueue ds 1)
         rotateAction x              = x
 
 tileW :: Int
@@ -307,4 +307,4 @@ actionToFile = \case
                     Stop _          -> "img/stop.svg"
                     ChDir True _ d  -> "img/start" ++ show d ++ ".svg"
                     ChDir False _ d -> "img/ric" ++ show d ++ ".svg"
-                    Split _         -> "img/split.svg"
+                    Split _ _       -> "img/split.svg"

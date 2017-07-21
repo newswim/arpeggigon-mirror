@@ -3,6 +3,7 @@
 
 module RMCA.GUI.NoteSettings where
 
+import Debug.Trace
 import Control.Monad
 import Data.List
 import Data.Maybe
@@ -18,19 +19,34 @@ import RMCA.GUI.Board
 import RMCA.MCBMVar
 import RMCA.Semantics
 
+toJust :: a -> Maybe a
+toJust a = Just a
+
+getSplit :: Action -> Maybe Action
+getSplit (Split na ds) = Just (Split na ds)
+getSplit _ = Nothing
+
+setSplitDir :: [Int] -> Action -> Action
+setSplitDir ds (Split na _) = Split na ds
+setSplitDir _ a = a
+
+getSplitDir :: Action -> Maybe [Int]
+getSplitDir (Split _ ds) = Just ds
+getSplitDir _ = Nothing
+
 setNAttr :: NoteAttr -> Action -> Action
 setNAttr _ Inert            = Inert
 setNAttr _ Absorb           = Absorb
 setNAttr na (Stop _)        = Stop na
 setNAttr na (ChDir b _ dir) = ChDir b na dir
-setNAttr na (Split _)       = Split na
+setNAttr na (Split _ ds)    = Split na ds
 
 getNAttr :: Action -> Maybe NoteAttr
 getNAttr Inert          = Nothing
 getNAttr Absorb         = Nothing
 getNAttr (Stop na)      = Just na
 getNAttr (ChDir _ na _) = Just na
-getNAttr (Split na)     = Just na
+getNAttr (Split na _)   = Just na
 
 symbolString :: [(Duration,String)]
 symbolString = map (\(_,y,z) -> (z,y)) noteSymbList
@@ -63,6 +79,8 @@ noteSettingsBox = do
   pieceBox <- vBoxNew False 5
   naBox <- vBoxNew False 5
   boxPackStart pieceBox naBox PackNatural 0
+
+
 
   -- Articulation box
   artCombo <- comboBoxNewText
@@ -128,6 +146,33 @@ noteSettingsBox = do
   boxPackStart noteDurBox noteDurCombo PackNatural 0
   boxPackStart noteDurBox noteDurLabel PackNatural 0
 
+  -- Split direction box
+  splitDirBox <- hBoxNew False 10
+  splitDirCombo <- comboBoxNewText
+  splitDirIndex <- mapM (\(str, dir) -> do i <- comboBoxAppendText splitDirCombo
+                                                (fromString str)
+                                           return (dir, i)) dirList
+  comboBoxSetActive splitDirCombo 0
+  let indexToDir i =
+        fromMaybe (error "In indexToDir: failed \
+                         \to find the correct \
+                         \ direction for the \
+                         \selected index.") $ lookup i $ map swap splitDirIndex
+      dirToIndex ds =
+        fromMaybe (error "In dirToIndex: \
+                         \failed to find \
+                         \the correct index \
+                         \for the direction.") $ lookup ds' splitDirIndex where
+                                                  ds' = fst $ fromProto ds
+  
+      splitDirRV = bijection (indexToDir, dirToIndex) `liftRW`
+                   comboBoxIndexRV splitDirCombo
+  splitDirLabel <- labelNew =<< return (Just "")
+  let splitDirLabelRV = labelTextReactive splitDirLabel
+  boxPackStart naBox splitDirBox PackNatural 0
+  boxPackStart splitDirBox splitDirCombo PackNatural 0
+  boxPackStart splitDirBox splitDirLabel PackNatural 0
+
   -- Repeat count box
   rCountAdj <- adjustmentNew 1 0 100 1 1 0
   rCount <- spinButtonNew rCountAdj 1 0
@@ -137,6 +182,19 @@ noteSettingsBox = do
   -- Side RV
   -- Carries the index of the tile to display and what to display.
   setRV <- newMCBMVar inertCell
+
+  reactiveValueOnCanRead splitDirRV $ do
+    cDir <- reactiveValueRead splitDirRV
+    oCell <- reactiveValueRead setRV
+    let nCa :: Action
+        nCa = cellAction oCell
+        nCell :: GUICell
+        nCell = if isJust $ getSplit nCa
+                then oCell { cellAction =
+                             setSplitDir cDir nCa }
+                else oCell
+    reactiveValueWriteOnNotEq setRV nCell
+
 
   reactiveValueOnCanRead noteDurRV $ do
     nDur <- reactiveValueRead noteDurRV
@@ -190,23 +248,32 @@ noteSettingsBox = do
                   widgetHide artCombo
                   widgetShow rCount
                   widgetHideAll noteDurBox
+                  widgetHideAll splitDirBox
       showNa :: IO ()
       showNa = do widgetShow slideCombo
                   widgetShow artCombo
                   widgetShow rCount
                   widgetShowAll noteDurBox
+                  widgetHideAll splitDirBox
+      showDir :: IO ()
+      showDir = widgetShowAll splitDirBox
+
       updateNaBox :: GUICell -> IO ()
       updateNaBox GUICell { cellAction = act } = case act of
         Inert  -> hideNa
         Absorb -> hideNa
+        Split _ _ -> showNa >> showDir
         _      -> showNa
 
   reactiveValueOnCanRead setRV $ postGUIAsync $ do
     nCell <- reactiveValueRead setRV
+    fromMaybeM_ (fmap (reactiveValueWriteOnNotEq splitDirRV)
+                      (getSplitDir $ cellAction nCell))
+    fromMaybeM_ (fmap (reactiveValueWriteOnNotEq splitDirLabelRV . show . snd . fromProto)
+                      (getSplitDir $ cellAction nCell))
     fromMaybeM_ (fmap (reactiveValueWriteOnNotEq artComboRV . naArt)
                       (getNAttr (cellAction nCell)))
-    fromMaybeM_ (fmap (reactiveValueWriteOnNotEq slideComboRV
-                       . ornSlide . naOrn)
+    fromMaybeM_ (fmap (reactiveValueWriteOnNotEq slideComboRV . ornSlide . naOrn)
                       (getNAttr (cellAction nCell)))
     reactiveValueWriteOnNotEq rCountRV $ repeatCount nCell
     fromMaybeM_ (fmap (reactiveValueWriteOnNotEq noteDurRV . naDur)

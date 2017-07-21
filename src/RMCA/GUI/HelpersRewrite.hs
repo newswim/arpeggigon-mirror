@@ -61,7 +61,7 @@ ctrlPieces = [(xMax+2,y,Player,GUICell { cellAction = action
                                        })
              | let actions = [ Absorb, Stop defNa
                              , ChDir False defNa N, ChDir True defNa N
-                             , Split defNa]
+                             , Split defNa [0..5]]
                      -- /!\ It would be nice to find a general formula
                      -- for placing the control pieces.
                      , (y,action) <- zip [ yMin+4,yMin+8..] actions]

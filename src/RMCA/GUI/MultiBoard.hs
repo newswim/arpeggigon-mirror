@@ -2,6 +2,7 @@
 
 module RMCA.GUI.MultiBoard where
 
+import Debug.Trace
 import           Control.Concurrent.MVar
 import           Control.Monad
 import           Control.Monad.IO.Class

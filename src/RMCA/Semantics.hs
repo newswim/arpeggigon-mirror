@@ -32,9 +32,10 @@
 
 module RMCA.Semantics where
 
+import Debug.Trace
 import Data.Array
 import Data.List      (intercalate, nub)
-import Data.Maybe     (catMaybes)
+import Data.Maybe     (catMaybes, fromJust)
 import RMCA.Auxiliary
 
 
@@ -300,7 +301,6 @@ nextDir d | d ==  maxBound = minBound
 turn :: Dir -> Angle -> Dir
 turn d a = toEnum ((fromEnum d + a) `mod` 6)
 
-
 type Pos = (Int, Int)
 
 -- Position of neighbour in given direction
@@ -331,8 +331,39 @@ data Action = Inert                   -- No action, play heads move through.
             | Absorb                  -- Remove play head silently.
             | Stop  NoteAttr          -- Play note then remove play head.
             | ChDir Bool NoteAttr Dir -- Play note then change direction.
-            | Split NoteAttr          -- Play note then split head into five.
+            | Split NoteAttr [Int]    -- Play note then split head into more than one.
+            -- | Split NoteAttr          -- Play note then split head into five.
             deriving (Show,Read,Eq)
+
+dirList :: [(String, [Int])]
+dirList = [ ("0 1 2 3 4 5", [0, 1, 2, 3, 4, 5])
+          , ("0 1 2 3 4", [0, 1, 2, 3, 4])
+          , ("0 1 2 3", [0, 1, 2, 3])
+          , ("0 1 2 4", [0, 1, 2, 4])
+          , ("0 1 3 4", [0, 1, 3, 4])
+          , ("0 1 2", [0, 1, 2])
+          , ("0 1 3", [0, 1, 3])
+          , ("0 2 3", [0, 2, 3])
+          , ("0 2 4", [0, 2, 4])
+          , ("0 1", [0, 1])
+          , ("0 2", [0, 2])
+          , ("0 3", [0, 3])
+          ]
+
+turnQueue :: [Int] -> Int -> [Int]
+turnQueue ds n = sortQueue [] $ map ((`mod` 6) . (+ n)) ds
+
+sortQueue :: [Int] -> [Int] -> [Int]
+sortQueue [] ys = sortQueue [head ys] (tail ys)
+sortQueue xs [] = xs
+sortQueue xs ys = case last xs > head ys of
+                    True -> ys ++ xs
+                    False -> sortQueue (xs ++ [head ys]) (tail ys)
+
+fromProto :: [Int] -> ([Int], Int)
+fromProto ds = fromJust $ lookup s rotates where
+  s = minimum $ map fst rotates
+  rotates = [(sum ds', (ds', d)) | d <- ds, let ds' = turnQueue ds (-d)]
 
 -- Contains a list of all the actions. Useful to have for e.g. pixbufs
 -- generation. It is shared for all applications from here to avoid
@@ -341,8 +372,11 @@ actionList :: [Action]
 actionList = [ Inert
              , Absorb
              , Stop noNoteAttr
-             , Split noNoteAttr
              ] ++
+             [ Split noNoteAttr ds | proto <- map snd dirList
+                                   , offset <- [0..6]
+                                   , let ds = turnQueue proto offset
+                                   ] ++
              [ ChDir t noNoteAttr d | t <- [True, False]
                                     , d <- [minBound..maxBound]
                                     ]
@@ -351,7 +385,7 @@ anonymizeConstructor :: Action -> Action
 anonymizeConstructor Inert         = Inert
 anonymizeConstructor Absorb        = Absorb
 anonymizeConstructor (Stop _)      = Stop noNoteAttr
-anonymizeConstructor (Split _)     = Split noNoteAttr
+anonymizeConstructor (Split _ ds)  = Split noNoteAttr ds
 anonymizeConstructor (ChDir t _ d) = ChDir t noNoteAttr d
 
 -- Cells
@@ -480,13 +514,13 @@ advanceHead bd bn tr st ph = ahAux (moveHead bd ph)
                 Stop na       -> (newPHs [], mkNote p bn tr st na)
                 ChDir _ na d' -> (newPHs [ph {phDir = d'}],
                                   mkNote p bn tr st na)
-                Split na      -> (newPHs [ PlayHead {
+                Split na ds   -> (newPHs [ PlayHead {
                                                phPos   = p,
                                                phBTM   = 0,
                                                phDir   = d'
                                            }
-                                         | a <- [-2 .. 2],
-                                           let d' = turn d a
+                                         | a <- ds,
+                                           let d' = turn N a
                                          ],
                                   mkNote p bn tr st na)
             where
