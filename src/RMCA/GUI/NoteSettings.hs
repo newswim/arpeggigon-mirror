@@ -19,9 +19,6 @@ import RMCA.GUI.Board
 import RMCA.MCBMVar
 import RMCA.Semantics
 
-toJust :: a -> Maybe a
-toJust a = Just a
-
 getSplit :: Action -> Maybe Action
 getSplit (Split na ds) = Just (Split na ds)
 getSplit _ = Nothing

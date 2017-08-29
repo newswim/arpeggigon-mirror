@@ -50,7 +50,7 @@ main = do
   (buttonBox,
    playRV,stopRV,pauseRV,recordRV,
    confSaveRV,confLoadRV,
-   addLayerRV,rmLayerRV) <- getButtons boardStatusRV
+   addLayerRV,rmLayerRV, rmAllRV) <- getButtons boardStatusRV
   boxPackEnd settingsBox buttonBox PackNatural 0
 
   boardQueue <- newCBRef mempty
@@ -63,7 +63,7 @@ main = do
   (noteSettingsBox, guiCellMCBMVar) <- noteSettingsBox
   tc <- newIOTick
   (boardCont, boardMapRV, layerMapRV, phRVMapRV) <-
-    createNotebook boardQueue tc addLayerRV rmLayerRV
+    createNotebook boardQueue tc addLayerRV rmLayerRV rmAllRV
     statMCBMVar dynMCBMVar synthMCBMVar guiCellMCBMVar
   boxPackStart mainBox boardCont PackNatural 0
 

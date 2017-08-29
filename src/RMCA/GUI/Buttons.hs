@@ -51,6 +51,7 @@ getButtons :: (ReactiveValueRead boardStatus RunStatus IO) =>
                                 , ReactiveFieldRead IO ()
                                 , ReactiveFieldRead IO ()
                                 , ReactiveFieldRead IO ()
+                                , ReactiveFieldRead IO ()
                                 )
 getButtons boardStatusRV = do
   --addRestartButton
@@ -69,6 +70,10 @@ getButtons boardStatusRV = do
   buttonRmLayer <- buttonNewFromStockWithLabel gtkMediaRemove "Remove layer"
   let rmLayerRV = buttonActivateField buttonRmLayer
   boxPackStart buttonBoxAddRmLayers buttonRmLayer PackGrow 0
+
+  buttonRmAll <- buttonNewFromStockWithLabel gtkMediaRemove "Clear"
+  let rmAllRV = buttonActivateField buttonRmAll
+  boxPackStart buttonBoxAddRmLayers buttonRmAll PackGrow 0
 
   buttonBoxSaveLoad <- hBoxNew True 10
   boxPackStart buttonBox buttonBoxSaveLoad PackNatural 0
@@ -114,4 +119,5 @@ getButtons boardStatusRV = do
          , confLoadRV
          , addLayerRV
          , rmLayerRV
+         , rmAllRV
          )

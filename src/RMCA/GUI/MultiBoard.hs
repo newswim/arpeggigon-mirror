@@ -33,12 +33,14 @@ layerName = "Layer"
 
 createNotebook :: ( ReactiveValueRead addLayer () IO
                   , ReactiveValueRead rmLayer () IO
+                  , ReactiveValueRead clear () IO
                   , ReactiveValueAtomicUpdate board (M.IntMap ([Note],[Message])) IO
                   ) =>
                   board
                -> IOTick
                -> addLayer
                -> rmLayer
+               -> clear
                -> MCBMVar StaticLayerConf
                -> MCBMVar DynLayerConf
                -> MCBMVar SynthConf
@@ -49,7 +51,7 @@ createNotebook :: ( ReactiveValueRead addLayer () IO
                      , ReactiveFieldRead IO
                        (M.IntMap (ReactiveFieldWrite IO [PlayHead]))
                      )
-createNotebook boardQueue tc addLayerRV rmLayerRV
+createNotebook boardQueue tc addLayerRV rmLayerRV clearRV
   statMCBMVar dynMCBMVar synthMCBMVar guiCellMCBMVar = do
   n <- notebookNew
   let curPageRV = ReactiveFieldReadWrite setter getter notifier
@@ -61,13 +63,10 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
               notifier io = void $ afterSwitchPage n (const io)
 
   pageChanRV <- newCBMVarRW []
-  let foundHole = let foundHole' [] = 0
-                      foundHole' [x] = x + 1
-                      foundHole' (x:y:xs) = if x + 1 /= y then x + 1 else foundHole (y:xs)
-                  in foundHole' . sort
 
+  let foundHole ns = head $ [0..15] \\ ns
 
-  let curChanRV = liftR2 (!!) pageChanRV curPageRV
+      curChanRV = liftR2 (!!) pageChanRV curPageRV
   ------------------------------------------------------------------------------
   -- First board
   ------------------------------------------------------------------------------
@@ -119,7 +118,7 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
   containerAdd centerBoard guiBoard
   containerAdd boardCont centerBoard
 
-  fstP <- notebookAppendPage n boardCont layerName
+  fstP <- notebookAppendPage n boardCont "layer-0"
   notebookPageNumber <- newCBMVarRW (1 :: Int)
 
   initBoardRV tc guiBoard >>=
@@ -127,7 +126,7 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
     reactiveValueWrite chanMapRV . M.insert fstP (boardRV,pieceArrRV,phRV)
 
   reactiveValueRead pageChanRV >>=
-    reactiveValueWrite pageChanRV . (\pc -> pc ++ [foundHole pc])
+    reactiveValueWrite pageChanRV . (\pc -> insert (foundHole pc) pc)
 
   layerMapRV <- newCBRef $ M.insert fstP defaultLayerConf M.empty
   reactiveValueOnCanRead layerMapRV $ do
@@ -178,7 +177,8 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
       containerAdd nCenterBoard nGuiBoard
       containerAdd nBoardCont nCenterBoard
 
-      notebookAppendPage n nBoardCont layerName
+      pageChan <- reactiveValueRead pageChanRV
+      notebookAppendPage n nBoardCont $ "layer-"++show (foundHole pageChan)
       pChan <- reactiveValueRead pageChanRV
       let newCP = foundHole pChan
       (nBoardRV, nPieceArrRV, nPhRV) <- initBoardRV tc nGuiBoard
@@ -188,8 +188,8 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
       reactiveValueRead layerMapRV >>=
         reactiveValueWrite layerMapRV . M.insert newCP defaultLayerConf
 
-      --reactiveValueWrite curPageRV newP
       reactiveValueWrite pageChanRV (pChan ++ [newCP])
+      -- reactiveValueRead pageChanRV >>= print
       widgetShowAll n
 
   reactiveValueOnCanRead rmLayerRV $ postGUIAsync $ do
@@ -213,8 +213,62 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
       reactiveValueRead layerMapRV >>=
         reactiveValueWrite layerMapRV . M.delete oldCP
 
+      reactiveValueRead notebookPageNumber >>= print
+      -- notebookGetNPages n >>= print . show
+      -- reactiveValueRead pageChanRV >>= print
+
     widgetShowAll n
     return ()
+
+  reactiveValueOnCanRead clearRV $ postGUIAsync $ do
+    np <- reactiveValueRead notebookPageNumber
+    unless (np >= maxLayers) $ do
+      {-
+      let temp p = if (p > 1) then do
+            cp <- reactiveValueRead curPageRV
+            oldCP <- reactiveValueRead curChanRV
+            let rmIndex :: Int -> [a] -> [a]
+                rmIndex n l = take n l ++ drop (n + 1) l
+            notebookRemovePage n 0
+            {-
+            reactiveValueRead pageChanRV >>= print
+            reactiveValueRead curPageRV >>= print
+            reactiveValueRead notebookPageNumber >>= print
+            notebookGetNPages n >>= print . show
+            reactiveValueRead curChanRV >>= print
+            -}
+            reactiveValueRead pageChanRV >>=
+              reactiveValueWrite pageChanRV . rmIndex cp
+
+            reactiveValueRead notebookPageNumber >>=
+              reactiveValueWrite notebookPageNumber . subtract 1
+
+            reactiveValueRead chanMapRV >>=
+              reactiveValueWrite chanMapRV . M.delete oldCP
+
+            reactiveValueRead layerMapRV >>=
+              reactiveValueWrite layerMapRV . M.delete oldCP
+
+            temp (p - 1)
+
+          else
+            return ()
+      temp np
+      -}
+      curChan <- reactiveValueRead curChanRV
+      -- print "curChan = " >> print curChan
+      -- print "pageMap = " >> reactiveValueRead pageChanRV >>= print
+      chanMap <- reactiveValueRead chanMapRV
+      let mSelChan = M.lookup curChan chanMap
+      when (isNothing mSelChan) $ error "Not found selected chan!"
+      let selChan = fromJust mSelChan
+          pieceArrRV :: Array Pos (ReactiveFieldWrite IO GUICell)
+          pieceArrRV = (\(_,s,_) -> s) selChan
+      sequence_ [reactiveValueWrite (pieceArrRV ! i) inertCell | i <- validArea]
+
+    widgetShowAll n
+    return ()
+      
 
   reactiveValueOnCanRead curChanRV $ do
     cp <- reactiveValueRead curChanRV
@@ -233,7 +287,7 @@ createNotebook boardQueue tc addLayerRV rmLayerRV
       installCallbackMCBMVar statMCBMVar (updateStatLayer cp) >>=
         putMVar statHidMVar
       reactiveValueWrite synthMCBMVar (synthConf selLayer)
-      installCallbackMCBMVar synthMCBMVar (updateSynth cp) >>=
+      installCallbackMCBMVar synthMCBMVar (updateSynth $ cp) >>=
         putMVar synthHidMVar
       return ()
 

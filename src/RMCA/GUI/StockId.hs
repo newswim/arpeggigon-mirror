@@ -26,5 +26,8 @@ gtkMediaAdd = stringToGlib "gtk-add"
 gtkMediaRemove :: DefaultGlibString
 gtkMediaRemove = stringToGlib "gtk-remove"
 
+gtkMediaRmAll :: DefaultGlibString
+gtkMediaRmAll = stringToGlib "gtk-clear"
+
 gtkMediaRestart :: DefaultGlibString
 gtkMediaRestart = stringToGlib "gtk-refresh"

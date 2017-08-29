@@ -191,6 +191,7 @@ initBoardRV tc board@BIO.Board { boardPieces = (GameBoard gArray) } = do
                    second ((\(_,c) -> (cellAction c,repeatCount c)) .
                               fromJust)) $
               filter (isJust . snd) boardArray
+        -- print board
         return board
 
       notifierB :: IO () -> IO ()
